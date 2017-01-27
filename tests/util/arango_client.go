@@ -90,7 +90,7 @@ func (c *ArangoClient) Get(urlPath string, result interface{}, successStatusCode
 		for _, code := range successStatusCodes {
 			if resp.StatusCode == code {
 				// Found a success status
-				if code == http.StatusOK && result != nil {
+				if isSuccessStatusCode(code) && result != nil {
 					defer resp.Body.Close()
 					b, err := ioutil.ReadAll(resp.Body)
 					if err != nil {
@@ -186,7 +186,7 @@ func (c *ArangoClient) Post(urlPath string, input, result interface{}, successSt
 		for _, code := range successStatusCodes {
 			if resp.StatusCode == code {
 				// Found a success status
-				if code == http.StatusOK && result != nil {
+				if isSuccessStatusCode(code) && result != nil {
 					if err := tryDecodeBody(resp.Body, result); err != nil {
 						return maskAny(err)
 					}
@@ -216,4 +216,8 @@ func tryDecodeBody(body io.ReadCloser, result interface{}) error {
 		return maskAny(err)
 	}
 	return nil
+}
+
+func isSuccessStatusCode(statusCode int) bool {
+	return statusCode >= 200 && statusCode < 300
 }

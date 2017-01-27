@@ -180,7 +180,7 @@ func (t *simpleTest) createCollection(name string, numberOfShards, replicationFa
 
 func (t *simpleTest) createDocument(collectionName string, document interface{}) error {
 	timeout := time.Minute
-	if err := t.client.Post(fmt.Sprintf("/_api/document/%s", collectionName), document, nil, []int{200}, []int{400, 404, 409, 307}, timeout); err != nil {
+	if err := t.client.Post(fmt.Sprintf("/_api/document/%s", collectionName), document, nil, []int{200, 201, 202}, []int{400, 404, 409, 307}, timeout); err != nil {
 		// This is a failure
 		t.listener.ReportFailure(test.NewFailure("Failed to create document in collection '%s': %v", collectionName, err))
 		return maskAny(err)
@@ -191,7 +191,7 @@ func (t *simpleTest) createDocument(collectionName string, document interface{})
 func (t *simpleTest) readExistingDocument(collectionName string, key string) error {
 	timeout := time.Minute
 	var result UserDocument
-	if err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), &result, []int{200}, []int{400, 404, 307}, timeout); err != nil {
+	if err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), &result, []int{200, 201, 202}, []int{400, 404, 307}, timeout); err != nil {
 		// This is a failure
 		t.listener.ReportFailure(test.NewFailure("Failed to read document '%s' in collection '%s': %v", key, collectionName, err))
 		return maskAny(err)
@@ -201,7 +201,7 @@ func (t *simpleTest) readExistingDocument(collectionName string, key string) err
 
 func (t *simpleTest) removeExistingDocument(collectionName string, key string) error {
 	timeout := time.Minute
-	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), []int{200, 202}, []int{400, 404, 412, 307}, timeout); err != nil {
+	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), []int{200, 201, 202}, []int{400, 404, 412, 307}, timeout); err != nil {
 		// This is a failure
 		t.listener.ReportFailure(test.NewFailure("Failed to delete document '%s' in collection '%s': %v", key, collectionName, err))
 		return maskAny(err)
