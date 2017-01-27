@@ -3,7 +3,9 @@ package service
 import (
 	chaos "github.com/arangodb/testAgent/service/chaos"
 	cluster "github.com/arangodb/testAgent/service/cluster"
+	"github.com/arangodb/testAgent/service/test"
 	logging "github.com/op/go-logging"
+	"golang.org/x/sync/errgroup"
 )
 
 type ServiceConfig struct {
@@ -13,6 +15,7 @@ type ServiceConfig struct {
 type ServiceDependencies struct {
 	Logger         *logging.Logger
 	ClusterBuilder cluster.ClusterBuilder
+	Tests          []test.TestScript
 }
 
 type Service struct {
@@ -43,10 +46,41 @@ func (s *Service) Run(stopChan chan struct{}) error {
 
 	// Create & start a chaos monkey
 	s.Logger.Info("Creating chaos monkey")
-	s.chaosMonkey = chaos.NewChaosMonkey(s.cluster)
+	s.chaosMonkey = chaos.NewChaosMonkey(s.Logger, s.cluster)
 	s.chaosMonkey.Start()
 
 	// Run tests
+	for _, t := range s.Tests {
+		s.Logger.Infof("Starting test %s", t.Name())
+		if err := t.Start(s.cluster, s); err != nil {
+			return maskAny(err)
+		}
+	}
+
+	// Wait until stop
+	s.Logger.Info("All tests started, waiting until termination")
+	<-stopChan
+
+	// Stop introducting chaos
+	s.Logger.Info("Stopping chaos")
+	s.chaosMonkey.Stop()
+	s.chaosMonkey.WaitUntilInactive()
+
+	// Stop all tests
+	s.Logger.Info("Stopping test scripts")
+	g := errgroup.Group{}
+	for _, t := range s.Tests {
+		t := t // t is used in nested func
+		g.Go(func() error {
+			if err := t.Stop(); err != nil {
+				s.Logger.Errorf("Failed to stop test %s: %#v", t.Name(), err)
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		s.Logger.Errorf("Failed to stop tests: %#v", err)
+	}
 
 	// Destroy cluster
 	s.Logger.Info("Destroying cluster")

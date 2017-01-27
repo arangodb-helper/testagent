@@ -10,6 +10,8 @@ import (
 
 	service "github.com/arangodb/testAgent/service"
 	arangodb "github.com/arangodb/testAgent/service/cluster/arangodb"
+	"github.com/arangodb/testAgent/service/test"
+	"github.com/arangodb/testAgent/tests/simple"
 	"github.com/juju/errgo"
 	logging "github.com/op/go-logging"
 	"github.com/spf13/cobra"
@@ -94,11 +96,17 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 		log.Fatalf("Failed to create cluster builder: %#v", err)
 	}
 
+	// Create tests
+	tests := []test.TestScript{
+		simple.NewSimpleTest(log),
+	}
+
 	// Create service
 	log.Debug("creating service")
 	service, err := service.NewService(appFlags.ServiceConfig, service.ServiceDependencies{
 		Logger:         log,
 		ClusterBuilder: cb,
+		Tests:          tests,
 	})
 	if err != nil {
 		log.Fatalf("Failed to create service: %#v", err)
