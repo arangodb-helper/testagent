@@ -98,6 +98,12 @@ func (cb *arangodbClusterBuilder) Create(agencySize int) (cluster.Cluster, error
 			if err != nil {
 				return maskAny(err)
 			}
+
+			// Register machine
+			c.mutex.Lock()
+			c.machines = append(c.machines, m)
+			c.mutex.Unlock()
+
 			// Start machine
 			if err := m.start(); err != nil {
 				return maskAny(err)
@@ -106,11 +112,6 @@ func (cb *arangodbClusterBuilder) Create(agencySize int) (cluster.Cluster, error
 			if err := m.waitUntilServersReady(c.log, serverReadyTimeout); err != nil {
 				return maskAny(err)
 			}
-
-			// Register machine
-			c.mutex.Lock()
-			defer c.mutex.Unlock()
-			c.machines = append(c.machines, m)
 			return nil
 		})
 	}

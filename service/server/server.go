@@ -30,12 +30,10 @@ func StartHTTPServer(log *logging.Logger, port int, service Service) {
 			Prefix:     "",
 		}),
 	}))
+	m.Map(log)
 	m.Map(service)
 
-	m.Get("/", func(ctx *macaron.Context) {
-		ctx.Data["Name"] = "jeremy"
-		ctx.HTML(200, "index") // 200 is the response code.
-	})
+	m.Get("/", index)
 
 	addr := fmt.Sprintf("0.0.0.0:%d", port)
 	log.Infof("HTTP server listening on %s", addr)
@@ -44,4 +42,9 @@ func StartHTTPServer(log *logging.Logger, port int, service Service) {
 			log.Fatalf("Failed to start listener: %#v", err)
 		}
 	}()
+}
+
+func showError(ctx *macaron.Context, err error) {
+	msg := err.Error()
+	ctx.PlainText(http.StatusInternalServerError, []byte(msg))
 }

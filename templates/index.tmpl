@@ -1,5 +1,14 @@
 <html>
 <body>
 <h1>Welcome to TestAgent</h1>
+
+<h2>Cluster</h2>
+
+<ul>
+{{ range $m := .Machines }}
+<li><a href={{ $m.CoordinatorURL }}>Coordinator</a></li>
+{{ end }}
+</ul>
+
 </body>
 </html>
