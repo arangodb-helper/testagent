@@ -10,5 +10,13 @@
 {{ end }}
 </ul>
 
+<h2>Tests</h2>
+
+{{ range $t := .Tests }}
+<h3>{{$t.Name}}</h3>
+<p>Failures: {{$t.Failures}}</p>
+{{range $m := $t.Messages}}<p>{{$m}}</p>{{end}}
+{{ end }}
+
 </body>
 </html>

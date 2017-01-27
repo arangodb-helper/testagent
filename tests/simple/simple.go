@@ -16,12 +16,22 @@ const (
 )
 
 type simpleTest struct {
-	log      *logging.Logger
-	cluster  cluster.Cluster
-	listener test.TestListener
-	stop     chan struct{}
-	active   bool
-	client   *util.ArangoClient
+	log           *logging.Logger
+	cluster       cluster.Cluster
+	listener      test.TestListener
+	stop          chan struct{}
+	active        bool
+	client        *util.ArangoClient
+	failures      int
+	existingKeys  []string
+	readCounter   counter
+	createCounter counter
+	deleteCounter counter
+}
+
+type counter struct {
+	succeeded int
+	failed    int
 }
 
 // NewSimpleTest creates a simple test
@@ -54,6 +64,23 @@ func (t *simpleTest) Stop() error {
 	<-stop
 	return nil
 }
+
+// Status returns the current status of the test
+func (t *simpleTest) Status() test.TestStatus {
+	return test.TestStatus{
+		Failures: t.failures,
+		Messages: []string{
+			fmt.Sprintf("Current #documents: %d", len(t.existingKeys)),
+			fmt.Sprintf("#documents created successfully: %d", t.createCounter.succeeded),
+			fmt.Sprintf("#documents created failed: %d", t.createCounter.failed),
+			fmt.Sprintf("#documents read successfully: %d", t.readCounter.succeeded),
+			fmt.Sprintf("#documents read failed: %d", t.readCounter.failed),
+			fmt.Sprintf("#documents removed successfully: %d", t.deleteCounter.succeeded),
+			fmt.Sprintf("#documents removed failed: %d", t.deleteCounter.failed),
+		},
+	}
+}
+
 func (t *simpleTest) shouldStop() bool {
 	// Should we stop?
 	if stop := t.stop; stop != nil {
@@ -70,6 +97,11 @@ type UserDocument struct {
 	Odd   bool   `json:"odd"`
 }
 
+func (t *simpleTest) reportFailure(f test.Failure) {
+	t.failures++
+	t.listener.ReportFailure(f)
+}
+
 func (t *simpleTest) testLoop() {
 	t.active = true
 	defer func() { t.active = false }()
@@ -80,7 +112,7 @@ func (t *simpleTest) testLoop() {
 	}
 
 	// Create sample users
-	existingKeys := []string{}
+	t.existingKeys = nil
 	for i := 0; i < 999; i++ {
 		if t.shouldStop() {
 			return
@@ -95,14 +127,14 @@ func (t *simpleTest) testLoop() {
 		if err := t.createDocument(collUser, userDoc); err != nil {
 			t.log.Errorf("Failed to create document: %#v", err)
 		}
-		existingKeys = append(existingKeys, userDoc.Key)
+		t.existingKeys = append(t.existingKeys, userDoc.Key)
 	}
 
 	createNewKey := func() string {
 		for {
 			key := fmt.Sprintf("newkey%07d", rand.Int31n(100*1000))
 			found := false
-			for _, x := range existingKeys {
+			for _, x := range t.existingKeys {
 				if x == key {
 					found = true
 					break
@@ -137,7 +169,7 @@ func (t *simpleTest) testLoop() {
 
 		case 1:
 			// Read a random document
-			randomKey := existingKeys[rand.Intn(len(existingKeys))]
+			randomKey := t.existingKeys[rand.Intn(len(t.existingKeys))]
 			if err := t.readExistingDocument(collUser, randomKey); err != nil {
 				t.log.Errorf("Failed to read document '%s': %#v", randomKey, err)
 			}
@@ -145,7 +177,7 @@ func (t *simpleTest) testLoop() {
 
 		case 2:
 			// Remove a random document
-			randomKey := existingKeys[rand.Intn(len(existingKeys))]
+			randomKey := t.existingKeys[rand.Intn(len(t.existingKeys))]
 			if err := t.removeExistingDocument(collUser, randomKey); err != nil {
 				t.log.Errorf("Failed to remove document '%s': %#v", randomKey, err)
 			}
@@ -172,7 +204,7 @@ func (t *simpleTest) createCollection(name string, numberOfShards, replicationFa
 	timeout := time.Minute
 	if err := t.client.Post("/_api/collection", opts, nil, []int{200}, []int{400, 404, 307}, timeout); err != nil {
 		// This is a failure
-		t.listener.ReportFailure(test.NewFailure("Failed to create collection '%s': %v", name, err))
+		t.reportFailure(test.NewFailure("Failed to create collection '%s': %v", name, err))
 		return maskAny(err)
 	}
 	return nil
@@ -182,9 +214,11 @@ func (t *simpleTest) createDocument(collectionName string, document interface{})
 	timeout := time.Minute
 	if err := t.client.Post(fmt.Sprintf("/_api/document/%s", collectionName), document, nil, []int{200, 201, 202}, []int{400, 404, 409, 307}, timeout); err != nil {
 		// This is a failure
-		t.listener.ReportFailure(test.NewFailure("Failed to create document in collection '%s': %v", collectionName, err))
+		t.createCounter.failed++
+		t.reportFailure(test.NewFailure("Failed to create document in collection '%s': %v", collectionName, err))
 		return maskAny(err)
 	}
+	t.createCounter.succeeded++
 	return nil
 }
 
@@ -193,9 +227,11 @@ func (t *simpleTest) readExistingDocument(collectionName string, key string) err
 	var result UserDocument
 	if err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), &result, []int{200, 201, 202}, []int{400, 404, 307}, timeout); err != nil {
 		// This is a failure
-		t.listener.ReportFailure(test.NewFailure("Failed to read document '%s' in collection '%s': %v", key, collectionName, err))
+		t.readCounter.failed++
+		t.reportFailure(test.NewFailure("Failed to read document '%s' in collection '%s': %v", key, collectionName, err))
 		return maskAny(err)
 	}
+	t.readCounter.succeeded++
 	return nil
 }
 
@@ -203,8 +239,10 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key string) e
 	timeout := time.Minute
 	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), []int{200, 201, 202}, []int{400, 404, 412, 307}, timeout); err != nil {
 		// This is a failure
-		t.listener.ReportFailure(test.NewFailure("Failed to delete document '%s' in collection '%s': %v", key, collectionName, err))
+		t.deleteCounter.failed++
+		t.reportFailure(test.NewFailure("Failed to delete document '%s' in collection '%s': %v", key, collectionName, err))
 		return maskAny(err)
 	}
+	t.deleteCounter.succeeded++
 	return nil
 }

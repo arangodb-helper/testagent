@@ -15,6 +15,9 @@ type TestScript interface {
 	// Name returns the name of the script
 	Name() string
 
+	// Status returns the current status of the test
+	Status() TestStatus
+
 	// Start triggers the test script to start.
 	// It should spwan actions in a go routine.
 	Start(cluster cluster.Cluster, listener TestListener) error
@@ -33,4 +36,9 @@ func NewFailure(message string, args ...interface{}) Failure {
 		Timestamp: time.Now(),
 		Message:   fmt.Sprintf(message, args...),
 	}
+}
+
+type TestStatus struct {
+	Failures int
+	Messages []string
 }
