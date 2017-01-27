@@ -9,7 +9,7 @@ import (
 	"syscall"
 
 	service "github.com/arangodb/testAgent/service"
-	cluster "github.com/arangodb/testAgent/service/cluster"
+	arangodb "github.com/arangodb/testAgent/service/cluster/arangodb"
 	"github.com/juju/errgo"
 	logging "github.com/op/go-logging"
 	"github.com/spf13/cobra"
@@ -30,7 +30,7 @@ var (
 	log      = logging.MustGetLogger(projectName)
 	appFlags struct {
 		service.ServiceConfig
-		cluster.ArangodbConfig
+		arangodb.ArangodbConfig
 		logLevel string
 	}
 	maskAny = errgo.MaskFunc(errgo.Any)
@@ -41,7 +41,8 @@ func init() {
 	f.IntVar(&appFlags.AgencySize, "agencySize", 3, "Number of agents in the cluster")
 	f.IntVar(&appFlags.MasterPort, "masterPort", 4000, "Port to listen on for other arangodb's to join")
 	f.StringVar(&appFlags.logLevel, "log-level", "debug", "Minimum log level (debug|info|warning|error)")
-	f.StringVar(&appFlags.ArangodbImage, "arangodb-image", getEnvVar("ARANGODB_IMAGE", "arangodb/arangodb-starter"), "name of the Docker image containing arangodb")
+	f.StringVar(&appFlags.ArangodbImage, "arangodb-image", getEnvVar("ARANGODB_IMAGE", "arangodb/arangodb-starter"), "name of the Docker image containing arangodb (the cluster starter)")
+	f.StringVar(&appFlags.ArangoImage, "arango-image", "", "name of the Docker image containing arangod (the database)")
 	f.StringVar(&appFlags.DockerEndpoint, "dockerEndpoint", "unix:///var/run/docker.sock", "Endpoint used to reach the docker daemon")
 	f.StringVar(&appFlags.DockerHostIP, "docker-host-ip", "", "IP of the docker host")
 }
@@ -88,7 +89,7 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 
 	// Create cluster builder
 	log.Debug("creating arangodb cluster builder")
-	cb, err := cluster.NewArangodbClusterBuilder(log, appFlags.ArangodbConfig)
+	cb, err := arangodb.NewArangodbClusterBuilder(log, appFlags.ArangodbConfig)
 	if err != nil {
 		log.Fatalf("Failed to create cluster builder: %#v", err)
 	}

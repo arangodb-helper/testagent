@@ -49,7 +49,7 @@ func (s *Service) Run(stopChan chan struct{}) error {
 	// Run tests
 
 	// Destroy cluster
-	s.Logger.Info("Destroying chaos monkey")
+	s.Logger.Info("Destroying cluster")
 	if err := s.cluster.Destroy(); err != nil {
 		return maskAny(err)
 	}

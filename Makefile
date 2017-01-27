@@ -55,6 +55,7 @@ $(GOBUILDDIR):
 	GOPATH=$(GOBUILDDIR) go get github.com/op/go-logging
 	GOPATH=$(GOBUILDDIR) go get github.com/spf13/cobra
 	GOPATH=$(GOBUILDDIR) go get golang.org/x/sync/errgroup
+	GOPATH=$(GOBUILDDIR) go get github.com/cenkalti/backoff
 
 $(BIN): $(GOBUILDDIR) $(SOURCES)
 	@mkdir -p $(BINDIR)
