@@ -26,9 +26,11 @@ const (
 type arangodb struct {
 	client                 *docker.Client
 	log                    *logging.Logger
+	createOptions          docker.CreateContainerOptions
 	index                  int
 	ip                     string
 	port                   int
+	state                  cluster.MachineState
 	volumeID               string
 	containerID            string
 	hasAgent               bool
@@ -38,6 +40,11 @@ type arangodb struct {
 	coordinatorContainerID string
 	dbserverPort           int
 	dbserverContainerID    string
+}
+
+// State returns the current state of the machine
+func (m *arangodb) State() cluster.MachineState {
+	return m.state
 }
 
 // HasAgent returns true if there is an agent on this machine
@@ -71,24 +78,41 @@ func (m *arangodb) CoordinatorURL() url.URL {
 
 // Reboot performs a graceful reboot of the machine
 func (m *arangodb) Reboot() error {
-	//TODO
-	return fmt.Errorf("Not implemented")
+	// Stop the arangodb container  (it will stop the servers )
+	m.log.Infof("'Rebooting' container %s", m.containerID)
+	if err := m.client.StopContainer(m.containerID, stopMachineTimeout); err != nil {
+		return maskAny(err)
+	}
+
+	// Remove container
+	m.log.Infof("Removing container %s", m.containerID)
+	if err := m.client.RemoveContainer(docker.RemoveContainerOptions{
+		Force: true, // Jut in case
+		ID:    m.containerID,
+	}); err != nil {
+		return maskAny(err)
+	}
+
+	// Relaunch
+	if err := m.start(); err != nil {
+		return maskAny(err)
+	}
+
+	// Wait for servers ready
+	if err := m.waitUntilServersReady(m.log, serverReadyTimeout); err != nil {
+		return maskAny(err)
+	}
+
+	return nil
 }
 
 // Remove the machine without the ability to recover it
 func (m *arangodb) Destroy() error {
 	// Terminate arangodb. It will terminate the servers.
-	m.log.Infof("Stopping container %s", m.containerID)
-	if err := m.client.StopContainer(m.containerID, stopMachineTimeout); err != nil {
+	if err := m.stop(); err != nil {
 		return maskAny(err)
 	}
-	// Remove container
-	m.log.Infof("Removing container %s", m.containerID)
-	if err := m.client.RemoveContainer(docker.RemoveContainerOptions{
-		ID: m.containerID,
-	}); err != nil {
-		return maskAny(err)
-	}
+
 	// Remove volume
 	m.log.Infof("Removing volume %s", m.volumeID)
 	if err := m.client.RemoveVolume(m.volumeID); err != nil {
@@ -97,14 +121,14 @@ func (m *arangodb) Destroy() error {
 	return nil
 }
 
-// launchArangodb creates a new container that runs arangodb.
-// To do so, it creates a volume, then creates and starts the container.
-func (c *arangodbCluster) launchArangodb(index int) (*arangodb, error) {
+// createMachine creates a volume and all configuration needed to start arangodb.
+func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 	// Create volume
 	name := fmt.Sprintf("arangodb-%s-%d", c.id, index)
+	volName := name + "-vol"
 	c.log.Debugf("Creating docker volume for arangodb %d", index)
-	vol, err := c.client.CreateVolume(docker.CreateVolumeOptions{
-		Name: name + "-vol",
+	_, err := c.client.CreateVolume(docker.CreateVolumeOptions{
+		Name: volName,
 	})
 	if err != nil {
 		return nil, maskAny(err)
@@ -136,7 +160,7 @@ func (c *arangodbCluster) launchArangodb(index int) (*arangodb, error) {
 		},
 		HostConfig: &docker.HostConfig{
 			Binds: []string{
-				fmt.Sprintf("%s:%s", vol.Name, "/data"),
+				fmt.Sprintf("%s:%s", volName, "/data"),
 			},
 			PortBindings: map[docker.Port][]docker.PortBinding{
 				docker.Port(fmt.Sprintf("%d/tcp", c.MasterPort)): []docker.PortBinding{
@@ -155,25 +179,52 @@ func (c *arangodbCluster) launchArangodb(index int) (*arangodb, error) {
 			fmt.Sprintf("%s:%s", path, path),
 		)
 	}
-	c.log.Debugf("Creating arangodb container %s", name)
-	cont, err := c.client.CreateContainer(opts)
-	if err != nil {
-		return nil, maskAny(err)
-	}
-	c.log.Debugf("Starting arangodb container %s (%s)", name, cont.ID)
-	if err := c.client.StartContainer(cont.ID, opts.HostConfig); err != nil {
-		return nil, maskAny(err)
-	}
-	c.log.Debugf("Started arangodb container %s (%s)", name, cont.ID)
 	return &arangodb{
-		client:      c.client,
-		log:         c.log,
-		index:       index,
-		ip:          c.ArangodbConfig.DockerHostIP,
-		port:        port,
-		volumeID:    vol.Name,
-		containerID: cont.ID,
+		client:        c.client,
+		createOptions: opts,
+		log:           c.log,
+		index:         index,
+		ip:            c.ArangodbConfig.DockerHostIP,
+		state:         cluster.MachineStateNew,
+		port:          port,
+		volumeID:      volName,
 	}, nil
+}
+
+// start the machine
+func (m *arangodb) start() error {
+	m.log.Debugf("Creating arangodb container %s", m.createOptions.Name)
+	cont, err := m.client.CreateContainer(m.createOptions)
+	if err != nil {
+		return maskAny(err)
+	}
+	m.containerID = cont.ID
+	m.log.Debugf("Starting arangodb container %s (%s)", m.createOptions.Name, cont.ID)
+	if err := m.client.StartContainer(cont.ID, m.createOptions.HostConfig); err != nil {
+		return maskAny(err)
+	}
+	m.log.Debugf("Started arangodb container %s (%s)", m.createOptions.Name, cont.ID)
+	m.state = cluster.MachineStateStarted
+	return nil
+}
+
+func (m *arangodb) stop() error {
+	// Stop the arangodb container  (it will stop the servers )
+	m.state = cluster.MachineStateShutdown
+	m.log.Infof("Stopping container %s", m.containerID)
+	if err := m.client.StopContainer(m.containerID, stopMachineTimeout); err != nil {
+		return maskAny(err)
+	}
+
+	// Remove container
+	m.log.Infof("Removing container %s", m.containerID)
+	if err := m.client.RemoveContainer(docker.RemoveContainerOptions{
+		Force: true, // Jut in case
+		ID:    m.containerID,
+	}); err != nil {
+		return maskAny(err)
+	}
+	return nil
 }
 
 type ProcessListResponse struct {
@@ -248,19 +299,20 @@ func (m *arangodb) waitUntilServersReady(log *logging.Logger, timeout time.Durat
 	}
 
 	// Test all servers to be up
-	testInstance := func(address string, port int, name string, timeout time.Duration) error {
-		log.Debugf("Waiting for %s-%d on %s:%d to get ready", name, m.index, address, port)
+	testInstance := func(url url.URL, name string, timeout time.Duration) error {
+		log.Debugf("Waiting for %s-%d on %s to get ready", name, m.index, url.String())
 		start := time.Now()
 		for {
-			url := fmt.Sprintf("http://%s:%d/_api/version", address, port)
-			r, e := http.Get(url)
+			versionURL := url
+			versionURL.Path = "/_api/version"
+			r, e := http.Get(versionURL.String())
 			if e == nil && r != nil && r.StatusCode == 200 {
-				log.Debugf("%s-%d on %s:%d is ready", name, m.index, address, port)
+				log.Debugf("%s-%d on %s is ready", name, m.index, url.String())
 				return nil
 			}
 
 			if time.Since(start) > timeout {
-				return maskAny(errgo.WithCausef(nil, cluster.TimeoutError, "%s-%d on %s:%d is not ready in time", name, m.index, address, port))
+				return maskAny(errgo.WithCausef(nil, cluster.TimeoutError, "%s-%d on %s is not ready in time", name, m.index, url.String()))
 			}
 			time.Sleep(time.Millisecond * 500)
 		}
@@ -269,17 +321,18 @@ func (m *arangodb) waitUntilServersReady(log *logging.Logger, timeout time.Durat
 	g := errgroup.Group{}
 	if m.hasAgent {
 		g.Go(func() error {
-			return testInstance(m.ip, m.agentPort, "agent", timeout)
+			return testInstance(m.AgentURL(), "agent", timeout)
 		})
 	}
 	g.Go(func() error {
-		return testInstance(m.ip, m.coordinatorPort, "coordinator", timeout)
+		return testInstance(m.CoordinatorURL(), "coordinator", timeout)
 	})
 	g.Go(func() error {
-		return testInstance(m.ip, m.dbserverPort, "dbserver", timeout)
+		return testInstance(m.DBServerURL(), "dbserver", timeout)
 	})
 	if err := g.Wait(); err != nil {
 		return maskAny(err)
 	}
+	m.state = cluster.MachineStateReady
 	return nil
 }

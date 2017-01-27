@@ -93,9 +93,13 @@ func (cb *arangodbClusterBuilder) Create(agencySize int) (cluster.Cluster, error
 	for i := 0; i < agencySize; i++ {
 		index := i // using index in goroutine
 		g.Go(func() error {
-			// Launch machine
-			m, err := c.launchArangodb(index)
+			// Create machine
+			m, err := c.createMachine(index)
 			if err != nil {
+				return maskAny(err)
+			}
+			// Start machine
+			if err := m.start(); err != nil {
 				return maskAny(err)
 			}
 			// Wait until all servers are reachable
