@@ -33,3 +33,20 @@ The test operations covered in those scripts will include (among others):
 - Update documents 
 - Query documents (AQL)
 - Backup entire databases
+
+## Usage 
+
+```
+make local
+./testAgent [options]
+```
+
+### Options 
+
+- `--agency-size number` Set the size of the agency for the new cluster.
+- `--master-port` Set the first port used by `arangodb`. 
+- `--log-level` Adjust log level (debug|info|warning|error)
+- `--arangodb-image` Docker image containing `arangodb`. The image must exists in the local docker host.
+- `--arango-image` Docker image containing `arangod`.
+- `--docker-endpoint` How to reach the docker host.
+- `--docker-host-ip` IP of docker host.
