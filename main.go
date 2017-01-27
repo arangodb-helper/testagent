@@ -45,7 +45,7 @@ func init() {
 	f.StringVar(&appFlags.logLevel, "log-level", "debug", "Minimum log level (debug|info|warning|error)")
 	f.StringVar(&appFlags.ArangodbImage, "arangodb-image", getEnvVar("ARANGODB_IMAGE", "arangodb/arangodb-starter"), "name of the Docker image containing arangodb (the cluster starter)")
 	f.StringVar(&appFlags.ArangoImage, "arango-image", "", "name of the Docker image containing arangod (the database)")
-	f.StringVar(&appFlags.DockerEndpoint, "dockerEndpoint", "unix:///var/run/docker.sock", "Endpoint used to reach the docker daemon")
+	f.StringVar(&appFlags.DockerEndpoint, "docker-endpoint", "unix:///var/run/docker.sock", "Endpoint used to reach the docker daemon")
 	f.StringVar(&appFlags.DockerHostIP, "docker-host-ip", "", "IP of the docker host")
 }
 
