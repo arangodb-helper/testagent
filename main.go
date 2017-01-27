@@ -40,8 +40,8 @@ var (
 
 func init() {
 	f := cmdMain.Flags()
-	f.IntVar(&appFlags.AgencySize, "agencySize", 3, "Number of agents in the cluster")
-	f.IntVar(&appFlags.MasterPort, "masterPort", 4000, "Port to listen on for other arangodb's to join")
+	f.IntVar(&appFlags.AgencySize, "agency-size", 3, "Number of agents in the cluster")
+	f.IntVar(&appFlags.MasterPort, "master-port", 4000, "Port to listen on for other arangodb's to join")
 	f.StringVar(&appFlags.logLevel, "log-level", "debug", "Minimum log level (debug|info|warning|error)")
 	f.StringVar(&appFlags.ArangodbImage, "arangodb-image", getEnvVar("ARANGODB_IMAGE", "arangodb/arangodb-starter"), "name of the Docker image containing arangodb (the cluster starter)")
 	f.StringVar(&appFlags.ArangoImage, "arango-image", "", "name of the Docker image containing arangod (the database)")
