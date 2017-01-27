@@ -3,6 +3,7 @@ package service
 import (
 	chaos "github.com/arangodb/testAgent/service/chaos"
 	cluster "github.com/arangodb/testAgent/service/cluster"
+	"github.com/arangodb/testAgent/service/server"
 	"github.com/arangodb/testAgent/service/test"
 	logging "github.com/op/go-logging"
 	"golang.org/x/sync/errgroup"
@@ -10,6 +11,7 @@ import (
 
 type ServiceConfig struct {
 	AgencySize int
+	ServerPort int
 }
 
 type ServiceDependencies struct {
@@ -36,6 +38,9 @@ func NewService(config ServiceConfig, deps ServiceDependencies) (*Service, error
 
 // Run performs the tests
 func (s *Service) Run(stopChan chan struct{}) error {
+	// Start our HTTP server
+	server.StartHTTPServer(s.Logger, s.ServerPort, s)
+
 	// Create the cluster
 	s.Logger.Infof("Creating initial cluster (size %d)", s.AgencySize)
 	c, err := s.ClusterBuilder.Create(s.AgencySize)
@@ -50,7 +55,7 @@ func (s *Service) Run(stopChan chan struct{}) error {
 	s.chaosMonkey.Start()
 
 	// Run tests
-	for _, t := range s.Tests {
+	for _, t := range s.Tests() {
 		s.Logger.Infof("Starting test %s", t.Name())
 		if err := t.Start(s.cluster, s); err != nil {
 			return maskAny(err)
@@ -69,7 +74,7 @@ func (s *Service) Run(stopChan chan struct{}) error {
 	// Stop all tests
 	s.Logger.Info("Stopping test scripts")
 	g := errgroup.Group{}
-	for _, t := range s.Tests {
+	for _, t := range s.Tests() {
 		t := t // t is used in nested func
 		g.Go(func() error {
 			if err := t.Stop(); err != nil {
@@ -89,4 +94,16 @@ func (s *Service) Run(stopChan chan struct{}) error {
 	}
 
 	return nil
+}
+
+func (s *Service) Cluster() cluster.Cluster {
+	return s.cluster
+}
+
+func (s *Service) Tests() []test.TestScript {
+	return s.ServiceDependencies.Tests
+}
+
+func (s *Service) ChaosMonkey() chaos.ChaosMonkey {
+	return s.chaosMonkey
 }

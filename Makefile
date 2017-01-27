@@ -28,6 +28,7 @@ BINNAME := testAgent-$(GOOS)-$(GOARCH)
 BIN := $(BINDIR)/$(BINNAME)
 
 SOURCES := $(shell find $(SRCDIR) -name '*.go')
+TEMPLATES := $(shell find $(SRCDIR)/templates -name '*.tmpl')
 
 .PHONY: all clean deps docker build build-local
 
@@ -50,14 +51,20 @@ deps:
 $(GOBUILDDIR):
 	@mkdir -p $(ORGDIR)
 	@rm -f $(REPODIR) && ln -s ../../../.. $(REPODIR)
+	GOPATH=$(GOBUILDDIR) go get -u github.com/jteeuwen/go-bindata/...
 	GOPATH=$(GOBUILDDIR) go get github.com/fsouza/go-dockerclient
 	GOPATH=$(GOBUILDDIR) go get github.com/juju/errgo
 	GOPATH=$(GOBUILDDIR) go get github.com/op/go-logging
 	GOPATH=$(GOBUILDDIR) go get github.com/spf13/cobra
 	GOPATH=$(GOBUILDDIR) go get golang.org/x/sync/errgroup
 	GOPATH=$(GOBUILDDIR) go get github.com/cenkalti/backoff
+	GOPATH=$(GOBUILDDIR) go get gopkg.in/macaron.v1
+	GOPATH=$(GOBUILDDIR) go get github.com/go-macaron/bindata
 
-$(BIN): $(GOBUILDDIR) $(SOURCES)
+templates/templates.go: $(GOBUILDDIR) $(TEMPLATES)
+	$(GOBUILDDIR)/bin/go-bindata -pkg templates -prefix templates -modtime 0 -o templates/templates.go templates/...
+
+$(BIN): $(GOBUILDDIR) $(SOURCES) templates/templates.go
 	@mkdir -p $(BINDIR)
 	docker run \
 		--rm \
