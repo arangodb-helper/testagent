@@ -271,7 +271,11 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 }
 
 // pullImage pulls a docker image on the docker host.
-func (m *arangodb) pullImage(image string) error {
+func (m *arangodb) pullImageIfNeeded(image string) error {
+	if _, err := m.client.InspectImage(image); err == nil {
+		// Image already available, do nothing
+		return nil
+	}
 	repo, tag := docker.ParseRepositoryTag(image)
 	m.log.Infof("Pulling %s:%s", repo, tag)
 	if err := m.client.PullImage(docker.PullImageOptions{

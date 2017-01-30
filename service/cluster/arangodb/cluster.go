@@ -105,7 +105,7 @@ func (cb *arangodbClusterBuilder) Create(agencySize int) (cluster.Cluster, error
 			c.mutex.Unlock()
 
 			// Pull arangodb image
-			if err := m.pullImage(c.ArangodbConfig.ArangodbImage); err != nil {
+			if err := m.pullImageIfNeeded(c.ArangodbConfig.ArangodbImage); err != nil {
 				return maskAny(err)
 			}
 
