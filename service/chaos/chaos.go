@@ -82,6 +82,8 @@ func (c *chaosMonkey) WaitUntilInactive() {
 func (c *chaosMonkey) chaosLoop() {
 	chaosActions := []func() bool{
 		c.restartAgent,
+		c.restartDBServer,
+		c.restartCoordinator,
 	}
 	for {
 		if c.stop {

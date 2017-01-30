@@ -42,6 +42,13 @@ type Machine interface {
 	// CoordinatorURL returns the URL of the Coordinator on this machine.
 	CoordinatorURL() url.URL
 
+	// LastAgentReadyStatus returns true if the last known agent ready check succeeded.
+	LastAgentReadyStatus() bool
+	// LastDBServerReadyStatus returns true if the last known dbserver ready check succeeded.
+	LastDBServerReadyStatus() bool
+	// LastCoordinatorReadyStatus returns true if the last known coordinator ready check succeeded.
+	LastCoordinatorReadyStatus() bool
+
 	// TestAgentStatus checks if the agent on this machine is ready (with a reasonable timeout). If returns nil on ready, error on not ready.
 	TestAgentStatus() error
 	// TestDBServerStatus checks if the dbserver on this machine is ready (with a reasonable timeout). If returns nil on ready, error on not ready.

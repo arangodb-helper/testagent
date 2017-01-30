@@ -1,21 +1,14 @@
 package server
 
 import (
+	"net/http"
+
 	logging "github.com/op/go-logging"
 	macaron "gopkg.in/macaron.v1"
 )
 
-type Machine struct {
-	CoordinatorURL string
-}
-
-type Test struct {
-	Name     string
-	Failures int
-	Messages []string
-}
-
-func index(ctx *macaron.Context, log *logging.Logger, service Service) {
+func indexPage(ctx *macaron.Context, log *logging.Logger, service Service) {
+	// Cluster
 	machines := []Machine{}
 	cluster := service.Cluster()
 	if cluster != nil {
@@ -25,27 +18,33 @@ func index(ctx *macaron.Context, log *logging.Logger, service Service) {
 			return
 		}
 		for _, cm := range cms {
-			u := cm.CoordinatorURL()
-			machines = append(machines, Machine{
-				CoordinatorURL: u.String(),
-			})
+			machines = append(machines, machineFromCluster(cm))
 		}
 	}
 	log.Debugf("Found %d machines", len(machines))
 	ctx.Data["Machines"] = machines
 
+	// Tests
 	ctests := service.Tests()
 	tests := []Test{}
 	for _, ct := range ctests {
-		status := ct.Status()
-		tests = append(tests, Test{
-			Name:     ct.Name(),
-			Failures: status.Failures,
-			Messages: status.Messages,
-		})
+		tests = append(tests, testFromTestScript(ct))
 	}
 	log.Debugf("Found %d tests", len(tests))
 	ctx.Data["Tests"] = tests
 
-	ctx.HTML(200, "index") // 200 is the response code.
+	// Chaos
+	cm := service.ChaosMonkey()
+	var chaos Chaos
+	if cm != nil {
+		chaos.Active = cm.Active()
+		chaos.Events = cm.GetRecentEvents()
+		if len(chaos.Events) > maxChaosEvents {
+			chaos.Events = chaos.Events[:maxChaosEvents]
+		}
+	}
+	log.Debugf("Found %d chaos events", len(chaos.Events))
+	ctx.Data["Chaos"] = chaos
+
+	ctx.HTML(http.StatusOK, "index")
 }

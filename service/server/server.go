@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"html/template"
 	"net/http"
 
 	"github.com/arangodb/testAgent/service/chaos"
@@ -21,11 +22,32 @@ type Service interface {
 
 // StartHTTPServer starts an HTTP server listening on the given port
 func StartHTTPServer(log *logging.Logger, port int, service Service) {
-	m := macaron.Classic()
+	m := macaron.New()
+	m.Use(macaron.Logger())
+	m.Use(macaron.Recovery())
+	m.Use(macaron.Static("",
+		macaron.StaticOptions{
+			SkipLogging: false,
+			FileSystem: bindata.Static(bindata.Options{
+				Asset:      templates.Asset,
+				AssetDir:   templates.AssetDir,
+				AssetInfo:  templates.AssetInfo,
+				AssetNames: templates.AssetNames,
+				Prefix:     "",
+			}),
+		},
+	))
 	m.Use(macaron.Renderer(macaron.RenderOptions{
+		Funcs: []template.FuncMap{
+			template.FuncMap{
+				"cssReady":  cssReady,
+				"cssTestOK": cssTestOK,
+			},
+		},
 		TemplateFileSystem: bindata.Templates(bindata.Options{
 			Asset:      templates.Asset,
 			AssetDir:   templates.AssetDir,
+			AssetInfo:  templates.AssetInfo,
 			AssetNames: templates.AssetNames,
 			Prefix:     "",
 		}),
@@ -33,7 +55,8 @@ func StartHTTPServer(log *logging.Logger, port int, service Service) {
 	m.Map(log)
 	m.Map(service)
 
-	m.Get("/", index)
+	m.Get("/", indexPage)
+	m.Get("/test/:name", testPage)
 
 	addr := fmt.Sprintf("0.0.0.0:%d", port)
 	log.Infof("HTTP server listening on %s", addr)

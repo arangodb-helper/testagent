@@ -1,0 +1,11 @@
+{{template "base/head" .}}
+
+{{with $t:= .Test}}
+<h1>{{$t.Name}}</h1>
+<div>
+    <p>Failures: {{$t.Failures}}</p>
+    {{range $m := $t.Messages}}<p>{{$m}}</p>{{end}}
+</div>
+{{end}}
+
+{{template "base/footer" .}}
