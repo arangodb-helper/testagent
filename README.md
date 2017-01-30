@@ -37,14 +37,17 @@ The test operations covered in those scripts will include (among others):
 ## Usage 
 
 ```
-make local
-./testAgent [options]
+make docker
+export IP=<your-local-IP>
+docker run -it --rm -p 4200:4200 -v /var/run/docker.sock:/var/run/docker.sock arangodb/testagent --docker-host-ip=$IP
 ```
+
+Then connect your browser to http://localhost:4200 to see the test dashboard.
 
 ### Options 
 
 - `--agency-size number` Set the size of the agency for the new cluster.
-- `--master-port` Set the first port used by `arangodb`. 
+- `--port` Set the first port used by the test agent (first of a range of ports). 
 - `--log-level` Adjust log level (debug|info|warning|error)
 - `--arangodb-image` Docker image containing `arangodb`. The image must exists in the local docker host.
 - `--arango-image` Docker image containing `arangod`.
