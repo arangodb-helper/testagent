@@ -1,22 +1,68 @@
-<html>
-<body>
+{{template "base/head" .}}
+
 <h1>Welcome to TestAgent</h1>
 
 <h2>Cluster</h2>
 
-<ul>
+<table class="ui celled striped table">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Agent</th>
+        <th>Coordinator</th>
+        <th>DBServer</th>
+    </tr>
+    </thead>
 {{ range $m := .Machines }}
-<li><a href={{ $m.CoordinatorURL }}>Coordinator</a></li>
+    <tr>
+        <td>{{$m.ID}}</td>
+        {{if $m.HasAgent}}
+        <td class="{{ cssReady $m.LastAgentReadyStatus }}"><a href={{ $m.AgentURL }}>Agent</a></td>
+        {{else}}
+        <td>-</td>
+        {{end}}
+        <td class="{{ cssReady $m.LastCoordinatorReadyStatus }}"><a href={{ $m.CoordinatorURL }}>Coordinator</a></td>
+        <td class="{{ cssReady $m.LastDBServerReadyStatus }}"><a href={{ $m.DBServerURL }}>DBServer</a></td>
+    </tr>
 {{ end }}
-</ul>
+</table>
 
 <h2>Tests</h2>
 
+<table class="ui celled striped table">
+    <thead>
+    <tr>
+        <th>Name</th>
+        <th>State</th>
+    </tr>
+    </thead>
 {{ range $t := .Tests }}
-<h3>{{$t.Name}}</h3>
-<p>Failures: {{$t.Failures}}</p>
-{{range $m := $t.Messages}}<p>{{$m}}</p>{{end}}
+    <tr>
+        <td><a href="test/{{$t.Name}}">{{$t.Name}}</td>
+        <td class="{{ cssTestOK $t.Failures }}">{{$t.Failures}} failures</td>
+    </tr>
 {{ end }}
+</table>
 
-</body>
-</html>
+<h2>Recent chaos</h2>
+<p>
+    {{if .Chaos.Active}}Chaos monkey is on.
+    {{else}}Chaos monkey is off.
+    {{end}}
+</p>
+<table class="ui celled striped table">
+    <thead>
+    <tr>
+        <th>Time</th>
+        <th>Action</th>
+    </tr>
+    </thead>
+{{ range $e := .Chaos.Events }}
+    <tr>
+        <td>{{$e.Time}}</td>
+        <td>{{$e.Action}}</td>
+    </tr>
+{{ end }}
+</table>
+
+{{template "base/footer" .}}

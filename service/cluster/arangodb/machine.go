@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/arangodb/testAgent/service/cluster"
@@ -20,26 +21,36 @@ import (
 )
 
 const (
-	stopMachineTimeout = 120 // Seconds until a machine container that is stopped will be killed
+	stopMachineTimeout   = 120 // Seconds until a machine container that is stopped will be killed
+	stopContainerTimeout = 45  // Seconds until a container that is stopped will be killed
+	testStatusTimeout    = time.Second * 20
 )
 
 type arangodb struct {
-	client                 *docker.Client
-	log                    *logging.Logger
-	createOptions          docker.CreateContainerOptions
-	index                  int
-	ip                     string
-	port                   int
-	state                  cluster.MachineState
-	volumeID               string
-	containerID            string
-	hasAgent               bool
-	agentPort              int
-	agentContainerID       string
-	coordinatorPort        int
-	coordinatorContainerID string
-	dbserverPort           int
-	dbserverContainerID    string
+	client                     *docker.Client
+	log                        *logging.Logger
+	createOptions              docker.CreateContainerOptions
+	index                      int
+	ip                         string
+	port                       int
+	state                      cluster.MachineState
+	volumeID                   string
+	containerID                string
+	hasAgent                   bool
+	agentPort                  int
+	agentContainerID           string
+	lastAgentReadyStatus       int32
+	coordinatorPort            int
+	coordinatorContainerID     string
+	lastCoordinatorReadyStatus int32
+	dbserverPort               int
+	dbserverContainerID        string
+	lastDBServerReadyStatus    int32
+}
+
+// ID returns a unique identifier for this machine
+func (m *arangodb) ID() string {
+	return fmt.Sprintf("m%d-%s:%d", m.index, m.ip, m.coordinatorPort)
 }
 
 // State returns the current state of the machine
@@ -74,6 +85,69 @@ func (m *arangodb) CoordinatorURL() url.URL {
 		Scheme: "http",
 		Host:   net.JoinHostPort(m.ip, strconv.Itoa(m.coordinatorPort)),
 	}
+}
+
+// TestAgentStatus checks if the agent on this machine is ready (with a reasonable timeout). If returns nil on ready, error on not ready.
+func (m *arangodb) TestAgentStatus() error {
+	return maskAny(m.testInstance(nil, m.AgentURL(), "agent", testStatusTimeout, &m.lastAgentReadyStatus))
+}
+
+// TestDBServerStatus checks if the dbserver on this machine is ready (with a reasonable timeout). If returns nil on ready, error on not ready.
+func (m *arangodb) TestDBServerStatus() error {
+	return maskAny(m.testInstance(nil, m.DBServerURL(), "dbserver", testStatusTimeout, &m.lastDBServerReadyStatus))
+}
+
+// TestCoordinatorStatus checks if the coordinator on this machine is ready (with a reasonable timeout). If returns nil on ready, error on not ready.
+func (m *arangodb) TestCoordinatorStatus() error {
+	return maskAny(m.testInstance(nil, m.CoordinatorURL(), "coordinator", testStatusTimeout, &m.lastCoordinatorReadyStatus))
+}
+
+// LastAgentReadyStatus returns true if the last known agent ready check succeeded.
+func (m *arangodb) LastAgentReadyStatus() bool {
+	return m.lastAgentReadyStatus != 0
+}
+
+// LastDBServerReadyStatus returns true if the last known dbserver ready check succeeded.
+func (m *arangodb) LastDBServerReadyStatus() bool {
+	return m.lastDBServerReadyStatus != 0
+}
+
+// LastCoordinatorReadyStatus returns true if the last known coordinator ready check succeeded.
+func (m *arangodb) LastCoordinatorReadyStatus() bool {
+	return m.lastCoordinatorReadyStatus != 0
+}
+
+// Perform a graceful restart of the agent. This function does NOT wait until the agent is ready again.
+func (m *arangodb) RestartAgent() error {
+	if err := m.updateServerInfo(); err != nil {
+		return maskAny(err)
+	}
+	if err := m.client.StopContainer(m.agentContainerID, stopContainerTimeout); err != nil {
+		return maskAny(err)
+	}
+	return nil
+}
+
+// Perform a graceful restart of the dbserver. This function does NOT wait until the dbserver is ready again.
+func (m *arangodb) RestartDBServer() error {
+	if err := m.updateServerInfo(); err != nil {
+		return maskAny(err)
+	}
+	if err := m.client.StopContainer(m.dbserverContainerID, stopContainerTimeout); err != nil {
+		return maskAny(err)
+	}
+	return nil
+}
+
+// Perform a graceful restart of the coordinator. This function does NOT wait until the coordinator is ready again.
+func (m *arangodb) RestartCoordinator() error {
+	if err := m.updateServerInfo(); err != nil {
+		return maskAny(err)
+	}
+	if err := m.client.StopContainer(m.coordinatorContainerID, stopContainerTimeout); err != nil {
+		return maskAny(err)
+	}
+	return nil
 }
 
 // Reboot performs a graceful reboot of the machine
@@ -112,6 +186,9 @@ func (m *arangodb) Destroy() error {
 	if err := m.stop(); err != nil {
 		return maskAny(err)
 	}
+
+	// Set state
+	m.state = cluster.MachineStateDestroyed
 
 	// Remove volume
 	m.log.Infof("Removing volume %s", m.volumeID)
@@ -191,6 +268,23 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 		port:          port,
 		volumeID:      volName,
 	}, nil
+}
+
+// pullImage pulls a docker image on the docker host.
+func (m *arangodb) pullImageIfNeeded(image string) error {
+	if _, err := m.client.InspectImage(image); err == nil {
+		// Image already available, do nothing
+		return nil
+	}
+	repo, tag := docker.ParseRepositoryTag(image)
+	m.log.Infof("Pulling %s:%s", repo, tag)
+	if err := m.client.PullImage(docker.PullImageOptions{
+		Repository: repo,
+		Tag:        tag,
+	}, docker.AuthConfiguration{}); err != nil {
+		return maskAny(err)
+	}
+	return nil
 }
 
 // start the machine
@@ -300,41 +394,68 @@ func (m *arangodb) waitUntilServersReady(log *logging.Logger, timeout time.Durat
 		return maskAny(err)
 	}
 
-	// Test all servers to be up
-	testInstance := func(url url.URL, name string, timeout time.Duration) error {
-		log.Debugf("Waiting for %s-%d on %s to get ready", name, m.index, url.String())
-		start := time.Now()
-		for {
-			versionURL := url
-			versionURL.Path = "/_api/version"
-			r, e := http.Get(versionURL.String())
-			if e == nil && r != nil && r.StatusCode == 200 {
-				log.Debugf("%s-%d on %s is ready", name, m.index, url.String())
-				return nil
-			}
-
-			if time.Since(start) > timeout {
-				return maskAny(errgo.WithCausef(nil, cluster.TimeoutError, "%s-%d on %s is not ready in time", name, m.index, url.String()))
-			}
-			time.Sleep(time.Millisecond * 500)
-		}
-	}
-
 	g := errgroup.Group{}
 	if m.hasAgent {
 		g.Go(func() error {
-			return testInstance(m.AgentURL(), "agent", timeout)
+			return m.testInstance(m.log, m.AgentURL(), "agent", timeout, &m.lastAgentReadyStatus)
 		})
 	}
 	g.Go(func() error {
-		return testInstance(m.CoordinatorURL(), "coordinator", timeout)
+		return m.testInstance(m.log, m.CoordinatorURL(), "coordinator", timeout, &m.lastCoordinatorReadyStatus)
 	})
 	g.Go(func() error {
-		return testInstance(m.DBServerURL(), "dbserver", timeout)
+		return m.testInstance(m.log, m.DBServerURL(), "dbserver", timeout, &m.lastDBServerReadyStatus)
 	})
 	if err := g.Wait(); err != nil {
 		return maskAny(err)
 	}
 	m.state = cluster.MachineStateReady
 	return nil
+}
+
+// Test all servers to be up
+func (m *arangodb) testInstance(log *logging.Logger, url url.URL, name string, timeout time.Duration, activeVar *int32) error {
+	if log != nil {
+		log.Debugf("Waiting for %s-%d on %s to get ready", name, m.index, url.String())
+	}
+	start := time.Now()
+	for {
+		versionURL := url
+		versionURL.Path = "/_api/version"
+		r, e := http.Get(versionURL.String())
+		if e == nil && r != nil && r.StatusCode == 200 {
+			atomic.StoreInt32(activeVar, 1)
+			if log != nil {
+				log.Debugf("%s-%d on %s is ready", name, m.index, url.String())
+			}
+			return nil
+		}
+
+		atomic.StoreInt32(activeVar, 0)
+		if time.Since(start) > timeout {
+			return maskAny(errgo.WithCausef(nil, cluster.TimeoutError, "%s-%d on %s is not ready in time", name, m.index, url.String()))
+		}
+		time.Sleep(time.Millisecond * 500)
+	}
+}
+
+// watchdog monitors all servers and updates the last ready flag.
+func (m *arangodb) watchdog() {
+	timeout := time.Minute
+	monitorLoop := func(urlGetter func() url.URL, name string, activeVar *int32) {
+		for {
+			switch m.state {
+			case cluster.MachineStateReady:
+				m.testInstance(nil, urlGetter(), name, timeout, activeVar)
+			case cluster.MachineStateDestroyed:
+				return // We're done
+			}
+			time.Sleep(time.Second * 15)
+		}
+	}
+	if m.HasAgent() {
+		go monitorLoop(func() url.URL { return m.AgentURL() }, "agent", &m.lastAgentReadyStatus)
+	}
+	go monitorLoop(func() url.URL { return m.DBServerURL() }, "dbserver", &m.lastDBServerReadyStatus)
+	go monitorLoop(func() url.URL { return m.CoordinatorURL() }, "coordinator", &m.lastCoordinatorReadyStatus)
 }

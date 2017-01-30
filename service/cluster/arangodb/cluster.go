@@ -104,10 +104,19 @@ func (cb *arangodbClusterBuilder) Create(agencySize int) (cluster.Cluster, error
 			c.machines = append(c.machines, m)
 			c.mutex.Unlock()
 
+			// Pull arangodb image
+			if err := m.pullImageIfNeeded(c.ArangodbConfig.ArangodbImage); err != nil {
+				return maskAny(err)
+			}
+
 			// Start machine
 			if err := m.start(); err != nil {
 				return maskAny(err)
 			}
+
+			// Start watchdog
+			m.watchdog()
+
 			// Wait until all servers are reachable
 			if err := m.waitUntilServersReady(c.log, serverReadyTimeout); err != nil {
 				return maskAny(err)

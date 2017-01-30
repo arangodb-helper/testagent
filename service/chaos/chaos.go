@@ -1,6 +1,7 @@
 package chaos
 
 import (
+	"math/rand"
 	"sync"
 	"time"
 
@@ -20,6 +21,9 @@ type ChaosMonkey interface {
 
 	// WaitUntilInactive blocks until Active return false
 	WaitUntilInactive()
+
+	// Get a list of recent events
+	GetRecentEvents() []Event
 }
 
 // NewChaosMonkey creates a new chaos monkey for the given cluster
@@ -31,11 +35,12 @@ func NewChaosMonkey(log *logging.Logger, cluster cluster.Cluster) ChaosMonkey {
 }
 
 type chaosMonkey struct {
-	mutex   sync.Mutex
-	log     *logging.Logger
-	cluster cluster.Cluster
-	active  bool
-	stop    bool
+	mutex        sync.Mutex
+	log          *logging.Logger
+	cluster      cluster.Cluster
+	active       bool
+	stop         bool
+	recentEvents []Event // Limit list of events (last event first)
 }
 
 // Active returns true when chaos is being introduced.
@@ -75,6 +80,11 @@ func (c *chaosMonkey) WaitUntilInactive() {
 
 // chaosLoop runs the process to actually introduce chaos
 func (c *chaosMonkey) chaosLoop() {
+	chaosActions := []func() bool{
+		c.restartAgent,
+		c.restartDBServer,
+		c.restartCoordinator,
+	}
 	for {
 		if c.stop {
 			c.log.Debugf("stop signaled, terminating from chaosLoop")
@@ -82,6 +92,14 @@ func (c *chaosMonkey) chaosLoop() {
 			return
 		}
 
-		time.Sleep(time.Second * 3)
+		// Pick a random chaos action
+		action := chaosActions[rand.Intn(len(chaosActions))]
+		if action() {
+			// Chaos was introduced
+			time.Sleep(time.Second * 30)
+		} else {
+			// Chaos was not introducted, wait a bit shorter
+			time.Sleep(time.Second * 2)
+		}
 	}
 }

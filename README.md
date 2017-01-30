@@ -39,7 +39,9 @@ The test operations covered in those scripts will include (among others):
 ```
 make docker
 export IP=<your-local-IP>
-docker run -it --rm -p 4200:4200 -v /var/run/docker.sock:/var/run/docker.sock arangodb/testagent --docker-host-ip=$IP
+docker run -it --rm -p 4200:4200 \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    arangodb/testagent --docker-host-ip=$IP
 ```
 
 Then connect your browser to http://localhost:4200 to see the test dashboard.

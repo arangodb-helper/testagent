@@ -80,3 +80,6 @@ $(BIN): $(GOBUILDDIR) $(SOURCES) templates/templates.go
 docker: build
 	docker build -t arangodb/testagent .
 
+docker-push: docker
+	docker tag arangodb/testagent ewoutp/testagent
+	docker push ewoutp/testagent
