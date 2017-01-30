@@ -3,6 +3,7 @@ package service
 import (
 	chaos "github.com/arangodb/testAgent/service/chaos"
 	cluster "github.com/arangodb/testAgent/service/cluster"
+	"github.com/arangodb/testAgent/service/reporter"
 	"github.com/arangodb/testAgent/service/server"
 	"github.com/arangodb/testAgent/service/test"
 	logging "github.com/op/go-logging"
@@ -12,6 +13,7 @@ import (
 type ServiceConfig struct {
 	AgencySize int
 	ServerPort int
+	ReportDir  string
 }
 
 type ServiceDependencies struct {
@@ -26,14 +28,20 @@ type Service struct {
 
 	cluster     cluster.Cluster
 	chaosMonkey chaos.ChaosMonkey
+	reporter    reporter.Reporter
 }
 
 // NewService instantiates a new Service from the given config
 func NewService(config ServiceConfig, deps ServiceDependencies) (*Service, error) {
-	return &Service{
+	if config.ReportDir == "" {
+		config.ReportDir = "."
+	}
+	s := &Service{
 		ServiceConfig:       config,
 		ServiceDependencies: deps,
-	}, nil
+	}
+	s.reporter = reporter.NewReporter(config.ReportDir, deps.Logger, s)
+	return s, nil
 }
 
 // Run performs the tests
@@ -57,7 +65,7 @@ func (s *Service) Run(stopChan chan struct{}) error {
 	// Run tests
 	for _, t := range s.Tests() {
 		s.Logger.Infof("Starting test %s", t.Name())
-		if err := t.Start(s.cluster, s); err != nil {
+		if err := t.Start(s.cluster, s.reporter); err != nil {
 			return maskAny(err)
 		}
 	}

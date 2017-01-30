@@ -48,6 +48,7 @@ func init() {
 	f.StringVar(&appFlags.ArangoImage, "arango-image", getEnvVar("ARANGO_IMAGE", ""), "name of the Docker image containing arangod (the database)")
 	f.StringVar(&appFlags.DockerEndpoint, "docker-endpoint", "unix:///var/run/docker.sock", "Endpoint used to reach the docker daemon")
 	f.StringVar(&appFlags.DockerHostIP, "docker-host-ip", "", "IP of the docker host")
+	f.StringVar(&appFlags.ReportDir, "report-dir", getEnvVar("REPORT_DIR", "."), "Directory in which failure reports will be created")
 }
 
 // handleSignal listens for termination signals and stops this process onup termination.
