@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"sort"
 
 	logging "github.com/op/go-logging"
 	macaron "gopkg.in/macaron.v1"
@@ -21,6 +22,7 @@ func indexPage(ctx *macaron.Context, log *logging.Logger, service Service) {
 			machines = append(machines, machineFromCluster(cm))
 		}
 	}
+	sort.Sort(machineByID(machines))
 	log.Debugf("Found %d machines", len(machines))
 	ctx.Data["Machines"] = machines
 

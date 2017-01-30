@@ -48,6 +48,18 @@ func machineFromCluster(cm cluster.Machine) Machine {
 	}
 }
 
+type machineByID []Machine
+
+// Len is the number of elements in the collection.
+func (l machineByID) Len() int { return len(l) }
+
+// Less reports whether the element with
+// index i should sort before the element with index j.
+func (l machineByID) Less(i, j int) bool { return l[i].ID < l[j].ID }
+
+// Swap swaps the elements with indexes i and j.
+func (l machineByID) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
+
 func testFromTestScript(ct test.TestScript) Test {
 	status := ct.Status()
 	return Test{
