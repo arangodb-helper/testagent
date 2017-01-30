@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/arangodb/testAgent/service/cluster"
@@ -38,13 +39,13 @@ type arangodb struct {
 	hasAgent                   bool
 	agentPort                  int
 	agentContainerID           string
-	lastAgentReadyStatus       bool
+	lastAgentReadyStatus       int32
 	coordinatorPort            int
 	coordinatorContainerID     string
-	lastCoordinatorReadyStatus bool
+	lastCoordinatorReadyStatus int32
 	dbserverPort               int
 	dbserverContainerID        string
-	lastDBServerReadyStatus    bool
+	lastDBServerReadyStatus    int32
 }
 
 // ID returns a unique identifier for this machine
@@ -103,17 +104,17 @@ func (m *arangodb) TestCoordinatorStatus() error {
 
 // LastAgentReadyStatus returns true if the last known agent ready check succeeded.
 func (m *arangodb) LastAgentReadyStatus() bool {
-	return m.lastAgentReadyStatus
+	return m.lastAgentReadyStatus != 0
 }
 
 // LastDBServerReadyStatus returns true if the last known dbserver ready check succeeded.
 func (m *arangodb) LastDBServerReadyStatus() bool {
-	return m.lastDBServerReadyStatus
+	return m.lastDBServerReadyStatus != 0
 }
 
 // LastCoordinatorReadyStatus returns true if the last known coordinator ready check succeeded.
 func (m *arangodb) LastCoordinatorReadyStatus() bool {
-	return m.lastCoordinatorReadyStatus
+	return m.lastCoordinatorReadyStatus != 0
 }
 
 // Perform a graceful restart of the agent. This function does NOT wait until the agent is ready again.
@@ -185,6 +186,9 @@ func (m *arangodb) Destroy() error {
 	if err := m.stop(); err != nil {
 		return maskAny(err)
 	}
+
+	// Set state
+	m.state = cluster.MachineStateDestroyed
 
 	// Remove volume
 	m.log.Infof("Removing volume %s", m.volumeID)
@@ -264,6 +268,19 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 		port:          port,
 		volumeID:      volName,
 	}, nil
+}
+
+// pullImage pulls a docker image on the docker host.
+func (m *arangodb) pullImage(image string) error {
+	repo, tag := docker.ParseRepositoryTag(image)
+	m.log.Infof("Pulling %s:%s", repo, tag)
+	if err := m.client.PullImage(docker.PullImageOptions{
+		Repository: repo,
+		Tag:        tag,
+	}, docker.AuthConfiguration{}); err != nil {
+		return maskAny(err)
+	}
+	return nil
 }
 
 // start the machine
@@ -393,7 +410,7 @@ func (m *arangodb) waitUntilServersReady(log *logging.Logger, timeout time.Durat
 }
 
 // Test all servers to be up
-func (m *arangodb) testInstance(log *logging.Logger, url url.URL, name string, timeout time.Duration, activeVar *bool) error {
+func (m *arangodb) testInstance(log *logging.Logger, url url.URL, name string, timeout time.Duration, activeVar *int32) error {
 	if log != nil {
 		log.Debugf("Waiting for %s-%d on %s to get ready", name, m.index, url.String())
 	}
@@ -403,17 +420,38 @@ func (m *arangodb) testInstance(log *logging.Logger, url url.URL, name string, t
 		versionURL.Path = "/_api/version"
 		r, e := http.Get(versionURL.String())
 		if e == nil && r != nil && r.StatusCode == 200 {
-			*activeVar = true
+			atomic.StoreInt32(activeVar, 1)
 			if log != nil {
 				log.Debugf("%s-%d on %s is ready", name, m.index, url.String())
 			}
 			return nil
 		}
 
-		*activeVar = false
+		atomic.StoreInt32(activeVar, 0)
 		if time.Since(start) > timeout {
 			return maskAny(errgo.WithCausef(nil, cluster.TimeoutError, "%s-%d on %s is not ready in time", name, m.index, url.String()))
 		}
 		time.Sleep(time.Millisecond * 500)
 	}
+}
+
+// watchdog monitors all servers and updates the last ready flag.
+func (m *arangodb) watchdog() {
+	timeout := time.Minute
+	monitorLoop := func(urlGetter func() url.URL, name string, activeVar *int32) {
+		for {
+			switch m.state {
+			case cluster.MachineStateReady:
+				m.testInstance(nil, urlGetter(), name, timeout, activeVar)
+			case cluster.MachineStateDestroyed:
+				return // We're done
+			}
+			time.Sleep(time.Second * 15)
+		}
+	}
+	if m.HasAgent() {
+		go monitorLoop(func() url.URL { return m.AgentURL() }, "agent", &m.lastAgentReadyStatus)
+	}
+	go monitorLoop(func() url.URL { return m.DBServerURL() }, "dbserver", &m.lastDBServerReadyStatus)
+	go monitorLoop(func() url.URL { return m.CoordinatorURL() }, "coordinator", &m.lastCoordinatorReadyStatus)
 }

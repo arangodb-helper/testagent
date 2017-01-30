@@ -1,6 +1,9 @@
 package cluster
 
-import "net/url"
+import (
+	"fmt"
+	"net/url"
+)
 
 type ClusterBuilder interface {
 	// Create creates and starts a new cluster.
@@ -20,11 +23,29 @@ type Cluster interface {
 type MachineState int
 
 const (
-	MachineStateNew      = MachineState(0) // Initial state
-	MachineStateStarted  = MachineState(1) // Machine has been started but is not yet usable
-	MachineStateReady    = MachineState(2) // Machine is running & servers are available
-	MachineStateShutdown = MachineState(3) // Machine is going down
+	MachineStateNew       = MachineState(0) // Initial state
+	MachineStateStarted   = MachineState(1) // Machine has been started but is not yet usable
+	MachineStateReady     = MachineState(2) // Machine is running & servers are available
+	MachineStateShutdown  = MachineState(3) // Machine is going down
+	MachineStateDestroyed = MachineState(4) // Machine destroyed beyond repair
 )
+
+func (s MachineState) String() string {
+	switch s {
+	case MachineStateNew:
+		return "new"
+	case MachineStateStarted:
+		return "started"
+	case MachineStateReady:
+		return "ready"
+	case MachineStateShutdown:
+		return "shutdown"
+	case MachineStateDestroyed:
+		return "destroyed"
+	default:
+		return fmt.Sprintf("Unknown state %d", int(s))
+	}
+}
 
 // Machine represents a single "computer" on which an optional agent, a coordinator and a dbserver runs.
 type Machine interface {
