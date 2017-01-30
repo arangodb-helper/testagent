@@ -28,6 +28,8 @@ const (
 
 // Machine represents a single "computer" on which an optional agent, a coordinator and a dbserver runs.
 type Machine interface {
+	// ID returns a unique identifier for this machine
+	ID() string
 	// State returns the current state of the machine
 	State() MachineState
 
@@ -39,6 +41,20 @@ type Machine interface {
 	DBServerURL() url.URL
 	// CoordinatorURL returns the URL of the Coordinator on this machine.
 	CoordinatorURL() url.URL
+
+	// TestAgentStatus checks if the agent on this machine is ready (with a reasonable timeout). If returns nil on ready, error on not ready.
+	TestAgentStatus() error
+	// TestDBServerStatus checks if the dbserver on this machine is ready (with a reasonable timeout). If returns nil on ready, error on not ready.
+	TestDBServerStatus() error
+	// TestCoordinatorStatus checks if the coordinator on this machine is ready (with a reasonable timeout). If returns nil on ready, error on not ready.
+	TestCoordinatorStatus() error
+
+	// Perform a graceful restart of the agent. This function does NOT wait until the agent is ready again.
+	RestartAgent() error
+	// Perform a graceful restart of the dbserver. This function does NOT wait until the dbserver is ready again.
+	RestartDBServer() error
+	// Perform a graceful restart of the coordinator. This function does NOT wait until the coordinator is ready again.
+	RestartCoordinator() error
 
 	// Reboot performs a graceful reboot of the machine
 	Reboot() error
