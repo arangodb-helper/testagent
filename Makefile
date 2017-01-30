@@ -78,5 +78,5 @@ $(BIN): $(GOBUILDDIR) $(SOURCES) templates/templates.go
 		go build -a -installsuffix netgo -tags netgo -ldflags "-X main.projectVersion=$(VERSION) -X main.projectBuild=$(COMMIT)" -o /usr/code/bin/$(BINNAME) $(REPOPATH)
 
 docker: build
-	docker build -t arangodb/testAgent .
+	docker build -t arangodb/testagent .
 

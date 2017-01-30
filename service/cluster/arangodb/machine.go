@@ -153,10 +153,12 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 	opts := docker.CreateContainerOptions{
 		Name: name,
 		Config: &docker.Config{
-			Image:        c.ArangodbConfig.ArangodbImage,
-			Cmd:          args,
-			Tty:          true,
-			ExposedPorts: make(map[docker.Port]struct{}),
+			Image: c.ArangodbConfig.ArangodbImage,
+			Cmd:   args,
+			Tty:   true,
+			ExposedPorts: map[docker.Port]struct{}{
+				docker.Port(fmt.Sprintf("%d/tcp", c.MasterPort)): struct{}{},
+			},
 		},
 		HostConfig: &docker.HostConfig{
 			Binds: []string{

@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	collUser = "simple_users"
+	collUser             = "simple_users"
+	initialDocumentCount = 99
 )
 
 type simpleTest struct {
@@ -113,7 +114,7 @@ func (t *simpleTest) testLoop() {
 
 	// Create sample users
 	t.existingKeys = nil
-	for i := 0; i < 999; i++ {
+	for i := 0; i < initialDocumentCount; i++ {
 		if t.shouldStop() {
 			return
 		}

@@ -31,6 +31,7 @@ var (
 	}
 	log      = logging.MustGetLogger(projectName)
 	appFlags struct {
+		port int
 		service.ServiceConfig
 		arangodb.ArangodbConfig
 		logLevel string
@@ -41,11 +42,10 @@ var (
 func init() {
 	f := cmdMain.Flags()
 	f.IntVar(&appFlags.AgencySize, "agency-size", 3, "Number of agents in the cluster")
-	f.IntVar(&appFlags.ServerPort, "server-port", 3080, "Port our HTTP server will listen on")
-	f.IntVar(&appFlags.MasterPort, "master-port", 4000, "Port to listen on for other arangodb's to join")
+	f.IntVar(&appFlags.port, "port", 4200, "First port of range of ports used by the testAgent")
 	f.StringVar(&appFlags.logLevel, "log-level", "debug", "Minimum log level (debug|info|warning|error)")
 	f.StringVar(&appFlags.ArangodbImage, "arangodb-image", getEnvVar("ARANGODB_IMAGE", "arangodb/arangodb-starter"), "name of the Docker image containing arangodb (the cluster starter)")
-	f.StringVar(&appFlags.ArangoImage, "arango-image", "", "name of the Docker image containing arangod (the database)")
+	f.StringVar(&appFlags.ArangoImage, "arango-image", getEnvVar("ARANGO_IMAGE", ""), "name of the Docker image containing arangod (the database)")
 	f.StringVar(&appFlags.DockerEndpoint, "docker-endpoint", "unix:///var/run/docker.sock", "Endpoint used to reach the docker daemon")
 	f.StringVar(&appFlags.DockerHostIP, "docker-host-ip", "", "IP of the docker host")
 }
@@ -83,6 +83,10 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 		log.Infof("Detected local IP %s", ip)
 		appFlags.ArangodbConfig.DockerHostIP = ip
 	}
+
+	// Setup ports
+	appFlags.ServerPort = appFlags.port
+	appFlags.ArangodbConfig.MasterPort = appFlags.port + 1
 
 	// Interrupt signal:
 	sigChannel := make(chan os.Signal)
