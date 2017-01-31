@@ -231,9 +231,6 @@ func (m *arangodb) DestroyAllowed() bool {
 
 // Remove the machine without the ability to recover it
 func (m *arangodb) Destroy() error {
-	if m.index == 0 {
-		return maskAny(fmt.Errorf("Destroy arangodb master is not allowed"))
-	}
 	// Terminate arangodb. It will terminate the servers.
 	if err := m.stop(); err != nil {
 		return maskAny(err)
