@@ -24,6 +24,10 @@ ifndef GOARCH
 	GOARCH := amd64
 endif
 
+ifndef DOCKERNAMESPACE
+	DOCKERNAMESPACE := arangodb
+endif
+
 BINNAME := testAgent-$(GOOS)-$(GOARCH)
 BIN := $(BINDIR)/$(BINNAME)
 
@@ -81,5 +85,7 @@ docker: build
 	docker build -t arangodb/testagent .
 
 docker-push: docker
-	docker tag arangodb/testagent ewoutp/testagent
-	docker push ewoutp/testagent
+ifneq ($(DOCKERNAMESPACE), arangodb)
+	docker tag arangodb/testagent $(DOCKERNAMESPACE)/testagent
+endif
+	docker push $(DOCKERNAMESPACE)/testagent
