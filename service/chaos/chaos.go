@@ -87,6 +87,7 @@ func (c *chaosMonkey) chaosLoop() {
 		c.killAgent,
 		c.killDBServer,
 		c.killCoordinator,
+		c.rebootMachine,
 	}
 	for {
 		if c.stop {
