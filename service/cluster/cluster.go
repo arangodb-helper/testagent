@@ -115,6 +115,8 @@ type Machine interface {
 	// Reboot performs a graceful reboot of the machine
 	Reboot() error
 
+	// DestroyAllowed returns true if it is allowed to destroy this machine
+	DestroyAllowed() bool
 	// Remove the machine without the ability to recover it
 	Destroy() error
 }

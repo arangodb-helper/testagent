@@ -41,12 +41,13 @@ var (
 
 func init() {
 	f := cmdMain.Flags()
+	defaultDockerEndpoints := []string{"unix:///var/run/docker.sock"}
 	f.IntVar(&appFlags.AgencySize, "agency-size", 3, "Number of agents in the cluster")
 	f.IntVar(&appFlags.port, "port", 4200, "First port of range of ports used by the testAgent")
 	f.StringVar(&appFlags.logLevel, "log-level", "debug", "Minimum log level (debug|info|warning|error)")
 	f.StringVar(&appFlags.ArangodbImage, "arangodb-image", getEnvVar("ARANGODB_IMAGE", "arangodb/arangodb-starter"), "name of the Docker image containing arangodb (the cluster starter)")
 	f.StringVar(&appFlags.ArangoImage, "arango-image", getEnvVar("ARANGO_IMAGE", ""), "name of the Docker image containing arangod (the database)")
-	f.StringVar(&appFlags.DockerEndpoint, "docker-endpoint", "unix:///var/run/docker.sock", "Endpoint used to reach the docker daemon")
+	f.StringSliceVar(&appFlags.DockerEndpoints, "docker-endpoint", defaultDockerEndpoints, "Endpoints used to reach the docker daemons")
 	f.StringVar(&appFlags.DockerHostIP, "docker-host-ip", "", "IP of the docker host")
 	f.StringVar(&appFlags.ReportDir, "report-dir", getEnvVar("REPORT_DIR", "."), "Directory in which failure reports will be created")
 }

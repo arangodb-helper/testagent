@@ -48,7 +48,7 @@ func (m *arangodb) CollectCoordinatorLogs(w io.Writer) error {
 func (m *arangodb) collectLogs(w io.Writer, containerID string) error {
 	since := time.Now().Add(-time.Minute * 10)
 	m.log.Debugf("fetching logs from %s", containerID)
-	if err := m.client.Logs(docker.LogsOptions{
+	if err := m.dockerHost.client.Logs(docker.LogsOptions{
 		Container:    containerID,
 		OutputStream: w,
 		RawTerminal:  true,

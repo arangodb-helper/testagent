@@ -46,6 +46,19 @@ docker run -it --rm -p 4200:4200 \
 
 Then connect your browser to http://localhost:4200 to see the test dashboard.
 
+To run 'machines' on multiple physical machine, you must provide the endpoints of docker daemons running on 
+these machines. E.g.
+
+```
+export IP=<your-local-IP>
+docker run -it --rm -p 4200:4200 \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    arangodb/testagent --docker-host-ip=$IP \
+    --docker-endpoint=tcp://192.168.1.1:2376 \
+    --docker-endpoint=tcp://192.168.1.2:2376 \
+    --docker-endpoint=tcp://192.168.1.3:2376
+```
+
 ### Options 
 
 - `--agency-size number` Set the size of the agency for the new cluster.
@@ -53,5 +66,5 @@ Then connect your browser to http://localhost:4200 to see the test dashboard.
 - `--log-level` Adjust log level (debug|info|warning|error)
 - `--arangodb-image` Docker image containing `arangodb`. The image must exists in the local docker host.
 - `--arango-image` Docker image containing `arangod`.
-- `--docker-endpoint` How to reach the docker host.
+- `--docker-endpoint` How to reach the docker host (this option can be specified multiple times to use multiple docker hosts).
 - `--docker-host-ip` IP of docker host.

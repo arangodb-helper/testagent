@@ -2,6 +2,8 @@ FROM alpine:3.4
 
 ADD ./bin/testAgent-linux-amd64 /app/testAgent
 
+EXPOSE 4200
+
 # Signal running in docker 
 ENV RUNNING_IN_DOCKER=true
 

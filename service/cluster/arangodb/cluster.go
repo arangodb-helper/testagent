@@ -4,11 +4,12 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"net"
+	"net/url"
 	"sync"
 	"time"
 
 	"github.com/arangodb/testAgent/service/cluster"
-	docker "github.com/fsouza/go-dockerclient"
 	logging "github.com/op/go-logging"
 	"golang.org/x/sync/errgroup"
 )
@@ -18,11 +19,11 @@ const (
 )
 
 type ArangodbConfig struct {
-	MasterPort     int    // MasterPort for arangodb
-	ArangodbImage  string // Docker image containing arangodb
-	ArangoImage    string // Docker image containing arangod (can be empty)
-	DockerHostIP   string // IP of docker host
-	DockerEndpoint string // Endpoint used to reach the docker daemon
+	MasterPort      int      // MasterPort for arangodb
+	ArangodbImage   string   // Docker image containing arangodb
+	ArangoImage     string   // Docker image containing arangod (can be empty)
+	DockerHostIP    string   // IP of docker host
+	DockerEndpoints []string // Endpoint used to reach the docker daemon(s)
 }
 
 // arangodbClusterBuilder implements a ClusterBuilder using arangodb.
@@ -34,12 +35,12 @@ type arangodbClusterBuilder struct {
 type arangodbCluster struct {
 	ArangodbConfig
 
-	mutex      sync.Mutex
-	log        *logging.Logger
-	id         string
-	agencySize int
-	client     *docker.Client
-	machines   []*arangodb
+	mutex       sync.Mutex
+	log         *logging.Logger
+	dockerHosts []*dockerHost
+	id          string
+	agencySize  int
+	machines    []*arangodb
 }
 
 // NewArangodbClusterBuilder creates a new ClusterBuilder using arangodb.
@@ -53,8 +54,8 @@ func NewArangodbClusterBuilder(log *logging.Logger, config ArangodbConfig) (clus
 	if config.DockerHostIP == "" {
 		return nil, maskAny(fmt.Errorf("DockerHostIP missing"))
 	}
-	if config.DockerEndpoint == "" {
-		return nil, maskAny(fmt.Errorf("DockerEndpoint missing"))
+	if len(config.DockerEndpoints) == 0 {
+		return nil, maskAny(fmt.Errorf("DockerEndpoints missing"))
 	}
 	return &arangodbClusterBuilder{
 		log:            log,
@@ -66,10 +67,20 @@ func NewArangodbClusterBuilder(log *logging.Logger, config ArangodbConfig) (clus
 // The number of "machines" created equals the given agency size.
 // This function returns when the cluster is operational (or an error occurs)
 func (cb *arangodbClusterBuilder) Create(agencySize int) (cluster.Cluster, error) {
-	// Create docker client
-	client, err := docker.NewClient(cb.ArangodbConfig.DockerEndpoint)
-	if err != nil {
-		return nil, maskAny(err)
+	// Create docker hosts
+	var dockerHosts []*dockerHost
+	for _, endpoint := range cb.DockerEndpoints {
+		hostIP, err := cb.getHostAddressForEndpoint(endpoint)
+		if err != nil {
+			return nil, maskAny(err)
+		}
+
+		// Create docker host
+		dockerHost, err := newDockerHost(endpoint, hostIP)
+		if err != nil {
+			return nil, maskAny(err)
+		}
+		dockerHosts = append(dockerHosts, dockerHost)
 	}
 
 	// Create random ID
@@ -83,7 +94,7 @@ func (cb *arangodbClusterBuilder) Create(agencySize int) (cluster.Cluster, error
 	c := &arangodbCluster{
 		log:            cb.log,
 		ArangodbConfig: cb.ArangodbConfig,
-		client:         client,
+		dockerHosts:    dockerHosts,
 		agencySize:     agencySize,
 		id:             id,
 	}
@@ -125,6 +136,26 @@ func (cb *arangodbClusterBuilder) Create(agencySize int) (cluster.Cluster, error
 	}
 
 	return c, nil
+}
+
+// getHostAddressForEndpoint returns the IP address of the host of the docker daemon with given endpoint.
+func (cb *arangodbClusterBuilder) getHostAddressForEndpoint(endpoint string) (string, error) {
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		return "", maskAny(err)
+	}
+	switch u.Scheme {
+	case "http", "https", "tcp":
+		host, _, err := net.SplitHostPort(u.Host)
+		if err != nil {
+			return "", maskAny(err)
+		}
+		return host, nil
+	case "unix":
+		return cb.ArangodbConfig.DockerHostIP, nil
+	default:
+		return "", maskAny(fmt.Errorf("Unsupported docker endpoint '%s'", endpoint))
+	}
 }
 
 // Block until all servers on all machines are ready
