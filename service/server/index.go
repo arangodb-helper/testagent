@@ -4,15 +4,20 @@ import (
 	"net/http"
 	"sort"
 
+	humanize "github.com/dustin/go-humanize"
 	logging "github.com/op/go-logging"
 	macaron "gopkg.in/macaron.v1"
 )
 
 func indexPage(ctx *macaron.Context, log *logging.Logger, service Service) {
+	// General
+	ctx.Data["Uptime"] = humanize.Time(service.StartedAt())
+
 	// Cluster
 	machines := []Machine{}
 	cluster := service.Cluster()
 	if cluster != nil {
+		ctx.Data["ID"] = cluster.ID()
 		cms, err := service.Cluster().Machines()
 		if err != nil {
 			showError(ctx, err)

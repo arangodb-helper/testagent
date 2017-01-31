@@ -33,6 +33,8 @@ type arangodb struct {
 	index                      int
 	ip                         string
 	port                       int
+	createdAt                  time.Time
+	startedAt                  time.Time
 	state                      cluster.MachineState
 	volumeID                   string
 	containerID                string
@@ -56,6 +58,16 @@ func (m *arangodb) ID() string {
 // State returns the current state of the machine
 func (m *arangodb) State() cluster.MachineState {
 	return m.state
+}
+
+// CreatedAt returns the time when this machine was created
+func (m *arangodb) CreatedAt() time.Time {
+	return m.createdAt
+}
+
+// StartedAt returns the time when this machine was last started
+func (m *arangodb) StartedAt() time.Time {
+	return m.startedAt
 }
 
 // HasAgent returns true if there is an agent on this machine
@@ -296,6 +308,7 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 		createOptions: opts,
 		log:           c.log,
 		index:         index,
+		createdAt:     time.Now(),
 		ip:            c.ArangodbConfig.DockerHostIP,
 		state:         cluster.MachineStateNew,
 		port:          port,
@@ -322,6 +335,7 @@ func (m *arangodb) pullImageIfNeeded(image string) error {
 
 // start the machine
 func (m *arangodb) start() error {
+	m.startedAt = time.Now()
 	m.log.Debugf("Creating arangodb container %s", m.createOptions.Name)
 	cont, err := m.client.CreateContainer(m.createOptions)
 	if err != nil {

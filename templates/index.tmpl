@@ -1,6 +1,11 @@
 {{template "base/head" .}}
 
 <h1>Welcome to TestAgent</h1>
+<p>
+ID: {{.ID}}
+<br/>
+Up: {{.Uptime}}
+</p>
 
 <h2>Cluster</h2>
 
@@ -8,6 +13,7 @@
     <thead>
     <tr>
         <th>ID</th>
+        <th>Created/Started</td>
         <th>Agent</th>
         <th>Coordinator</th>
         <th>DBServer</th>
@@ -18,6 +24,11 @@
         <td>
             {{$m.ID}}
             <a href="/logs/{{$m.ID}}/machine" title="Logs"><i class="file text outline icon"></i></a>
+        </td>
+        <td>
+            {{$m.CreatedAt}}
+            /
+            {{$m.StartedAt}}
         </td>
         {{if $m.HasAgent}}
         <td class="{{ cssReady $m.LastAgentReadyStatus }}">

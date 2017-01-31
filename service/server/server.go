@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"time"
 
 	"github.com/arangodb/testAgent/service/chaos"
 	"github.com/arangodb/testAgent/service/cluster"
@@ -16,6 +17,7 @@ import (
 )
 
 type Service interface {
+	StartedAt() time.Time
 	Cluster() cluster.Cluster
 	Tests() []test.TestScript
 	ChaosMonkey() chaos.ChaosMonkey

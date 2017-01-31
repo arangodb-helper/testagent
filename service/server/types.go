@@ -8,10 +8,13 @@ import (
 	"github.com/arangodb/testAgent/service/cluster"
 	"github.com/arangodb/testAgent/service/reporter"
 	"github.com/arangodb/testAgent/service/test"
+	humanize "github.com/dustin/go-humanize"
 )
 
 type Machine struct {
 	ID                         string
+	CreatedAt                  string
+	StartedAt                  string
 	AgentURL                   string
 	DBServerURL                string
 	CoordinatorURL             string
@@ -49,6 +52,8 @@ func machineFromCluster(cm cluster.Machine) Machine {
 	cURL := cm.CoordinatorURL()
 	return Machine{
 		ID:                         cm.ID(),
+		CreatedAt:                  humanize.Time(cm.CreatedAt()),
+		StartedAt:                  humanize.Time(cm.StartedAt()),
 		HasAgent:                   cm.HasAgent(),
 		AgentURL:                   aURL.String(),
 		DBServerURL:                dURL.String(),

@@ -1,6 +1,8 @@
 package service
 
 import (
+	"time"
+
 	chaos "github.com/arangodb/testAgent/service/chaos"
 	cluster "github.com/arangodb/testAgent/service/cluster"
 	"github.com/arangodb/testAgent/service/reporter"
@@ -29,6 +31,7 @@ type Service struct {
 	cluster     cluster.Cluster
 	chaosMonkey chaos.ChaosMonkey
 	reporter    reporter.Reporter
+	startedAt   time.Time
 }
 
 // NewService instantiates a new Service from the given config
@@ -46,6 +49,7 @@ func NewService(config ServiceConfig, deps ServiceDependencies) (*Service, error
 
 // Run performs the tests
 func (s *Service) Run(stopChan chan struct{}) error {
+	s.startedAt = time.Now()
 	// Start our HTTP server
 	server.StartHTTPServer(s.Logger, s.ServerPort, s.ReportDir, s)
 
@@ -108,6 +112,10 @@ func (s *Service) Run(stopChan chan struct{}) error {
 	}
 
 	return nil
+}
+
+func (s *Service) StartedAt() time.Time {
+	return s.startedAt
 }
 
 func (s *Service) Cluster() cluster.Cluster {

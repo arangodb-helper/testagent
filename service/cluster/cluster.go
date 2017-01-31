@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"time"
 )
 
 type ClusterBuilder interface {
@@ -60,6 +61,10 @@ type Machine interface {
 	ID() string
 	// State returns the current state of the machine
 	State() MachineState
+	// CreatedAt returns the time when this machine was created
+	CreatedAt() time.Time
+	// StartedAt returns the time when this machine was last started
+	StartedAt() time.Time
 
 	// HasAgent returns true if there is an agent on this machine
 	HasAgent() bool
