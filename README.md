@@ -11,6 +11,7 @@ failure, accompanied with all relevant information (such as database server log 
 
 The test-agent will introduce the following kinds of chaos.
 
+- [x] Restart a server, one of each type at a time 
 - [x] Kill a server, one of each type at a time 
 - [ ] DBServer is completely lost & will not return 
 - [ ] Coordinator is completely lost & will not return 
