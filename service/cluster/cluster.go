@@ -20,6 +20,9 @@ type Cluster interface {
 	// Machines returns all current machines in the cluster.
 	Machines() ([]Machine, error)
 
+	// Block until all servers on all machines are ready
+	WaitUntilReady() error
+
 	// Remove the entire cluster
 	Destroy() error
 }
@@ -87,6 +90,13 @@ type Machine interface {
 	RestartDBServer() error
 	// Perform a graceful restart of the coordinator. This function does NOT wait until the coordinator is ready again.
 	RestartCoordinator() error
+
+	// Perform a forced restart of the agent. This function does NOT wait until the agent is ready again.
+	KillAgent() error
+	// Perform a forced restart of the dbserver. This function does NOT wait until the dbserver is ready again.
+	KillDBServer() error
+	// Perform a forced restart of the coordinator. This function does NOT wait until the coordinator is ready again.
+	KillCoordinator() error
 
 	// CollectMachineLogs collects recent logs from the machine running the servers and writes them to the given writer.
 	CollectMachineLogs(w io.Writer) error

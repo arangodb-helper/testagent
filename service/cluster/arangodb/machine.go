@@ -150,6 +150,39 @@ func (m *arangodb) RestartCoordinator() error {
 	return nil
 }
 
+// Perform a forced restart of the agent. This function does NOT wait until the agent is ready again.
+func (m *arangodb) KillAgent() error {
+	if err := m.updateServerInfo(); err != nil {
+		return maskAny(err)
+	}
+	if err := m.client.KillContainer(docker.KillContainerOptions{ID: m.agentContainerID}); err != nil {
+		return maskAny(err)
+	}
+	return nil
+}
+
+// Perform a forced restart of the dbserver. This function does NOT wait until the dbserver is ready again.
+func (m *arangodb) KillDBServer() error {
+	if err := m.updateServerInfo(); err != nil {
+		return maskAny(err)
+	}
+	if err := m.client.KillContainer(docker.KillContainerOptions{ID: m.dbserverContainerID}); err != nil {
+		return maskAny(err)
+	}
+	return nil
+}
+
+// Perform a forced restart of the coordinator. This function does NOT wait until the coordinator is ready again.
+func (m *arangodb) KillCoordinator() error {
+	if err := m.updateServerInfo(); err != nil {
+		return maskAny(err)
+	}
+	if err := m.client.KillContainer(docker.KillContainerOptions{ID: m.coordinatorContainerID}); err != nil {
+		return maskAny(err)
+	}
+	return nil
+}
+
 // Reboot performs a graceful reboot of the machine
 func (m *arangodb) Reboot() error {
 	// Stop the arangodb container  (it will stop the servers )

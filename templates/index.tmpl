@@ -15,14 +15,26 @@
     </thead>
 {{ range $m := .Machines }}
     <tr>
-        <td>{{$m.ID}}</td>
+        <td>
+            {{$m.ID}}
+            <a href="/logs/{{$m.ID}}/machine" title="Logs"><i class="file text outline icon"></i></a>
+        </td>
         {{if $m.HasAgent}}
-        <td class="{{ cssReady $m.LastAgentReadyStatus }}"><a href={{ $m.AgentURL }}>Agent</a></td>
+        <td class="{{ cssReady $m.LastAgentReadyStatus }}">
+            <a href={{ $m.AgentURL }}>Agent</a>
+            <a href="/logs/{{$m.ID}}/agent" title="Logs"><i class="file text outline icon"></i></a>
+        </td>
         {{else}}
         <td>-</td>
         {{end}}
-        <td class="{{ cssReady $m.LastCoordinatorReadyStatus }}"><a href={{ $m.CoordinatorURL }}>Coordinator</a></td>
-        <td class="{{ cssReady $m.LastDBServerReadyStatus }}"><a href={{ $m.DBServerURL }}>DBServer</a></td>
+        <td class="{{ cssReady $m.LastCoordinatorReadyStatus }}">
+            <a href={{ $m.CoordinatorURL }}>Coordinator</a>
+            <a href="/logs/{{$m.ID}}/coordinator" title="Logs"><i class="file text outline icon"></i></a>
+        </td>
+        <td class="{{ cssReady $m.LastDBServerReadyStatus }}">
+            <a href={{ $m.DBServerURL }}>DBServer</a>
+            <a href="/logs/{{$m.ID}}/dbserver" title="Logs"><i class="file text outline icon"></i></a>
+        </td>
     </tr>
 {{ end }}
 </table>

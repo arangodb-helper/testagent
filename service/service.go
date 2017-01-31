@@ -57,6 +57,12 @@ func (s *Service) Run(stopChan chan struct{}) error {
 	}
 	s.cluster = c
 
+	// Wait for cluster to become ready
+	s.Logger.Info("Waiting for cluster ready")
+	if err := c.WaitUntilReady(); err != nil {
+		return maskAny(err)
+	}
+
 	// Create & start a chaos monkey
 	s.Logger.Info("Creating chaos monkey")
 	s.chaosMonkey = chaos.NewChaosMonkey(s.Logger, s.cluster)

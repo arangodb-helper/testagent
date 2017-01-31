@@ -117,10 +117,6 @@ func (cb *arangodbClusterBuilder) Create(agencySize int) (cluster.Cluster, error
 			// Start watchdog
 			m.watchdog()
 
-			// Wait until all servers are reachable
-			if err := m.waitUntilServersReady(c.log, serverReadyTimeout); err != nil {
-				return maskAny(err)
-			}
 			return nil
 		})
 	}
@@ -129,6 +125,29 @@ func (cb *arangodbClusterBuilder) Create(agencySize int) (cluster.Cluster, error
 	}
 
 	return c, nil
+}
+
+// Block until all servers on all machines are ready
+func (c *arangodbCluster) WaitUntilReady() error {
+	machines, err := c.Machines()
+	if err != nil {
+		return maskAny(err)
+	}
+	g := errgroup.Group{}
+	for _, m := range machines {
+		m := m.(*arangodb)
+		g.Go(func() error {
+			// Wait until all servers are reachable
+			if err := m.waitUntilServersReady(c.log, serverReadyTimeout); err != nil {
+				return maskAny(err)
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return maskAny(err)
+	}
+	return nil
 }
 
 // ID returns a unique identifier for this cluster
