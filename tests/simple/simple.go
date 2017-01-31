@@ -17,17 +17,19 @@ const (
 )
 
 type simpleTest struct {
-	log           *logging.Logger
-	cluster       cluster.Cluster
-	listener      test.TestListener
-	stop          chan struct{}
-	active        bool
-	client        *util.ArangoClient
-	failures      int
-	existingKeys  []string
-	readCounter   counter
-	createCounter counter
-	deleteCounter counter
+	log                      *logging.Logger
+	cluster                  cluster.Cluster
+	listener                 test.TestListener
+	stop                     chan struct{}
+	active                   bool
+	client                   *util.ArangoClient
+	failures                 int
+	existingKeys             []string
+	readExistingCounter      counter
+	readNonExistingCounter   counter
+	createCounter            counter
+	deleteExistingCounter    counter
+	deleteNonExistingCounter counter
 }
 
 type counter struct {
@@ -74,10 +76,14 @@ func (t *simpleTest) Status() test.TestStatus {
 			fmt.Sprintf("Current #documents: %d", len(t.existingKeys)),
 			fmt.Sprintf("#documents created successfully: %d", t.createCounter.succeeded),
 			fmt.Sprintf("#documents created failed: %d", t.createCounter.failed),
-			fmt.Sprintf("#documents read successfully: %d", t.readCounter.succeeded),
-			fmt.Sprintf("#documents read failed: %d", t.readCounter.failed),
-			fmt.Sprintf("#documents removed successfully: %d", t.deleteCounter.succeeded),
-			fmt.Sprintf("#documents removed failed: %d", t.deleteCounter.failed),
+			fmt.Sprintf("#existing documents read successfully: %d", t.readExistingCounter.succeeded),
+			fmt.Sprintf("#existing documents read failed: %d", t.readExistingCounter.failed),
+			fmt.Sprintf("#non-existing documents read successfully: %d", t.readNonExistingCounter.succeeded),
+			fmt.Sprintf("#non-existing documents read failed: %d", t.readNonExistingCounter.failed),
+			fmt.Sprintf("#existing documents removed successfully: %d", t.deleteExistingCounter.succeeded),
+			fmt.Sprintf("#existing documents removed failed: %d", t.deleteExistingCounter.failed),
+			fmt.Sprintf("#non-existing documents removed successfully: %d", t.deleteNonExistingCounter.succeeded),
+			fmt.Sprintf("#non-existing documents removed failed: %d", t.deleteNonExistingCounter.failed),
 		},
 	}
 }
@@ -169,18 +175,34 @@ func (t *simpleTest) testLoop() {
 			state++
 
 		case 1:
-			// Read a random document
+			// Read a random existing document
 			randomKey := t.existingKeys[rand.Intn(len(t.existingKeys))]
 			if err := t.readExistingDocument(collUser, randomKey); err != nil {
-				t.log.Errorf("Failed to read document '%s': %#v", randomKey, err)
+				t.log.Errorf("Failed to read existing document '%s': %#v", randomKey, err)
 			}
 			state++
 
 		case 2:
-			// Remove a random document
+			// Read a random non-existing document
+			randomKey := createNewKey()
+			if err := t.readNonExistingDocument(collUser, randomKey); err != nil {
+				t.log.Errorf("Failed to read non-existing document '%s': %#v", randomKey, err)
+			}
+			state++
+
+		case 3:
+			// Remove a random existing document
 			randomKey := t.existingKeys[rand.Intn(len(t.existingKeys))]
 			if err := t.removeExistingDocument(collUser, randomKey); err != nil {
-				t.log.Errorf("Failed to remove document '%s': %#v", randomKey, err)
+				t.log.Errorf("Failed to remove existing document '%s': %#v", randomKey, err)
+			}
+			state++
+
+		case 4:
+			// Remove a random non-existing document
+			randomKey := createNewKey()
+			if err := t.removeNonExistingDocument(collUser, randomKey); err != nil {
+				t.log.Errorf("Failed to remove non-existing document '%s': %#v", randomKey, err)
 			}
 			state++
 
@@ -228,11 +250,24 @@ func (t *simpleTest) readExistingDocument(collectionName string, key string) err
 	var result UserDocument
 	if err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), &result, []int{200, 201, 202}, []int{400, 404, 307}, timeout); err != nil {
 		// This is a failure
-		t.readCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to read document '%s' in collection '%s': %v", key, collectionName, err))
+		t.readExistingCounter.failed++
+		t.reportFailure(test.NewFailure("Failed to read existing document '%s' in collection '%s': %v", key, collectionName, err))
 		return maskAny(err)
 	}
-	t.readCounter.succeeded++
+	t.readExistingCounter.succeeded++
+	return nil
+}
+
+func (t *simpleTest) readNonExistingDocument(collectionName string, key string) error {
+	timeout := time.Minute
+	var result UserDocument
+	if err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), &result, []int{404}, []int{200, 201, 202, 400, 307}, timeout); err != nil {
+		// This is a failure
+		t.readNonExistingCounter.failed++
+		t.reportFailure(test.NewFailure("Failed to read non-existing document '%s' in collection '%s': %v", key, collectionName, err))
+		return maskAny(err)
+	}
+	t.readNonExistingCounter.succeeded++
 	return nil
 }
 
@@ -240,10 +275,22 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key string) e
 	timeout := time.Minute
 	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), []int{200, 201, 202}, []int{400, 404, 412, 307}, timeout); err != nil {
 		// This is a failure
-		t.deleteCounter.failed++
+		t.deleteExistingCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to delete document '%s' in collection '%s': %v", key, collectionName, err))
 		return maskAny(err)
 	}
-	t.deleteCounter.succeeded++
+	t.deleteExistingCounter.succeeded++
+	return nil
+}
+
+func (t *simpleTest) removeNonExistingDocument(collectionName string, key string) error {
+	timeout := time.Minute
+	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), []int{404}, []int{200, 201, 202, 400, 412, 307}, timeout); err != nil {
+		// This is a failure
+		t.deleteNonExistingCounter.failed++
+		t.reportFailure(test.NewFailure("Failed to delete non-existing document '%s' in collection '%s': %v", key, collectionName, err))
+		return maskAny(err)
+	}
+	t.deleteNonExistingCounter.succeeded++
 	return nil
 }

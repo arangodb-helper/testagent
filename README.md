@@ -29,9 +29,12 @@ The test operations covered in those scripts will include (among others):
 
 - [ ] Import documents 
 - [x] Create documents
-- [x] Read documents 
-- [x] Remove documents 
-- [ ] Update documents 
+- [x] Read existing documents 
+- [x] Read non-existing documents 
+- [x] Remove existing documents 
+- [x] Remove non-existing documents 
+- [ ] Update existing documents 
+- [ ] Update non-existing documents 
 - [ ] Query documents (AQL)
 - [ ] Backup entire databases
 
