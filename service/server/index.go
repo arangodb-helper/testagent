@@ -42,9 +42,10 @@ func indexPage(ctx *macaron.Context, log *logging.Logger, service Service) {
 
 	// Chaos
 	cm := service.ChaosMonkey()
-	var chaos Chaos
+	chaos := Chaos{State: "new"}
 	if cm != nil {
 		chaos.Active = cm.Active()
+		chaos.State = cm.State()
 		chaos.Events = cm.GetRecentEvents()
 		if len(chaos.Events) > maxChaosEvents {
 			chaos.Events = chaos.Events[:maxChaosEvents]

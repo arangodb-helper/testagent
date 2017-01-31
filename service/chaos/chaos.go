@@ -1,6 +1,7 @@
 package chaos
 
 import (
+	"context"
 	"math/rand"
 	"sync"
 	"time"
@@ -12,6 +13,9 @@ import (
 type ChaosMonkey interface {
 	// Active returns true when chaos is being introduced.
 	Active() bool
+
+	// Describe the state of the chaosmonkey
+	State() string
 
 	// Start introducing chaos
 	Start()
@@ -39,7 +43,8 @@ type chaosMonkey struct {
 	log          *logging.Logger
 	cluster      cluster.Cluster
 	active       bool
-	stop         bool
+	cancel       context.CancelFunc
+	cancelled    bool
 	recentEvents []Event // Limit list of events (last event first)
 }
 
@@ -48,15 +53,28 @@ func (c *chaosMonkey) Active() bool {
 	return c.active
 }
 
+// Describe the state of the chaosmonkey
+func (c *chaosMonkey) State() string {
+	if c.active {
+		if c.cancelled {
+			return "stopping"
+		}
+		return "active"
+	}
+	return "inactive"
+}
+
 // Start introducing chaos
 func (c *chaosMonkey) Start() {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	c.stop = false
 	if !c.active {
+		ctx, cancel := context.WithCancel(context.Background())
 		c.active = true
-		go c.chaosLoop()
+		c.cancelled = false
+		c.cancel = cancel
+		go c.chaosLoop(ctx)
 	}
 }
 
@@ -65,7 +83,10 @@ func (c *chaosMonkey) Stop() {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	c.stop = true
+	if cancel := c.cancel; cancel != nil {
+		c.cancelled = true
+		cancel()
+	}
 }
 
 // WaitUntilInactive blocks until Active return false
@@ -79,7 +100,7 @@ func (c *chaosMonkey) WaitUntilInactive() {
 }
 
 // chaosLoop runs the process to actually introduce chaos
-func (c *chaosMonkey) chaosLoop() {
+func (c *chaosMonkey) chaosLoop(ctx context.Context) {
 	chaosActions := []func() bool{
 		c.restartAgent,
 		c.restartDBServer,
@@ -90,20 +111,26 @@ func (c *chaosMonkey) chaosLoop() {
 		c.rebootMachine,
 	}
 	for {
-		if c.stop {
-			c.log.Debugf("stop signaled, terminating from chaosLoop")
-			c.active = false
-			return
-		}
-
 		// Pick a random chaos action
 		action := chaosActions[rand.Intn(len(chaosActions))]
+		var delay time.Duration
 		if action() {
 			// Chaos was introduced
-			time.Sleep(time.Second * 30)
+			delay = time.Second * 30
 		} else {
 			// Chaos was not introducted, wait a bit shorter
-			time.Sleep(time.Second * 2)
+			delay = time.Second * 2
+		}
+		select {
+		case <-ctx.Done():
+			c.log.Debugf("stop signaled, terminating from chaosLoop")
+			c.mutex.Lock()
+			defer c.mutex.Unlock()
+			c.active = false
+			c.cancel = nil
+			return
+		case <-time.After(delay):
+			// Continue looping
 		}
 	}
 }

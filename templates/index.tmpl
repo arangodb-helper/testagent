@@ -88,8 +88,11 @@ Up: {{.Uptime}}
 
 <h2>Recent chaos</h2>
 <p>
-    {{if .Chaos.Active}}Chaos monkey is on.
-    {{else}}Chaos monkey is off.
+    Chaos monkey is {{.Chaos.State}}.
+    {{if .Chaos.Active}}
+        <a href="/chaos/pause" class="ui mini right floated button">Pause</a>
+    {{else}}
+        <a href="/chaos/resume" class="ui mini right floated button">Resume</a>
     {{end}}
 </p>
 <table class="ui celled striped table">

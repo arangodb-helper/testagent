@@ -24,8 +24,8 @@ The test-agent will introduce the following kinds of chaos.
 
 It should also be possible to:
 
-- [ ] Pause introducing chaos 
-- [ ] Resume introducing chaos 
+- [x] Pause introducing chaos 
+- [x] Resume introducing chaos 
 
 ## Test operations 
 

@@ -32,6 +32,7 @@ type Test struct {
 
 type Chaos struct {
 	Active bool
+	State  string
 	Events []chaos.Event
 }
 
