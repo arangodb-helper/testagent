@@ -1,8 +1,12 @@
 package server
 
 import (
+	"path"
+	"path/filepath"
+
 	"github.com/arangodb/testAgent/service/chaos"
 	"github.com/arangodb/testAgent/service/cluster"
+	"github.com/arangodb/testAgent/service/reporter"
 	"github.com/arangodb/testAgent/service/test"
 )
 
@@ -26,6 +30,13 @@ type Test struct {
 type Chaos struct {
 	Active bool
 	Events []chaos.Event
+}
+
+type FailureReport struct {
+	Time    string
+	Message string
+	Path    string
+	HRef    string
 }
 
 const (
@@ -66,5 +77,14 @@ func testFromTestScript(ct test.TestScript) Test {
 		Name:     ct.Name(),
 		Failures: status.Failures,
 		Messages: status.Messages,
+	}
+}
+
+func failureReportFromReporter(f reporter.FailureReport) FailureReport {
+	return FailureReport{
+		Time:    f.Failure.Timestamp.String(),
+		Message: f.Failure.Message,
+		Path:    filepath.Base(f.Path),
+		HRef:    "/" + path.Join("reports", filepath.Base(f.Path)),
 	}
 }

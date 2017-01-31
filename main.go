@@ -48,6 +48,7 @@ func init() {
 	f.StringVar(&appFlags.ArangoImage, "arango-image", getEnvVar("ARANGO_IMAGE", ""), "name of the Docker image containing arangod (the database)")
 	f.StringVar(&appFlags.DockerEndpoint, "docker-endpoint", "unix:///var/run/docker.sock", "Endpoint used to reach the docker daemon")
 	f.StringVar(&appFlags.DockerHostIP, "docker-host-ip", "", "IP of the docker host")
+	f.StringVar(&appFlags.ReportDir, "report-dir", getEnvVar("REPORT_DIR", "."), "Directory in which failure reports will be created")
 }
 
 // handleSignal listens for termination signals and stops this process onup termination.
@@ -76,6 +77,9 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 
 	// Get host IP
 	if appFlags.ArangodbConfig.DockerHostIP == "" {
+		if os.Getenv("RUNNING_IN_DOCKER") != "" {
+			log.Fatal("When running in docker you must specify a --docker-host-ip")
+		}
 		ip, err := findLocalIP()
 		if err != nil {
 			log.Fatalf("Cannot detect local IP: %v", err)

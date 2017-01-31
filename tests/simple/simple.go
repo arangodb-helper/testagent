@@ -13,7 +13,7 @@ import (
 
 const (
 	collUser             = "simple_users"
-	initialDocumentCount = 99
+	initialDocumentCount = 999
 )
 
 type simpleTest struct {

@@ -131,6 +131,11 @@ func (cb *arangodbClusterBuilder) Create(agencySize int) (cluster.Cluster, error
 	return c, nil
 }
 
+// ID returns a unique identifier for this cluster
+func (c *arangodbCluster) ID() string {
+	return c.id
+}
+
 // Machines returns all machines in the cluster
 func (c *arangodbCluster) Machines() ([]cluster.Machine, error) {
 	c.mutex.Lock()

@@ -315,7 +315,7 @@ func (m *arangodb) stop() error {
 	// Remove container
 	m.log.Infof("Removing container %s", m.containerID)
 	if err := m.client.RemoveContainer(docker.RemoveContainerOptions{
-		Force: true, // Jut in case
+		Force: true, // Just in case
 		ID:    m.containerID,
 	}); err != nil {
 		return maskAny(err)

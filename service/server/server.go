@@ -7,6 +7,7 @@ import (
 
 	"github.com/arangodb/testAgent/service/chaos"
 	"github.com/arangodb/testAgent/service/cluster"
+	"github.com/arangodb/testAgent/service/reporter"
 	"github.com/arangodb/testAgent/service/test"
 	"github.com/arangodb/testAgent/templates"
 	"github.com/go-macaron/bindata"
@@ -18,10 +19,11 @@ type Service interface {
 	Cluster() cluster.Cluster
 	Tests() []test.TestScript
 	ChaosMonkey() chaos.ChaosMonkey
+	Reports() []reporter.FailureReport
 }
 
 // StartHTTPServer starts an HTTP server listening on the given port
-func StartHTTPServer(log *logging.Logger, port int, service Service) {
+func StartHTTPServer(log *logging.Logger, port int, reportDir string, service Service) {
 	m := macaron.New()
 	m.Use(macaron.Logger())
 	m.Use(macaron.Recovery())
@@ -35,6 +37,12 @@ func StartHTTPServer(log *logging.Logger, port int, service Service) {
 				AssetNames: templates.AssetNames,
 				Prefix:     "",
 			}),
+		},
+	))
+	m.Use(macaron.Static(reportDir,
+		macaron.StaticOptions{
+			Prefix:      "reports",
+			SkipLogging: false,
 		},
 	))
 	m.Use(macaron.Renderer(macaron.RenderOptions{

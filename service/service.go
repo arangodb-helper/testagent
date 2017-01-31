@@ -3,6 +3,7 @@ package service
 import (
 	chaos "github.com/arangodb/testAgent/service/chaos"
 	cluster "github.com/arangodb/testAgent/service/cluster"
+	"github.com/arangodb/testAgent/service/reporter"
 	"github.com/arangodb/testAgent/service/server"
 	"github.com/arangodb/testAgent/service/test"
 	logging "github.com/op/go-logging"
@@ -12,6 +13,7 @@ import (
 type ServiceConfig struct {
 	AgencySize int
 	ServerPort int
+	ReportDir  string
 }
 
 type ServiceDependencies struct {
@@ -26,20 +28,26 @@ type Service struct {
 
 	cluster     cluster.Cluster
 	chaosMonkey chaos.ChaosMonkey
+	reporter    reporter.Reporter
 }
 
 // NewService instantiates a new Service from the given config
 func NewService(config ServiceConfig, deps ServiceDependencies) (*Service, error) {
-	return &Service{
+	if config.ReportDir == "" {
+		config.ReportDir = "."
+	}
+	s := &Service{
 		ServiceConfig:       config,
 		ServiceDependencies: deps,
-	}, nil
+	}
+	s.reporter = reporter.NewReporter(config.ReportDir, deps.Logger, s)
+	return s, nil
 }
 
 // Run performs the tests
 func (s *Service) Run(stopChan chan struct{}) error {
 	// Start our HTTP server
-	server.StartHTTPServer(s.Logger, s.ServerPort, s)
+	server.StartHTTPServer(s.Logger, s.ServerPort, s.ReportDir, s)
 
 	// Create the cluster
 	s.Logger.Infof("Creating initial cluster (size %d)", s.AgencySize)
@@ -57,7 +65,7 @@ func (s *Service) Run(stopChan chan struct{}) error {
 	// Run tests
 	for _, t := range s.Tests() {
 		s.Logger.Infof("Starting test %s", t.Name())
-		if err := t.Start(s.cluster, s); err != nil {
+		if err := t.Start(s.cluster, s.reporter); err != nil {
 			return maskAny(err)
 		}
 	}
@@ -106,4 +114,8 @@ func (s *Service) Tests() []test.TestScript {
 
 func (s *Service) ChaosMonkey() chaos.ChaosMonkey {
 	return s.chaosMonkey
+}
+
+func (s *Service) Reports() []reporter.FailureReport {
+	return s.reporter.Reports()
 }

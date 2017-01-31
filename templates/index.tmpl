@@ -44,6 +44,25 @@
 {{ end }}
 </table>
 
+<h2>Failures</h2>
+
+<table class="ui celled striped table">
+    <thead>
+    <tr>
+        <th>Time</th>
+        <th>Message</th>
+        <th>Report</th>
+    </tr>
+    </thead>
+{{ range $r := .Reports }}
+    <tr>
+        <td>{{$r.Time}}</td>
+        <td>{{$r.Message}}</td>
+        <td><a href="{{$r.HRef}}">{{$r.Path}}</a></td>
+    </tr>
+{{ end }}
+</table>
+
 <h2>Recent chaos</h2>
 <p>
     {{if .Chaos.Active}}Chaos monkey is on.

@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"fmt"
+	"io"
 	"net/url"
 )
 
@@ -13,6 +14,9 @@ type ClusterBuilder interface {
 }
 
 type Cluster interface {
+	// ID returns a unique identifier for this cluster
+	ID() string
+
 	// Machines returns all current machines in the cluster.
 	Machines() ([]Machine, error)
 
@@ -83,6 +87,15 @@ type Machine interface {
 	RestartDBServer() error
 	// Perform a graceful restart of the coordinator. This function does NOT wait until the coordinator is ready again.
 	RestartCoordinator() error
+
+	// CollectMachineLogs collects recent logs from the machine running the servers and writes them to the given writer.
+	CollectMachineLogs(w io.Writer) error
+	// CollectAgentLogs collects recent logs from the agent and writes them to the given writer.
+	CollectAgentLogs(w io.Writer) error
+	// CollectDBServerLogs collects recent logs from the dbserver and writes them to the given writer.
+	CollectDBServerLogs(w io.Writer) error
+	// CollectCoordinatorLogs collects recent logs from the coordinator and writes them to the given writer.
+	CollectCoordinatorLogs(w io.Writer) error
 
 	// Reboot performs a graceful reboot of the machine
 	Reboot() error
