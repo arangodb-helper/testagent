@@ -47,7 +47,7 @@ func NewService(config ServiceConfig, deps ServiceDependencies) (*Service, error
 // Run performs the tests
 func (s *Service) Run(stopChan chan struct{}) error {
 	// Start our HTTP server
-	server.StartHTTPServer(s.Logger, s.ServerPort, s)
+	server.StartHTTPServer(s.Logger, s.ServerPort, s.ReportDir, s)
 
 	// Create the cluster
 	s.Logger.Infof("Creating initial cluster (size %d)", s.AgencySize)
@@ -114,4 +114,8 @@ func (s *Service) Tests() []test.TestScript {
 
 func (s *Service) ChaosMonkey() chaos.ChaosMonkey {
 	return s.chaosMonkey
+}
+
+func (s *Service) Reports() []reporter.FailureReport {
+	return s.reporter.Reports()
 }

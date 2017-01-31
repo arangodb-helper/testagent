@@ -88,6 +88,8 @@ type Machine interface {
 	// Perform a graceful restart of the coordinator. This function does NOT wait until the coordinator is ready again.
 	RestartCoordinator() error
 
+	// CollectMachineLogs collects recent logs from the machine running the servers and writes them to the given writer.
+	CollectMachineLogs(w io.Writer) error
 	// CollectAgentLogs collects recent logs from the agent and writes them to the given writer.
 	CollectAgentLogs(w io.Writer) error
 	// CollectDBServerLogs collects recent logs from the dbserver and writes them to the given writer.

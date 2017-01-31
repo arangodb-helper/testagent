@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -70,6 +71,7 @@ func (s *reporter) Reports() []FailureReport {
 
 // ReportFailure report the given failure
 func (s *reporter) ReportFailure(f test.Failure) {
+	s.log.Infof("Creating failure report for %v", f)
 	machines, err := s.service.Cluster().Machines()
 	if err != nil {
 		s.log.Fatalf("Failed to gather cluster machines: %#v", err)
@@ -195,7 +197,8 @@ func (s *reporter) collectServerLogs(folder string, fileNames chan string, machi
 					}
 					defer f.Close()
 					if err := m.CollectAgentLogs(f); err != nil {
-						return "", maskAny(err)
+						fmt.Fprintf(f, "\nError fetching logs: %#v\n", err)
+						s.log.Errorf("Error fetching agent logs: %#v", err)
 					}
 					return f.Name(), nil
 				}(); err != nil {
@@ -214,7 +217,8 @@ func (s *reporter) collectServerLogs(folder string, fileNames chan string, machi
 					}
 					defer f.Close()
 					if err := m.CollectDBServerLogs(f); err != nil {
-						return "", maskAny(err)
+						fmt.Fprintf(f, "\nError fetching logs: %#v\n", err)
+						s.log.Errorf("Error fetching dbserver logs: %#v", err)
 					}
 					return f.Name(), nil
 				}(); err != nil {
@@ -233,7 +237,28 @@ func (s *reporter) collectServerLogs(folder string, fileNames chan string, machi
 					}
 					defer f.Close()
 					if err := m.CollectCoordinatorLogs(f); err != nil {
+						fmt.Fprintf(f, "\nError fetching logs: %#v\n", err)
+						s.log.Errorf("Error fetching coordinator logs: %#v", err)
+					}
+					return f.Name(), nil
+				}(); err != nil {
+					return maskAny(err)
+				} else {
+					fileNames <- fileName
+				}
+				return nil
+			})
+			g.Go(func() error {
+				// Collect machine logs
+				if fileName, err := func() (string, error) {
+					f, err := os.Create(filepath.Join(folder, fmt.Sprintf("%s-machine.log", filePrefix)))
+					if err != nil {
 						return "", maskAny(err)
+					}
+					defer f.Close()
+					if err := m.CollectMachineLogs(f); err != nil {
+						fmt.Fprintf(f, "\nError fetching logs: %#v\n", err)
+						s.log.Errorf("Error fetching machine logs: %#v", err)
 					}
 					return f.Name(), nil
 				}(); err != nil {
@@ -265,7 +290,7 @@ func (s *reporter) createClusterStateFile(folder string, fileNames chan string, 
 		)
 		if m.HasAgent() {
 			lines = append(lines,
-				fmt.Sprintf("Agent url=%v lastReady=%v", m.AgentURL(), m.LastAgentReadyStatus()),
+				fmt.Sprintf("Agent url=%v lastReady=%v", urlStr(m.AgentURL()), m.LastAgentReadyStatus()),
 			)
 		} else {
 			lines = append(lines,
@@ -273,8 +298,8 @@ func (s *reporter) createClusterStateFile(folder string, fileNames chan string, 
 			)
 		}
 		lines = append(lines,
-			fmt.Sprintf("DBServer url=%v lastReady=%v", m.DBServerURL(), m.LastDBServerReadyStatus()),
-			fmt.Sprintf("Coordinator url=%v lastReady=%v", m.CoordinatorURL(), m.LastCoordinatorReadyStatus()),
+			fmt.Sprintf("DBServer url=%v lastReady=%v", urlStr(m.DBServerURL()), m.LastDBServerReadyStatus()),
+			fmt.Sprintf("Coordinator url=%v lastReady=%v", urlStr(m.CoordinatorURL()), m.LastCoordinatorReadyStatus()),
 			"",
 		)
 	}
@@ -329,4 +354,8 @@ func (s *reporter) createFailureReportFile(folder string, fileNames chan string,
 	}
 	fileNames <- p
 	return nil
+}
+
+func urlStr(u url.URL) string {
+	return u.String()
 }
