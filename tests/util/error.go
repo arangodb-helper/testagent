@@ -4,9 +4,9 @@ import "github.com/juju/errgo"
 
 var (
 	maskAny      = errgo.MaskFunc(errgo.Any)
-	FailureError = errgo.New("failure")
+	failureError = errgo.New("failure")
 )
 
-func IsFailure(err error) bool {
-	return errgo.Cause(err) == FailureError
+func isFailure(err error) bool {
+	return errgo.Cause(err) == failureError
 }

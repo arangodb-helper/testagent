@@ -29,12 +29,27 @@ type TestScript interface {
 type Failure struct {
 	Timestamp time.Time
 	Message   string
+	Errors    []error
+}
+
+type AggregateError interface {
+	Errors() []error
 }
 
 func NewFailure(message string, args ...interface{}) Failure {
+	var errors []error
+	for _, x := range args {
+		if err, ok := x.(error); ok {
+			errors = append(errors, err)
+		}
+		if aerr, ok := x.(AggregateError); ok {
+			errors = append(errors, aerr.Errors()...)
+		}
+	}
 	return Failure{
 		Timestamp: time.Now(),
 		Message:   fmt.Sprintf(message, args...),
+		Errors:    errors,
 	}
 }
 

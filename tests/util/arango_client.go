@@ -69,21 +69,21 @@ func (c *ArangoClient) Get(urlPath string, result interface{}, successStatusCode
 	op := func() error {
 		url, err := c.createURL(urlPath)
 		if err != nil {
-			return maskAny(err)
+			return maskAny(errgo.WithCausef(nil, err, "Failed creating URL for path '%s': %v", urlPath, err))
 		}
 		resp, err := http.Get(url)
 		if err != nil {
 			c.lastCoordinatorURL = nil // Change coordinator
-			return maskAny(err)
+			return maskAny(errgo.WithCausef(nil, err, "Failed performing GET request to %s: %v", url, err))
 		}
 		// Check for failure status
 		for _, code := range failureStatusCodes {
 			if resp.StatusCode == code {
 				var aerr ArangoError
 				if tryDecodeBody(resp.Body, &aerr); err == nil {
-					return maskAny(errgo.WithCausef(nil, FailureError, "Received status %d which is a failure (%s)", resp.StatusCode, aerr.Error()))
+					return maskAny(errgo.WithCausef(nil, failureError, "Received status %d, from GET request to %s, which is a failure (%s)", resp.StatusCode, url, aerr.Error()))
 				}
-				return maskAny(errgo.WithCausef(nil, FailureError, "Received status %d which is a failure", resp.StatusCode))
+				return maskAny(errgo.WithCausef(nil, failureError, "Received status %d, from GET request to %s, which is a failure", resp.StatusCode, url))
 			}
 		}
 		// Check for success status
@@ -94,10 +94,10 @@ func (c *ArangoClient) Get(urlPath string, result interface{}, successStatusCode
 					defer resp.Body.Close()
 					b, err := ioutil.ReadAll(resp.Body)
 					if err != nil {
-						return maskAny(err)
+						return maskAny(errgo.WithCausef(nil, err, "Failed reading response data from GET request to %s: %v", url, err))
 					}
 					if err := json.Unmarshal(b, result); err != nil {
-						return maskAny(err)
+						return maskAny(errgo.WithCausef(nil, err, "Failed decoding response data from GET request to %s: %v", url, err))
 					}
 				}
 				// Return success
@@ -106,7 +106,7 @@ func (c *ArangoClient) Get(urlPath string, result interface{}, successStatusCode
 		}
 		// Unexpected status code
 		c.lastCoordinatorURL = nil // Change coordinator
-		return maskAny(fmt.Errorf("Unexpected status %d", resp.StatusCode))
+		return maskAny(fmt.Errorf("Unexpected status %d from GET request to %s", resp.StatusCode, url))
 	}
 
 	if err := retry(op, timeout); err != nil {
@@ -120,21 +120,21 @@ func (c *ArangoClient) Delete(urlPath string, successStatusCodes, failureStatusC
 	op := func() error {
 		url, err := c.createURL(urlPath)
 		if err != nil {
-			return maskAny(err)
+			return maskAny(errgo.WithCausef(nil, err, "Failed creating URL for path '%s': %v", urlPath, err))
 		}
 		resp, err := http.Get(url)
 		if err != nil {
 			c.lastCoordinatorURL = nil // Change coordinator
-			return maskAny(err)
+			return maskAny(errgo.WithCausef(nil, err, "Failed performing DELETE request to %s: %v", url, err))
 		}
 		// Check for failure status
 		for _, code := range failureStatusCodes {
 			if resp.StatusCode == code {
 				var aerr ArangoError
 				if tryDecodeBody(resp.Body, &aerr); err == nil {
-					return maskAny(errgo.WithCausef(nil, FailureError, "Received status %d which is a failure (%s)", resp.StatusCode, aerr.Error()))
+					return maskAny(errgo.WithCausef(nil, failureError, "Received status %d, from DELETE request to %s, which is a failure (%s)", resp.StatusCode, url, aerr.Error()))
 				}
-				return maskAny(errgo.WithCausef(nil, FailureError, "Received status %d which is a failure", resp.StatusCode))
+				return maskAny(errgo.WithCausef(nil, failureError, "Received status %d, from DELETE request to %s, which is a failure", resp.StatusCode, url))
 			}
 		}
 		// Check for success status
@@ -146,7 +146,7 @@ func (c *ArangoClient) Delete(urlPath string, successStatusCodes, failureStatusC
 		}
 		// Unexpected status code
 		c.lastCoordinatorURL = nil // Change coordinator
-		return maskAny(fmt.Errorf("Unexpected status %d", resp.StatusCode))
+		return maskAny(fmt.Errorf("Unexpected status %d from DELETE request to %s", resp.StatusCode, url))
 	}
 
 	if err := retry(op, timeout); err != nil {
@@ -165,21 +165,21 @@ func (c *ArangoClient) Post(urlPath string, input, result interface{}, successSt
 	op := func() error {
 		url, err := c.createURL(urlPath)
 		if err != nil {
-			return maskAny(err)
+			return maskAny(errgo.WithCausef(nil, err, "Failed creating URL for path '%s': %v", urlPath, err))
 		}
 		resp, err := http.Post(url, contentTypeJson, bytes.NewReader(body))
 		if err != nil {
 			c.lastCoordinatorURL = nil // Change coordinator
-			return maskAny(err)
+			return maskAny(errgo.WithCausef(nil, err, "Failed performing POST request to %s: %v", url, err))
 		}
 		// Check for failure status
 		for _, code := range failureStatusCodes {
 			if resp.StatusCode == code {
 				var aerr ArangoError
 				if tryDecodeBody(resp.Body, &aerr); err == nil {
-					return maskAny(errgo.WithCausef(nil, FailureError, "Received status %d which is a failure (%s)", resp.StatusCode, aerr.Error()))
+					return maskAny(errgo.WithCausef(nil, failureError, "Received status %d, from POST request to %s, which is a failure (%s)", resp.StatusCode, url, aerr.Error()))
 				}
-				return maskAny(errgo.WithCausef(nil, FailureError, "Received status %d which is a failure", resp.StatusCode))
+				return maskAny(errgo.WithCausef(nil, failureError, "Received status %d, from POST request to %s, which is a failure", resp.StatusCode, url))
 			}
 		}
 		// Check for success status
@@ -187,8 +187,13 @@ func (c *ArangoClient) Post(urlPath string, input, result interface{}, successSt
 			if resp.StatusCode == code {
 				// Found a success status
 				if isSuccessStatusCode(code) && result != nil {
-					if err := tryDecodeBody(resp.Body, result); err != nil {
-						return maskAny(err)
+					defer resp.Body.Close()
+					b, err := ioutil.ReadAll(resp.Body)
+					if err != nil {
+						return maskAny(errgo.WithCausef(nil, err, "Failed reading response data from POST request to %s: %v", url, err))
+					}
+					if err := json.Unmarshal(b, result); err != nil {
+						return maskAny(errgo.WithCausef(nil, err, "Failed decoding response data from POST request to %s: %v", url, err))
 					}
 				}
 				// Return success
@@ -197,7 +202,7 @@ func (c *ArangoClient) Post(urlPath string, input, result interface{}, successSt
 		}
 		// Unexpected status code
 		c.lastCoordinatorURL = nil // Change coordinator
-		return maskAny(fmt.Errorf("Unexpected status %d", resp.StatusCode))
+		return maskAny(fmt.Errorf("Unexpected status %d from POST request to %s", resp.StatusCode, url))
 	}
 
 	if err := retry(op, timeout); err != nil {

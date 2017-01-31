@@ -348,6 +348,12 @@ func (s *reporter) createFailureReportFile(folder string, fileNames chan string,
 		"",
 		f.Message,
 	}
+	if len(f.Errors) > 0 {
+		lines = append(lines, "", "Error details:")
+		for i, err := range f.Errors {
+			lines = append(lines, fmt.Sprintf("Error %d: %#v", i, err))
+		}
+	}
 	p := filepath.Join(folder, "failure-report.txt")
 	if err := ioutil.WriteFile(p, []byte(strings.Join(lines, "\n")), 0644); err != nil {
 		return maskAny(err)
