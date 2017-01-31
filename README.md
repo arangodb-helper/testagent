@@ -22,6 +22,11 @@ The test-agent will introduce the following kinds of chaos.
 - [ ] Network traffic between servers is blocked (iptables DENY)
 - [ ] Network traffic between servers is ignored (iptables DROP)
 
+It should also be possible to:
+
+- [ ] Pause introducing chaos 
+- [ ] Resume introducing chaos 
+
 ## Test operations 
 
 The test agent will allow for multiple test scripts to be developed & run.
