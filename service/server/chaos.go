@@ -20,3 +20,12 @@ func chaosResumePage(ctx *macaron.Context, log *logging.Logger, service Service)
 	}
 	ctx.Redirect("/", http.StatusFound)
 }
+
+func chaosPage(ctx *macaron.Context, log *logging.Logger, service Service) {
+	// Chaos
+	chaos := chaosFromCluster(service.ChaosMonkey(), 1000)
+	log.Debugf("Showing %d chaos events", len(chaos.Events))
+	ctx.Data["Chaos"] = chaos
+
+	ctx.HTML(http.StatusOK, "chaos")
+}

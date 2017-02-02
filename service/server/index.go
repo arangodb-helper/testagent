@@ -41,17 +41,8 @@ func indexPage(ctx *macaron.Context, log *logging.Logger, service Service) {
 	ctx.Data["Tests"] = tests
 
 	// Chaos
-	cm := service.ChaosMonkey()
-	chaos := Chaos{State: "new"}
-	if cm != nil {
-		chaos.Active = cm.Active()
-		chaos.State = cm.State()
-		chaos.Events = cm.GetRecentEvents()
-		if len(chaos.Events) > maxChaosEvents {
-			chaos.Events = chaos.Events[:maxChaosEvents]
-		}
-	}
-	log.Debugf("Found %d chaos events", len(chaos.Events))
+	chaos := chaosFromCluster(service.ChaosMonkey(), 20)
+	log.Debugf("Showing %d chaos events", len(chaos.Events))
 	ctx.Data["Chaos"] = chaos
 
 	// Failure reports

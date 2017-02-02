@@ -15,12 +15,16 @@ func (e Event) String() string {
 }
 
 // Get a list of recent events
-func (c *chaosMonkey) GetRecentEvents() []Event {
+func (c *chaosMonkey) GetRecentEvents(maxEvents int) []Event {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	var result []Event
-	return append(result, c.recentEvents...)
+	source := c.recentEvents
+	if maxEvents < len(source) {
+		source = source[:maxEvents]
+	}
+	result := make([]Event, 0, maxEvents)
+	return append(result, source...)
 }
 
 // newEvent creates a new event with current time and given action.

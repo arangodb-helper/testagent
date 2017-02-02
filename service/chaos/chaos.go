@@ -2,6 +2,7 @@ package chaos
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"sync"
 	"time"
@@ -27,15 +28,33 @@ type ChaosMonkey interface {
 	WaitUntilInactive()
 
 	// Get a list of recent events
-	GetRecentEvents() []Event
+	GetRecentEvents(maxEvents int) []Event
+
+	// Return all current statistics
+	Statistics() []Statistic
+}
+
+type Statistic struct {
+	Name  string
+	Value int
 }
 
 // NewChaosMonkey creates a new chaos monkey for the given cluster
 func NewChaosMonkey(log *logging.Logger, cluster cluster.Cluster) ChaosMonkey {
-	return &chaosMonkey{
+	c := &chaosMonkey{
 		log:     log,
 		cluster: cluster,
 	}
+	c.actions = []*chaosAction{
+		&chaosAction{c.restartAgent, "Restart Agent", 0, 0, 0},
+		&chaosAction{c.restartDBServer, "Restart DBServer", 0, 0, 0},
+		&chaosAction{c.restartCoordinator, "Restart Coordinator", 0, 0, 0},
+		&chaosAction{c.killAgent, "Kill Agent", 0, 0, 0},
+		&chaosAction{c.killDBServer, "Kill DBServer", 0, 0, 0},
+		&chaosAction{c.killCoordinator, "Kill Coordinator", 0, 0, 0},
+		&chaosAction{c.rebootMachine, "Reboot Machine", 0, 0, 0},
+	}
+	return c
 }
 
 type chaosMonkey struct {
@@ -46,6 +65,15 @@ type chaosMonkey struct {
 	cancel       context.CancelFunc
 	cancelled    bool
 	recentEvents []Event // Limit list of events (last event first)
+	actions      []*chaosAction
+}
+
+type chaosAction struct {
+	action    func(*chaosAction) bool
+	name      string
+	succeeded int
+	failures  int
+	skipped   int
 }
 
 // Active returns true when chaos is being introduced.
@@ -99,22 +127,28 @@ func (c *chaosMonkey) WaitUntilInactive() {
 	}
 }
 
+// Return all current statistics
+func (c *chaosMonkey) Statistics() []Statistic {
+	result := make([]Statistic, 0, len(c.actions)*3)
+	for _, action := range c.actions {
+		result = append(result, Statistic{fmt.Sprintf("%s succeeded", action.name), action.succeeded})
+	}
+	for _, action := range c.actions {
+		result = append(result, Statistic{fmt.Sprintf("%s failed", action.name), action.failures})
+	}
+	for _, action := range c.actions {
+		result = append(result, Statistic{fmt.Sprintf("%s skipped", action.name), action.skipped})
+	}
+	return result
+}
+
 // chaosLoop runs the process to actually introduce chaos
 func (c *chaosMonkey) chaosLoop(ctx context.Context) {
-	chaosActions := []func() bool{
-		c.restartAgent,
-		c.restartDBServer,
-		c.restartCoordinator,
-		c.killAgent,
-		c.killDBServer,
-		c.killCoordinator,
-		c.rebootMachine,
-	}
 	for {
 		// Pick a random chaos action
-		action := chaosActions[rand.Intn(len(chaosActions))]
+		action := c.actions[rand.Intn(len(c.actions))]
 		var delay time.Duration
-		if action() {
+		if action.action(action) {
 			// Chaos was introduced
 			delay = time.Second * 30
 		} else {

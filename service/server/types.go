@@ -31,9 +31,10 @@ type Test struct {
 }
 
 type Chaos struct {
-	Active bool
-	State  string
-	Events []chaos.Event
+	Active     bool
+	State      string
+	Events     []chaos.Event
+	Statistics []chaos.Statistic
 }
 
 type FailureReport struct {
@@ -93,4 +94,15 @@ func failureReportFromReporter(f reporter.FailureReport) FailureReport {
 		Path:    filepath.Base(f.Path),
 		HRef:    "/" + path.Join("reports", filepath.Base(f.Path)),
 	}
+}
+
+func chaosFromCluster(cm chaos.ChaosMonkey, maxEvents int) Chaos {
+	chaos := Chaos{State: "new"}
+	if cm != nil {
+		chaos.Active = cm.Active()
+		chaos.State = cm.State()
+		chaos.Events = cm.GetRecentEvents(maxEvents)
+		chaos.Statistics = cm.Statistics()
+	}
+	return chaos
 }

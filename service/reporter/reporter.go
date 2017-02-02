@@ -20,6 +20,10 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const (
+	maxChaosEvents = 250
+)
+
 type Reporter interface {
 	ReportFailure(f test.Failure)
 	Reports() []FailureReport
@@ -318,11 +322,16 @@ func (s *reporter) createRecentChaosFile(folder string, fileNames chan string) e
 		"",
 	}
 	if cm := s.service.ChaosMonkey(); cm != nil {
-		lines = append(lines,
-			fmt.Sprintf("Chaos monkey on=%v", cm.Active()),
-			"",
-		)
-		events := cm.GetRecentEvents()
+		lines = append(lines, fmt.Sprintf("Chaos monkey on=%v", cm.Active()))
+
+		stats := cm.Statistics()
+		lines = append(lines, "", "Statistics:")
+		for _, st := range stats {
+			lines = append(lines, fmt.Sprintf("%s: %d", st.Name, st.Value))
+		}
+
+		lines = append(lines, "", "Recent events:")
+		events := cm.GetRecentEvents(maxChaosEvents)
 		for _, e := range events {
 			lines = append(lines,
 				e.String(),
