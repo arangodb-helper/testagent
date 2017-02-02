@@ -3,7 +3,6 @@ package simple
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"math/rand"
 	"net/url"
 	"time"
@@ -88,6 +87,8 @@ func (t *simpleTest) Status() test.TestStatus {
 			fmt.Sprintf("#existing documents removed failed: %d", t.deleteExistingCounter.failed),
 			fmt.Sprintf("#non-existing documents removed successfully: %d", t.deleteNonExistingCounter.succeeded),
 			fmt.Sprintf("#non-existing documents removed failed: %d", t.deleteNonExistingCounter.failed),
+			fmt.Sprintf("#import operations successfully: %d", t.importCounter.succeeded),
+			fmt.Sprintf("#import operations failed: %d", t.importCounter.failed),
 		},
 	}
 }
@@ -308,7 +309,7 @@ func (t *simpleTest) removeNonExistingDocument(collectionName string, key string
 	return nil
 }
 
-func (t *simpleTest) createImportDocument() (io.Reader, []string) {
+func (t *simpleTest) createImportDocument() ([]byte, []string) {
 	buf := &bytes.Buffer{}
 	keys := make([]string, 0, 10000)
 	fmt.Fprintf(buf, `[ "_key", "value", "name", "odd" ]`)
@@ -319,15 +320,15 @@ func (t *simpleTest) createImportDocument() (io.Reader, []string) {
 		fmt.Fprintf(buf, `[ "%s", %d, "Imported %d", %v ]`, key, i, i, i%2 != 0)
 		fmt.Fprintln(buf)
 	}
-	return bytes.NewReader(buf.Bytes()), keys
+	return buf.Bytes(), keys
 }
 
 func (t *simpleTest) importDocuments(collectionName string) error {
 	timeout := time.Minute
 	q := url.Values{}
 	q.Set("collection", collectionName)
-	rd, keys := t.createImportDocument()
-	if err := t.client.Post("/_api/import", q, rd, "application/x-www-form-urlencoded", nil, []int{200, 201, 202}, []int{400, 404, 409, 307}, timeout); err != nil {
+	importData, keys := t.createImportDocument()
+	if err := t.client.Post("/_api/import", q, importData, "application/x-www-form-urlencoded", nil, []int{200, 201, 202}, []int{400, 404, 409, 307}, timeout); err != nil {
 		// This is a failure
 		t.importCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to import documents in collection '%s': %v", collectionName, err))
