@@ -77,3 +77,4 @@ docker run -it --rm -p 4200:4200 \
 - `--arango-image` Docker image containing `arangod`.
 - `--docker-endpoint` How to reach the docker host (this option can be specified multiple times to use multiple docker hosts).
 - `--docker-host-ip` IP of docker host.
+- `--docker-net-host` If set, run all containers with `--net=host`. (Make sure the testagent container itself is also started with `--net=host`)
