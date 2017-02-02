@@ -24,6 +24,7 @@ type ArangodbConfig struct {
 	ArangoImage     string   // Docker image containing arangod (can be empty)
 	DockerHostIP    string   // IP of docker host
 	DockerEndpoints []string // Endpoint used to reach the docker daemon(s)
+	DockerNetHost   bool     // If set, run containers with `--net=host`
 	Verbose         bool     // Turn on debug logging
 }
 

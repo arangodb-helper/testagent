@@ -272,6 +272,9 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 	if c.Verbose {
 		args = append(args, "--verbose")
 	}
+	if c.DockerNetHost {
+		args = append(args, "--dockerNetHost")
+	}
 	if c.ArangoImage != "" {
 		args = append(args,
 			fmt.Sprintf("--docker=%s", c.ArangodbConfig.ArangoImage),
@@ -305,8 +308,11 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 					},
 				},
 			},
-			PublishAllPorts: true,
+			PublishAllPorts: false,
 		},
+	}
+	if c.DockerNetHost {
+		opts.HostConfig.NetworkMode = "host"
 	}
 	if strings.HasPrefix(dockerHost.endpoint, "unix://") {
 		path := strings.TrimPrefix(dockerHost.endpoint, "unix://")

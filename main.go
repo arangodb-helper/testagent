@@ -49,6 +49,7 @@ func init() {
 	f.StringVar(&appFlags.ArangoImage, "arango-image", getEnvVar("ARANGO_IMAGE", ""), "name of the Docker image containing arangod (the database)")
 	f.StringSliceVar(&appFlags.DockerEndpoints, "docker-endpoint", defaultDockerEndpoints, "Endpoints used to reach the docker daemons")
 	f.StringVar(&appFlags.DockerHostIP, "docker-host-ip", "", "IP of the docker host")
+	f.BoolVar(&appFlags.DockerNetHost, "docker-net-host", false, "If set, run all containers with `--net=host`")
 	f.StringVar(&appFlags.ReportDir, "report-dir", getEnvVar("REPORT_DIR", "."), "Directory in which failure reports will be created")
 }
 
