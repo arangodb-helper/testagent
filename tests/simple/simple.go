@@ -77,18 +77,21 @@ func (t *simpleTest) Status() test.TestStatus {
 		Failures: t.failures,
 		Messages: []string{
 			fmt.Sprintf("Current #documents: %d", len(t.existingKeys)),
-			fmt.Sprintf("#documents created successfully: %d", t.createCounter.succeeded),
-			fmt.Sprintf("#documents created failed: %d", t.createCounter.failed),
-			fmt.Sprintf("#existing documents read successfully: %d", t.readExistingCounter.succeeded),
-			fmt.Sprintf("#existing documents read failed: %d", t.readExistingCounter.failed),
-			fmt.Sprintf("#non-existing documents read successfully: %d", t.readNonExistingCounter.succeeded),
-			fmt.Sprintf("#non-existing documents read failed: %d", t.readNonExistingCounter.failed),
-			fmt.Sprintf("#existing documents removed successfully: %d", t.deleteExistingCounter.succeeded),
-			fmt.Sprintf("#existing documents removed failed: %d", t.deleteExistingCounter.failed),
-			fmt.Sprintf("#non-existing documents removed successfully: %d", t.deleteNonExistingCounter.succeeded),
-			fmt.Sprintf("#non-existing documents removed failed: %d", t.deleteNonExistingCounter.failed),
-			fmt.Sprintf("#import operations successfully: %d", t.importCounter.succeeded),
-			fmt.Sprintf("#import operations failed: %d", t.importCounter.failed),
+			"Succeeded:",
+			fmt.Sprintf("#documents created: %d", t.createCounter.succeeded),
+			fmt.Sprintf("#existing documents read: %d", t.readExistingCounter.succeeded),
+			fmt.Sprintf("#existing documents removed: %d", t.deleteExistingCounter.succeeded),
+			fmt.Sprintf("#non-existing documents read: %d", t.readNonExistingCounter.succeeded),
+			fmt.Sprintf("#non-existing documents removed: %d", t.deleteNonExistingCounter.succeeded),
+			fmt.Sprintf("#import operations: %d", t.importCounter.succeeded),
+			"",
+			"Failed:",
+			fmt.Sprintf("#documents created: %d", t.createCounter.failed),
+			fmt.Sprintf("#existing documents read: %d", t.readExistingCounter.failed),
+			fmt.Sprintf("#existing documents removed: %d", t.deleteExistingCounter.failed),
+			fmt.Sprintf("#non-existing documents read: %d", t.readNonExistingCounter.failed),
+			fmt.Sprintf("#non-existing documents removed: %d", t.deleteNonExistingCounter.failed),
+			fmt.Sprintf("#import operations: %d", t.importCounter.failed),
 		},
 	}
 }
@@ -167,6 +170,16 @@ func (t *simpleTest) testLoop() {
 		}
 	}
 
+	removeExistingKey := func(key string) {
+		newList := make([]string, 0, len(t.existingKeys))
+		for _, k := range t.existingKeys {
+			if k != key {
+				newList = append(newList, k)
+			}
+		}
+		t.existingKeys = newList
+	}
+
 	state := 0
 	for {
 		// Should we stop
@@ -190,9 +203,11 @@ func (t *simpleTest) testLoop() {
 
 		case 1:
 			// Read a random existing document
-			randomKey := t.existingKeys[rand.Intn(len(t.existingKeys))]
-			if err := t.readExistingDocument(collUser, randomKey); err != nil {
-				t.log.Errorf("Failed to read existing document '%s': %#v", randomKey, err)
+			if len(t.existingKeys) > 0 {
+				randomKey := t.existingKeys[rand.Intn(len(t.existingKeys))]
+				if err := t.readExistingDocument(collUser, randomKey); err != nil {
+					t.log.Errorf("Failed to read existing document '%s': %#v", randomKey, err)
+				}
 			}
 			state++
 
@@ -206,9 +221,14 @@ func (t *simpleTest) testLoop() {
 
 		case 3:
 			// Remove a random existing document
-			randomKey := t.existingKeys[rand.Intn(len(t.existingKeys))]
-			if err := t.removeExistingDocument(collUser, randomKey); err != nil {
-				t.log.Errorf("Failed to remove existing document '%s': %#v", randomKey, err)
+			if len(t.existingKeys) > 0 {
+				randomKey := t.existingKeys[rand.Intn(len(t.existingKeys))]
+				if err := t.removeExistingDocument(collUser, randomKey); err != nil {
+					t.log.Errorf("Failed to remove existing document '%s': %#v", randomKey, err)
+				} else {
+					// Remove succeeded, key should no longer exist
+					removeExistingKey(randomKey)
+				}
 			}
 			state++
 
@@ -249,7 +269,9 @@ func (t *simpleTest) createCollection(name string, numberOfShards, replicationFa
 
 func (t *simpleTest) createDocument(collectionName string, document interface{}) error {
 	timeout := time.Minute
-	if err := t.client.Post(fmt.Sprintf("/_api/document/%s", collectionName), nil, document, "", nil, []int{200, 201, 202}, []int{400, 404, 409, 307}, timeout); err != nil {
+	q := url.Values{}
+	q.Set("waitForSync", "true")
+	if err := t.client.Post(fmt.Sprintf("/_api/document/%s", collectionName), q, document, "", nil, []int{200, 201, 202}, []int{400, 404, 409, 307}, timeout); err != nil {
 		// This is a failure
 		t.createCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to create document in collection '%s': %v", collectionName, err))
@@ -287,7 +309,9 @@ func (t *simpleTest) readNonExistingDocument(collectionName string, key string) 
 
 func (t *simpleTest) removeExistingDocument(collectionName string, key string) error {
 	timeout := time.Minute
-	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, []int{200, 201, 202}, []int{400, 404, 412, 307}, timeout); err != nil {
+	q := url.Values{}
+	q.Set("waitForSync", "true")
+	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, []int{200, 201, 202}, []int{400, 404, 412, 307}, timeout); err != nil {
 		// This is a failure
 		t.deleteExistingCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to delete document '%s' in collection '%s': %v", key, collectionName, err))
@@ -299,7 +323,9 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key string) e
 
 func (t *simpleTest) removeNonExistingDocument(collectionName string, key string) error {
 	timeout := time.Minute
-	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, []int{404}, []int{200, 201, 202, 400, 412, 307}, timeout); err != nil {
+	q := url.Values{}
+	q.Set("waitForSync", "true")
+	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, []int{404}, []int{200, 201, 202, 400, 412, 307}, timeout); err != nil {
 		// This is a failure
 		t.deleteNonExistingCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to delete non-existing document '%s' in collection '%s': %v", key, collectionName, err))
@@ -327,6 +353,7 @@ func (t *simpleTest) importDocuments(collectionName string) error {
 	timeout := time.Minute
 	q := url.Values{}
 	q.Set("collection", collectionName)
+	q.Set("waitForSync", "true")
 	importData, keys := t.createImportDocument()
 	if err := t.client.Post("/_api/import", q, importData, "application/x-www-form-urlencoded", nil, []int{200, 201, 202}, []int{400, 404, 409, 307}, timeout); err != nil {
 		// This is a failure
