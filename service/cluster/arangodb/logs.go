@@ -20,6 +20,9 @@ func (m *arangodb) CollectMachineLogs(w io.Writer) error {
 // CollectAgentLogs collects recent logs from the agent and writes them to the given writer.
 func (m *arangodb) CollectAgentLogs(w io.Writer) error {
 	if m.HasAgent() {
+		if err := m.updateServerInfo(); err != nil {
+			return maskAny(err)
+		}
 		if err := m.collectLogs(w, m.agentContainerID); err != nil && errgo.Cause(err) != io.EOF {
 			return maskAny(err)
 		}
@@ -30,6 +33,9 @@ func (m *arangodb) CollectAgentLogs(w io.Writer) error {
 
 // CollectDBServerLogs collects recent logs from the dbserver and writes them to the given writer.
 func (m *arangodb) CollectDBServerLogs(w io.Writer) error {
+	if err := m.updateServerInfo(); err != nil {
+		return maskAny(err)
+	}
 	if err := m.collectLogs(w, m.dbserverContainerID); err != nil && errgo.Cause(err) != io.EOF {
 		return maskAny(err)
 	}
@@ -38,6 +44,9 @@ func (m *arangodb) CollectDBServerLogs(w io.Writer) error {
 
 // CollectCoordinatorLogs collects recent logs from the coordinator and writes them to the given writer.
 func (m *arangodb) CollectCoordinatorLogs(w io.Writer) error {
+	if err := m.updateServerInfo(); err != nil {
+		return maskAny(err)
+	}
 	if err := m.collectLogs(w, m.coordinatorContainerID); err != nil && errgo.Cause(err) != io.EOF {
 		return maskAny(err)
 	}
