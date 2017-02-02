@@ -228,6 +228,11 @@ func (t *simpleTest) testLoop() {
 				} else {
 					// Remove succeeded, key should no longer exist
 					removeExistingKey(randomKey)
+
+					// Now try to read it, it should not exist
+					if err := t.readNonExistingDocument(collUser, randomKey); err != nil {
+						t.log.Errorf("Failed to read just-removed document '%s': %#v", randomKey, err)
+					}
 				}
 			}
 			state++
