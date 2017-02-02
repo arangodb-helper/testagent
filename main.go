@@ -75,6 +75,7 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 		Exitf("Invalid log-level '%s': %#v", appFlags.logLevel, err)
 	}
 	logging.SetLevel(level, projectName)
+	appFlags.ArangodbConfig.Verbose = appFlags.logLevel == "debug"
 
 	// Get host IP
 	if appFlags.ArangodbConfig.DockerHostIP == "" {

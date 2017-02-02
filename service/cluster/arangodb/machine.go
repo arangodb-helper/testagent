@@ -269,6 +269,9 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 		fmt.Sprintf("--dockerEndpoint=%s", dockerHost.endpoint),
 		fmt.Sprintf("--ownAddress=%s", dockerHost.ip),
 	}
+	if c.Verbose {
+		args = append(args, "--verbose")
+	}
 	if c.ArangoImage != "" {
 		args = append(args,
 			fmt.Sprintf("--docker=%s", c.ArangodbConfig.ArangoImage),
