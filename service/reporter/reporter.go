@@ -150,7 +150,7 @@ func (s *reporter) nextReportID() string {
 		id = c.ID()
 	}
 	index := atomic.AddInt32(&s.lastReportID, 1)
-	return fmt.Sprintf("failure-%s-%d", id, index)
+	return fmt.Sprintf("failure-%s-%05d", id, index)
 }
 
 // addToTar adds the contents of the given file to the given tar file.
