@@ -482,10 +482,11 @@ func (m *arangodb) testInstance(log *logging.Logger, url url.URL, name string, t
 		log.Debugf("Waiting for %s-%d on %s to get ready", name, m.index, url.String())
 	}
 	start := time.Now()
+	client := &http.Client{Timeout: time.Second * 5}
 	for {
 		versionURL := url
 		versionURL.Path = "/_api/version"
-		r, e := http.Get(versionURL.String())
+		r, e := client.Get(versionURL.String())
 		if e == nil && r != nil && r.StatusCode == 200 {
 			atomic.StoreInt32(activeVar, 1)
 			if log != nil {
