@@ -44,7 +44,7 @@ func (e ArangoError) Error() string {
 	return fmt.Sprintf("%s: (code %d, errorNum %d)", e.ErrorMessage, e.Code, e.ErrorNum)
 }
 
-func (c *ArangoClient) createURL(urlPath string) (string, error) {
+func (c *ArangoClient) createURL(urlPath string, query url.Values) (string, error) {
 	if c.lastCoordinatorURL == nil {
 		// Pick a random machine
 		machines, err := c.cluster.Machines()
@@ -60,14 +60,17 @@ func (c *ArangoClient) createURL(urlPath string) (string, error) {
 	}
 	u := *c.lastCoordinatorURL
 	u.Path = urlPath
+	if query != nil {
+		u.RawQuery = query.Encode()
+	}
 	return u.String(), nil
 }
 
 // Get performs a GET operation of a coordinator.
 // If result != nil and status == 200, the response is parsed into result.
-func (c *ArangoClient) Get(urlPath string, result interface{}, successStatusCodes, failureStatusCodes []int, timeout time.Duration) error {
+func (c *ArangoClient) Get(urlPath string, query url.Values, result interface{}, successStatusCodes, failureStatusCodes []int, timeout time.Duration) error {
 	op := func() error {
-		url, err := c.createURL(urlPath)
+		url, err := c.createURL(urlPath, query)
 		if err != nil {
 			return maskAny(errgo.WithCausef(nil, err, "Failed creating URL for path '%s': %v", urlPath, err))
 		}
@@ -116,9 +119,9 @@ func (c *ArangoClient) Get(urlPath string, result interface{}, successStatusCode
 }
 
 // Delete performs a DELETE operation of a coordinator.
-func (c *ArangoClient) Delete(urlPath string, successStatusCodes, failureStatusCodes []int, timeout time.Duration) error {
+func (c *ArangoClient) Delete(urlPath string, query url.Values, successStatusCodes, failureStatusCodes []int, timeout time.Duration) error {
 	op := func() error {
-		url, err := c.createURL(urlPath)
+		url, err := c.createURL(urlPath, query)
 		if err != nil {
 			return maskAny(errgo.WithCausef(nil, err, "Failed creating URL for path '%s': %v", urlPath, err))
 		}
@@ -157,17 +160,24 @@ func (c *ArangoClient) Delete(urlPath string, successStatusCodes, failureStatusC
 
 // Post performs a POST operation of a coordinator.
 // The given input is posted to the server, if result != nil and status == 200, the response is parsed into result.
-func (c *ArangoClient) Post(urlPath string, input, result interface{}, successStatusCodes, failureStatusCodes []int, timeout time.Duration) error {
-	body, err := json.Marshal(input)
-	if err != nil {
-		return maskAny(err)
+func (c *ArangoClient) Post(urlPath string, query url.Values, input interface{}, contentType string, result interface{}, successStatusCodes, failureStatusCodes []int, timeout time.Duration) error {
+	inputReader, ok := input.(io.Reader)
+	if !ok {
+		body, err := json.Marshal(input)
+		if err != nil {
+			return maskAny(err)
+		}
+		inputReader = bytes.NewReader(body)
+	}
+	if contentType == "" {
+		contentType = contentTypeJson
 	}
 	op := func() error {
-		url, err := c.createURL(urlPath)
+		url, err := c.createURL(urlPath, query)
 		if err != nil {
 			return maskAny(errgo.WithCausef(nil, err, "Failed creating URL for path '%s': %v", urlPath, err))
 		}
-		resp, err := http.Post(url, contentTypeJson, bytes.NewReader(body))
+		resp, err := http.Post(url, contentType, inputReader)
 		if err != nil {
 			c.lastCoordinatorURL = nil // Change coordinator
 			return maskAny(errgo.WithCausef(nil, err, "Failed performing POST request to %s: %v", url, err))

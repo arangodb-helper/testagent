@@ -91,3 +91,6 @@ ifneq ($(DOCKERNAMESPACE), arangodb)
 	docker tag arangodb/testagent $(DOCKERNAMESPACE)/testagent
 endif
 	docker push $(DOCKERNAMESPACE)/testagent
+
+localtest:
+	docker run -it --rm --net=host -v $(HOME)/tmp:/reports -v /var/run/docker.sock:/var/run/docker.sock arangodb/testagent --docker-host-ip=127.0.0.1 --docker-net-host 
