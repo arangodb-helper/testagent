@@ -13,14 +13,14 @@ The test-agent will introduce the following kinds of chaos.
 
 - [x] Restart a server, one of each type at a time 
 - [x] Kill a server, one of each type at a time 
-- [ ] DBServer is completely lost & will not return 
-- [ ] Coordinator is completely lost & will not return 
 - [x] Entire machine (with agent, dbserver & coordinator) is restarted 
+- [ ] Entire machine (with agent, dbserver & coordinator) is replaced (currently impossible)
 - [ ] Entire machine (with dbserver & coordinator) is lost and replaced by another one 
 - [ ] Entire machine (with dbserver & coordinator) is added 
 - [ ] Entire machine (with dbserver & coordinator) is removed
 - [x] Network traffic between servers is blocked (iptables REJECT)
 - [x] Network traffic between servers is ignored (iptables DROP)
+- [ ] Split brain
 
 It should also be possible to:
 
