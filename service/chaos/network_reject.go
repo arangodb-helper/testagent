@@ -6,8 +6,7 @@ import (
 	"time"
 )
 
-// restartAgent randomly picks an agent and restarts it.
-// Before doing so, it first checks if restarting an agent is allowed on the current cluster state.
+// rejectAgentTraffic randomly picks an agent and actively rejects all network traffic to it it.
 func (c *chaosMonkey) rejectAgentTraffic(ctx context.Context, action *chaosAction) bool {
 	agentMachines, _, err := c.checkAgencyReadyStatus()
 	if err != nil {
@@ -47,8 +46,7 @@ func (c *chaosMonkey) rejectAgentTraffic(ctx context.Context, action *chaosActio
 	return true
 }
 
-// restartDBServer randomly picks a dbserver and restarts it.
-// Before doing so, it first checks if restarting a dbserver is allowed on the current cluster state.
+// rejectDBServerTraffic randomly picks an dbserver and actively rejects all network traffic to it it.
 func (c *chaosMonkey) rejectDBServerTraffic(ctx context.Context, action *chaosAction) bool {
 	readyMachines, notReadyServers, err := c.checkDBServerReadyStatus()
 	if err != nil {
@@ -93,8 +91,7 @@ func (c *chaosMonkey) rejectDBServerTraffic(ctx context.Context, action *chaosAc
 	return true
 }
 
-// restartCoordinator randomly picks a coordinator and restarts it.
-// Before doing so, it first checks if restarting a coordinator is allowed on the current cluster state.
+// rejectCoordinatorTraffic randomly picks an coordinator and actively rejects all network traffic to it it.
 func (c *chaosMonkey) rejectCoordinatorTraffic(ctx context.Context, action *chaosAction) bool {
 	readyMachines, _, err := c.checkCoordinatorReadyStatus()
 	if err != nil {
