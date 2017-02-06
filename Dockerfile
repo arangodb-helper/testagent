@@ -12,8 +12,8 @@ ENV RUNNING_IN_DOCKER=true
 ENV ARANGODB_IMAGE=ewoutp/arangodb-starter
 
 # Database image 
-#ENV ARANGO_IMAGE=arangodb/arangodb:3.1.9
-ENV ARANGO_IMAGE=neunhoef/arangodb:3.1.devel
+ENV ARANGO_IMAGE=arangodb/arangodb:3.1.10
+#ENV ARANGO_IMAGE=neunhoef/arangodb:3.1.devel
 
 # Failure reports dir 
 ENV REPORT_DIR=/reports
