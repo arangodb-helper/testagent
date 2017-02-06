@@ -47,6 +47,7 @@ func init() {
 	f.StringVar(&appFlags.logLevel, "log-level", "debug", "Minimum log level (debug|info|warning|error)")
 	f.StringVar(&appFlags.ArangodbImage, "arangodb-image", getEnvVar("ARANGODB_IMAGE", "arangodb/arangodb-starter"), "name of the Docker image containing arangodb (the cluster starter)")
 	f.StringVar(&appFlags.ArangoImage, "arango-image", getEnvVar("ARANGO_IMAGE", ""), "name of the Docker image containing arangod (the database)")
+	f.StringVar(&appFlags.NetworkBlockerImage, "network-blocker-image", getEnvVar("NETWORK_BLOCKER_IMAGE", ""), "name of the Docker image containing network-blocker")
 	f.StringSliceVar(&appFlags.DockerEndpoints, "docker-endpoint", defaultDockerEndpoints, "Endpoints used to reach the docker daemons")
 	f.StringVar(&appFlags.DockerHostIP, "docker-host-ip", "", "IP of the docker host")
 	f.BoolVar(&appFlags.DockerNetHost, "docker-net-host", false, "If set, run all containers with `--net=host`")

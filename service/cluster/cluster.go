@@ -103,6 +103,27 @@ type Machine interface {
 	// Perform a forced restart of the coordinator. This function does NOT wait until the coordinator is ready again.
 	KillCoordinator() error
 
+	// Actively reject all network traffic to the agent
+	RejectAgentTraffic() error
+	// Actively reject all network traffic to the dbserver
+	RejectDBServerTraffic() error
+	// Actively reject all network traffic to the coordinator
+	RejectCoordinatorTraffic() error
+
+	// Silently drop all network traffic to the agent
+	DropAgentTraffic() error
+	// Silently drop all network traffic to the dbserver
+	DropDBServerTraffic() error
+	// Silently drop all network traffic to the coordinator
+	DropCoordinatorTraffic() error
+
+	// Accept all network traffic to the agent
+	AcceptAgentTraffic() error
+	// Accept all network traffic to the dbserver
+	AcceptDBServerTraffic() error
+	// Accept all network traffic to the coordinator
+	AcceptCoordinatorTraffic() error
+
 	// CollectMachineLogs collects recent logs from the machine running the servers and writes them to the given writer.
 	CollectMachineLogs(w io.Writer) error
 	// CollectAgentLogs collects recent logs from the agent and writes them to the given writer.

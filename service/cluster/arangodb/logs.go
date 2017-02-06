@@ -4,7 +4,7 @@ import (
 	"io"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
+	dc "github.com/fsouza/go-dockerclient"
 	"github.com/juju/errgo"
 )
 
@@ -57,7 +57,7 @@ func (m *arangodb) CollectCoordinatorLogs(w io.Writer) error {
 func (m *arangodb) collectLogs(w io.Writer, containerID string) error {
 	since := time.Now().Add(-time.Minute * 10)
 	m.log.Debugf("fetching logs from %s", containerID)
-	if err := m.dockerHost.client.Logs(docker.LogsOptions{
+	if err := m.dockerHost.Client.Logs(dc.LogsOptions{
 		Container:    containerID,
 		OutputStream: w,
 		RawTerminal:  true,
