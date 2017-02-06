@@ -53,6 +53,9 @@ func NewChaosMonkey(log *logging.Logger, cluster cluster.Cluster) ChaosMonkey {
 		&chaosAction{c.killDBServer, "Kill DBServer", 0, 0, 0},
 		&chaosAction{c.killCoordinator, "Kill Coordinator", 0, 0, 0},
 		&chaosAction{c.rebootMachine, "Reboot Machine", 0, 0, 0},
+		&chaosAction{c.rejectAgentTraffic, "Reject Agent Traffic", 0, 0, 0},
+		&chaosAction{c.rejectDBServerTraffic, "Reject DBServer Traffic", 0, 0, 0},
+		&chaosAction{c.rejectCoordinatorTraffic, "Reject Coordinator Traffic", 0, 0, 0},
 	}
 	return c
 }
@@ -69,7 +72,7 @@ type chaosMonkey struct {
 }
 
 type chaosAction struct {
-	action    func(*chaosAction) bool
+	action    func(context.Context, *chaosAction) bool
 	name      string
 	succeeded int
 	failures  int
@@ -148,11 +151,11 @@ func (c *chaosMonkey) chaosLoop(ctx context.Context) {
 		// Pick a random chaos action
 		action := c.actions[rand.Intn(len(c.actions))]
 		var delay time.Duration
-		if action.action(action) {
+		if action.action(ctx, action) {
 			// Chaos was introduced
 			delay = time.Second * 30
 		} else {
-			// Chaos was not introducted, wait a bit shorter
+			// Chaos was not introduced, wait a bit shorter
 			delay = time.Second * 2
 		}
 		select {

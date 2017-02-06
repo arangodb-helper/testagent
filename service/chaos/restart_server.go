@@ -1,10 +1,13 @@
 package chaos
 
-import "math/rand"
+import (
+	"context"
+	"math/rand"
+)
 
 // restartAgent randomly picks an agent and restarts it.
 // Before doing so, it first checks if restarting an agent is allowed on the current cluster state.
-func (c *chaosMonkey) restartAgent(action *chaosAction) bool {
+func (c *chaosMonkey) restartAgent(ctx context.Context, action *chaosAction) bool {
 	agentMachines, _, err := c.checkAgencyReadyStatus()
 	if err != nil {
 		c.log.Infof("Not all agents are ready (%s), so I cannot restart one now", err.Error())
@@ -33,7 +36,7 @@ func (c *chaosMonkey) restartAgent(action *chaosAction) bool {
 
 // restartDBServer randomly picks a dbserver and restarts it.
 // Before doing so, it first checks if restarting a dbserver is allowed on the current cluster state.
-func (c *chaosMonkey) restartDBServer(action *chaosAction) bool {
+func (c *chaosMonkey) restartDBServer(ctx context.Context, action *chaosAction) bool {
 	readyMachines, notReadyServers, err := c.checkDBServerReadyStatus()
 	if err != nil {
 		c.log.Infof("Failed to check dbserver ready status (%s), so I cannot restart one now", err.Error())
@@ -67,7 +70,7 @@ func (c *chaosMonkey) restartDBServer(action *chaosAction) bool {
 
 // restartCoordinator randomly picks a coordinator and restarts it.
 // Before doing so, it first checks if restarting a coordinator is allowed on the current cluster state.
-func (c *chaosMonkey) restartCoordinator(action *chaosAction) bool {
+func (c *chaosMonkey) restartCoordinator(ctx context.Context, action *chaosAction) bool {
 	readyMachines, _, err := c.checkCoordinatorReadyStatus()
 	if err != nil {
 		c.log.Infof("Failed to check coordinator ready status (%s), so I cannot restart one now", err.Error())

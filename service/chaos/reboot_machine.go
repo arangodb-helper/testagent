@@ -1,10 +1,13 @@
 package chaos
 
-import "math/rand"
+import (
+	"context"
+	"math/rand"
+)
 
 // rebootMachine randomly picks a machine and restarts it gracefully.
 // Before doing so, it first checks if reboot a machine is allowed on the current cluster state.
-func (c *chaosMonkey) rebootMachine(action *chaosAction) bool {
+func (c *chaosMonkey) rebootMachine(ctx context.Context, action *chaosAction) bool {
 	readyAgentMachines, _, _ := c.checkAgencyReadyStatus()
 	readyDBServerMachines, notReadyDBServers, _ := c.checkDBServerReadyStatus()
 	readyCoordinatorMachines, _, _ := c.checkCoordinatorReadyStatus()
