@@ -31,6 +31,8 @@ func logsPage(ctx *macaron.Context, log *logging.Logger, service Service) {
 					m.CollectCoordinatorLogs(&buf)
 				case "machine":
 					m.CollectMachineLogs(&buf)
+				case "network":
+					m.CollectNetworkLogs(&buf)
 				default:
 					showError(ctx, fmt.Errorf("Unknown mode '%s'", mode))
 					return

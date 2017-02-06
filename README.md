@@ -19,8 +19,8 @@ The test-agent will introduce the following kinds of chaos.
 - [ ] Entire machine (with dbserver & coordinator) is lost and replaced by another one 
 - [ ] Entire machine (with dbserver & coordinator) is added 
 - [ ] Entire machine (with dbserver & coordinator) is removed
-- [ ] Network traffic between servers is blocked (iptables DENY)
-- [ ] Network traffic between servers is ignored (iptables DROP)
+- [x] Network traffic between servers is blocked (iptables REJECT)
+- [x] Network traffic between servers is ignored (iptables DROP)
 
 It should also be possible to:
 

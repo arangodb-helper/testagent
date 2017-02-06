@@ -1,10 +1,13 @@
 package chaos
 
-import "math/rand"
+import (
+	"context"
+	"math/rand"
+)
 
 // killAgent randomly picks an agent and kills it (the hard way).
 // Before doing so, it first checks if killing an agent is allowed on the current cluster state.
-func (c *chaosMonkey) killAgent(action *chaosAction) bool {
+func (c *chaosMonkey) killAgent(ctx context.Context, action *chaosAction) bool {
 	agentMachines, _, err := c.checkAgencyReadyStatus()
 	if err != nil {
 		c.log.Infof("Not all agents are ready (%s), so I cannot kill one now", err.Error())
@@ -33,7 +36,7 @@ func (c *chaosMonkey) killAgent(action *chaosAction) bool {
 
 // killDBServer randomly picks a dbserver and kills it.
 // Before doing so, it first checks if killing a dbserver is allowed on the current cluster state.
-func (c *chaosMonkey) killDBServer(action *chaosAction) bool {
+func (c *chaosMonkey) killDBServer(ctx context.Context, action *chaosAction) bool {
 	readyMachines, notReadyServers, err := c.checkDBServerReadyStatus()
 	if err != nil {
 		c.log.Infof("Failed to check dbserver ready status (%s), so I cannot kill one now", err.Error())
@@ -67,7 +70,7 @@ func (c *chaosMonkey) killDBServer(action *chaosAction) bool {
 
 // killCoordinator randomly picks a coordinator and kills it.
 // Before doing so, it first checks if killing a coordinator is allowed on the current cluster state.
-func (c *chaosMonkey) killCoordinator(action *chaosAction) bool {
+func (c *chaosMonkey) killCoordinator(ctx context.Context, action *chaosAction) bool {
 	readyMachines, _, err := c.checkCoordinatorReadyStatus()
 	if err != nil {
 		c.log.Infof("Failed to check coordinator ready status (%s), so I cannot kill one now", err.Error())

@@ -4,7 +4,7 @@ import (
 	"io"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
+	dc "github.com/fsouza/go-dockerclient"
 	"github.com/juju/errgo"
 )
 
@@ -12,6 +12,15 @@ import (
 func (m *arangodb) CollectMachineLogs(w io.Writer) error {
 	// Collect logs from arangodb
 	if err := m.collectLogs(w, m.containerID); err != nil && errgo.Cause(err) != io.EOF {
+		return maskAny(err)
+	}
+	return nil
+}
+
+// CollectNetworkLogs collects recent logs from the network(-blocker) running the servers and writes them to the given writer.
+func (m *arangodb) CollectNetworkLogs(w io.Writer) error {
+	// Collect logs from network-blocker
+	if err := m.collectLogs(w, m.nwBlockerContainerID); err != nil && errgo.Cause(err) != io.EOF {
 		return maskAny(err)
 	}
 	return nil
@@ -57,7 +66,7 @@ func (m *arangodb) CollectCoordinatorLogs(w io.Writer) error {
 func (m *arangodb) collectLogs(w io.Writer, containerID string) error {
 	since := time.Now().Add(-time.Minute * 10)
 	m.log.Debugf("fetching logs from %s", containerID)
-	if err := m.dockerHost.client.Logs(docker.LogsOptions{
+	if err := m.dockerHost.Client.Logs(dc.LogsOptions{
 		Container:    containerID,
 		OutputStream: w,
 		RawTerminal:  true,

@@ -15,6 +15,9 @@ ENV ARANGODB_IMAGE=ewoutp/arangodb-starter
 ENV ARANGO_IMAGE=arangodb/arangodb:3.1.10
 #ENV ARANGO_IMAGE=neunhoef/arangodb:3.1.devel
 
+# network-blocker image
+ENV NETWORK_BLOCKER_IMAGE=arangodb/network-blocker
+
 # Failure reports dir 
 ENV REPORT_DIR=/reports
 VOLUME /reports

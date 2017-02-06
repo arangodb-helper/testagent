@@ -272,6 +272,26 @@ func (s *reporter) collectServerLogs(folder string, fileNames chan string, machi
 				}
 				return nil
 			})
+			g.Go(func() error {
+				// Collect network logs
+				if fileName, err := func() (string, error) {
+					f, err := os.Create(filepath.Join(folder, fmt.Sprintf("%s-network.log", filePrefix)))
+					if err != nil {
+						return "", maskAny(err)
+					}
+					defer f.Close()
+					if err := m.CollectNetworkLogs(f); err != nil {
+						fmt.Fprintf(f, "\nError fetching logs: %#v\n", err)
+						s.log.Errorf("Error fetching network logs: %#v", err)
+					}
+					return f.Name(), nil
+				}(); err != nil {
+					return maskAny(err)
+				} else {
+					fileNames <- fileName
+				}
+				return nil
+			})
 		}
 	}
 
