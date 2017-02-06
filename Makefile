@@ -64,7 +64,6 @@ $(GOBUILDDIR):
 	GOPATH=$(GOBUILDDIR) go get github.com/cenkalti/backoff
 	GOPATH=$(GOBUILDDIR) go get gopkg.in/macaron.v1
 	GOPATH=$(GOBUILDDIR) go get github.com/go-macaron/bindata
-	GOPATH=$(GOBUILDDIR) go get github.com/ahmetalpbalkan/dlog
 	GOPATH=$(GOBUILDDIR) go get github.com/dustin/go-humanize
 
 templates/templates.go: $(GOBUILDDIR) $(TEMPLATES)
