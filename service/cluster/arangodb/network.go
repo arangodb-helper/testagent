@@ -119,3 +119,16 @@ func (m *arangodb) AcceptCoordinatorTraffic() error {
 	}
 	return nil
 }
+
+// CollectNetworkRules fetches all network rules that are involve one of the servers
+func (m *arangodb) CollectNetworkRules() ([]string, error) {
+	if api := m.nwBlocker; api == nil {
+		return nil, maskAny(fmt.Errorf("network-blocker not yet initialized"))
+	} else {
+		if list, err := api.Rules(); err != nil {
+			return nil, maskAny(errgo.WithCausef(nil, err, "Failed to list network rules"))
+		} else {
+			return list, nil
+		}
+	}
+}

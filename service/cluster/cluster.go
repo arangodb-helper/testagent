@@ -135,6 +135,9 @@ type Machine interface {
 	// CollectCoordinatorLogs collects recent logs from the coordinator and writes them to the given writer.
 	CollectCoordinatorLogs(w io.Writer) error
 
+	// CollectNetworkRules fetches all network rules that are involve one of the servers
+	CollectNetworkRules() ([]string, error)
+
 	// Reboot performs a graceful reboot of the machine
 	Reboot() error
 

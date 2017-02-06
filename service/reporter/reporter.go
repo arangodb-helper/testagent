@@ -326,6 +326,15 @@ func (s *reporter) createClusterStateFile(folder string, fileNames chan string, 
 			fmt.Sprintf("Coordinator url=%v lastReady=%v", urlStr(m.CoordinatorURL()), m.LastCoordinatorReadyStatus()),
 			"",
 		)
+
+		lines = append(lines, "Network rules")
+		rules, err := m.CollectNetworkRules()
+		if err != nil {
+			lines = append(lines, err.Error())
+		} else {
+			lines = append(lines, rules...)
+		}
+		lines = append(lines, "")
 	}
 	p := filepath.Join(folder, "cluster-state.txt")
 	if err := ioutil.WriteFile(p, []byte(strings.Join(lines, "\n")), 0644); err != nil {
