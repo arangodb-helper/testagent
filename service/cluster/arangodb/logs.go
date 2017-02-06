@@ -17,6 +17,15 @@ func (m *arangodb) CollectMachineLogs(w io.Writer) error {
 	return nil
 }
 
+// CollectNetworkLogs collects recent logs from the network(-blocker) running the servers and writes them to the given writer.
+func (m *arangodb) CollectNetworkLogs(w io.Writer) error {
+	// Collect logs from network-blocker
+	if err := m.collectLogs(w, m.nwBlockerContainerID); err != nil && errgo.Cause(err) != io.EOF {
+		return maskAny(err)
+	}
+	return nil
+}
+
 // CollectAgentLogs collects recent logs from the agent and writes them to the given writer.
 func (m *arangodb) CollectAgentLogs(w io.Writer) error {
 	if m.HasAgent() {
