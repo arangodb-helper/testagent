@@ -80,7 +80,7 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 
 	// Get host IP
 	if appFlags.ArangodbConfig.DockerHostIP == "" {
-		if os.Getenv("RUNNING_IN_DOCKER") != "" {
+		if !appFlags.DockerNetHost && os.Getenv("RUNNING_IN_DOCKER") != "" {
 			log.Fatal("When running in docker you must specify a --docker-host-ip")
 		}
 		ip, err := findLocalIP()
