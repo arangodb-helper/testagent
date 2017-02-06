@@ -26,7 +26,7 @@ type simpleTest struct {
 	active                   bool
 	client                   *util.ArangoClient
 	failures                 int
-	existingKeys             []string
+	existingDocs             map[string]UserDocument
 	readExistingCounter      counter
 	readNonExistingCounter   counter
 	createCounter            counter
@@ -43,7 +43,8 @@ type counter struct {
 // NewSimpleTest creates a simple test
 func NewSimpleTest(log *logging.Logger) test.TestScript {
 	return &simpleTest{
-		log: log,
+		log:          log,
+		existingDocs: make(map[string]UserDocument),
 	}
 }
 
@@ -76,7 +77,7 @@ func (t *simpleTest) Status() test.TestStatus {
 	return test.TestStatus{
 		Failures: t.failures,
 		Messages: []string{
-			fmt.Sprintf("Current #documents: %d", len(t.existingKeys)),
+			fmt.Sprintf("Current #documents: %d", len(t.existingDocs)),
 			"Succeeded:",
 			fmt.Sprintf("#documents created: %d", t.createCounter.succeeded),
 			fmt.Sprintf("#existing documents read: %d", t.readExistingCounter.succeeded),
@@ -121,7 +122,7 @@ func (t *simpleTest) testLoop() {
 	t.active = true
 	defer func() { t.active = false }()
 
-	t.existingKeys = nil
+	t.existingDocs = make(map[string]UserDocument)
 	if err := t.createCollection(collUser, 3, 2); err != nil {
 		t.log.Errorf("Failed to create collection (%v). Giving up", err)
 		return
@@ -148,22 +149,16 @@ func (t *simpleTest) testLoop() {
 		if err := t.createDocument(collUser, userDoc); err != nil {
 			t.log.Errorf("Failed to create document: %#v", err)
 		}
-		t.existingKeys = append(t.existingKeys, userDoc.Key)
+		t.existingDocs[userDoc.Key] = userDoc
 	}
 
 	createNewKey := func(record bool) string {
 		for {
 			key := fmt.Sprintf("newkey%07d", rand.Int31n(100*1000))
-			found := false
-			for _, x := range t.existingKeys {
-				if x == key {
-					found = true
-					break
-				}
-			}
+			_, found := t.existingDocs[key]
 			if !found {
 				if record {
-					t.existingKeys = append(t.existingKeys, key)
+					t.existingDocs[key] = UserDocument{}
 				}
 				return key
 			}
@@ -171,13 +166,18 @@ func (t *simpleTest) testLoop() {
 	}
 
 	removeExistingKey := func(key string) {
-		newList := make([]string, 0, len(t.existingKeys))
-		for _, k := range t.existingKeys {
-			if k != key {
-				newList = append(newList, k)
+		delete(t.existingDocs, key)
+	}
+
+	selectRandomKey := func() string {
+		index := rand.Intn(len(t.existingDocs))
+		for k := range t.existingDocs {
+			if index == 0 {
+				return k
 			}
+			index--
 		}
-		t.existingKeys = newList
+		return "" // This should never be reached when len(t.existingDocs) > 0
 	}
 
 	state := 0
@@ -198,13 +198,15 @@ func (t *simpleTest) testLoop() {
 			}
 			if err := t.createDocument(collUser, userDoc); err != nil {
 				t.log.Errorf("Failed to create document: %#v", err)
+			} else {
+				t.existingDocs[userDoc.Key] = userDoc
 			}
 			state++
 
 		case 1:
 			// Read a random existing document
-			if len(t.existingKeys) > 0 {
-				randomKey := t.existingKeys[rand.Intn(len(t.existingKeys))]
+			if len(t.existingDocs) > 0 {
+				randomKey := selectRandomKey()
 				if err := t.readExistingDocument(collUser, randomKey); err != nil {
 					t.log.Errorf("Failed to read existing document '%s': %#v", randomKey, err)
 				}
@@ -221,8 +223,8 @@ func (t *simpleTest) testLoop() {
 
 		case 3:
 			// Remove a random existing document
-			if len(t.existingKeys) > 0 {
-				randomKey := t.existingKeys[rand.Intn(len(t.existingKeys))]
+			if len(t.existingDocs) > 0 {
+				randomKey := selectRandomKey()
 				if err := t.removeExistingDocument(collUser, randomKey); err != nil {
 					t.log.Errorf("Failed to remove existing document '%s': %#v", randomKey, err)
 				} else {
@@ -295,6 +297,14 @@ func (t *simpleTest) readExistingDocument(collectionName string, key string) err
 		t.reportFailure(test.NewFailure("Failed to read existing document '%s' in collection '%s': %v", key, collectionName, err))
 		return maskAny(err)
 	}
+	// Compare document against expected document
+	expected := t.existingDocs[key]
+	if result.Value != expected.Value || result.Name != expected.Name || result.Odd != expected.Odd {
+		// This is a failure
+		t.readExistingCounter.failed++
+		t.reportFailure(test.NewFailure("Read existing document '%s' returned different values '%s': got %q expected %q", key, collectionName, result, expected))
+		return maskAny(fmt.Errorf("Read returned invalid values"))
+	}
 	t.readExistingCounter.succeeded++
 	return nil
 }
@@ -340,18 +350,24 @@ func (t *simpleTest) removeNonExistingDocument(collectionName string, key string
 	return nil
 }
 
-func (t *simpleTest) createImportDocument() ([]byte, []string) {
+func (t *simpleTest) createImportDocument() ([]byte, []UserDocument) {
 	buf := &bytes.Buffer{}
-	keys := make([]string, 0, 10000)
+	docs := make([]UserDocument, 0, 10000)
 	fmt.Fprintf(buf, `[ "_key", "value", "name", "odd" ]`)
 	fmt.Fprintln(buf)
 	for i := 0; i < 10000; i++ {
 		key := fmt.Sprintf("docimp%05d", i)
-		keys = append(keys, key)
-		fmt.Fprintf(buf, `[ "%s", %d, "Imported %d", %v ]`, key, i, i, i%2 != 0)
+		userDoc := UserDocument{
+			Key:   key,
+			Value: i,
+			Name:  fmt.Sprintf("Imported %d", i),
+			Odd:   i%2 == 0,
+		}
+		docs = append(docs, userDoc)
+		fmt.Fprintf(buf, `[ "%s", %d, "%s", %v ]`, userDoc.Key, userDoc.Value, userDoc.Name, userDoc.Odd)
 		fmt.Fprintln(buf)
 	}
-	return buf.Bytes(), keys
+	return buf.Bytes(), docs
 }
 
 func (t *simpleTest) importDocuments(collectionName string) error {
@@ -359,14 +375,16 @@ func (t *simpleTest) importDocuments(collectionName string) error {
 	q := url.Values{}
 	q.Set("collection", collectionName)
 	q.Set("waitForSync", "true")
-	importData, keys := t.createImportDocument()
+	importData, docs := t.createImportDocument()
 	if err := t.client.Post("/_api/import", q, importData, "application/x-www-form-urlencoded", nil, []int{200, 201, 202}, []int{400, 404, 409, 307}, timeout); err != nil {
 		// This is a failure
 		t.importCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to import documents in collection '%s': %v", collectionName, err))
 		return maskAny(err)
 	}
-	t.existingKeys = append(t.existingKeys, keys...)
+	for _, d := range docs {
+		t.existingDocs[d.Key] = d
+	}
 	t.importCounter.succeeded++
 	return nil
 }
