@@ -415,6 +415,7 @@ func (m *arangodb) startNetworkBlocker(image string) error {
 		HostConfig: &dc.HostConfig{
 			NetworkMode: "host",
 			Privileged:  true,
+			Binds:       []string{"/var/run:/var/run"},
 		},
 	})
 	if err != nil {
