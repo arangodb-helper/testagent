@@ -37,10 +37,19 @@ The test operations covered in those scripts will include (among others):
 - [x] Read existing documents 
 - [x] Read non-existing documents 
 - [x] Remove existing documents 
+- [ ] Remove existing documents with explicit & last revision
+- [ ] Remove existing documents with explicit & non-last revision
 - [x] Remove non-existing documents 
 - [x] Update existing documents 
+- [ ] Update existing documents with explicit & last revision
+- [ ] Update existing documents with explicit & non-last revision
 - [x] Update non-existing documents 
+- [ ] Replace existing documents 
+- [ ] Replace existing documents with explicit & last revision
+- [ ] Replace existing documents with explicit & non-last revision
+- [ ] Replace non-existing documents 
 - [ ] Query documents (AQL)
+- [ ] Query documents with long running query (AQL SLEEP)
 - [ ] Backup entire databases
 
 ## Usage 
