@@ -126,23 +126,9 @@ func (c *ArangoClient) Delete(urlPath string, query url.Values, successStatusCod
 // Post performs a POST operation of a coordinator.
 // The given input is posted to the server, if result != nil and status == 200, the response is parsed into result.
 func (c *ArangoClient) Post(urlPath string, query url.Values, input interface{}, contentType string, result interface{}, successStatusCodes, failureStatusCodes []int, timeout time.Duration) error {
-	inputData, ok := input.([]byte)
-	if !ok {
-		var err error
-		if rd, ok := input.(io.Reader); ok {
-			inputData, err = ioutil.ReadAll(rd)
-			if err != nil {
-				return maskAny(err)
-			}
-		} else {
-			inputData, err = json.Marshal(input)
-			if err != nil {
-				return maskAny(err)
-			}
-		}
-	}
-	if contentType == "" {
-		contentType = contentTypeJson
+	inputData, contentType, err := prepareInput(input, contentType)
+	if err != nil {
+		return maskAny(err)
 	}
 	op := func() error {
 		client := createClient(timeout)
@@ -157,6 +143,42 @@ func (c *ArangoClient) Post(urlPath string, query url.Values, input interface{},
 		}
 		// Process response
 		if err := c.handleResponse(resp, "POST", url, result, successStatusCodes, failureStatusCodes); err != nil {
+			return maskAny(err)
+		}
+		return nil
+	}
+
+	if err := retry(op, timeout); err != nil {
+		return maskAny(err)
+	}
+	return nil
+}
+
+// Patch performs a PATCH operation on a coordinator.
+// The given input is send to the server, if result != nil and status == 200, the response is parsed into result.
+func (c *ArangoClient) Patch(urlPath string, query url.Values, input interface{}, contentType string, result interface{}, successStatusCodes, failureStatusCodes []int, timeout time.Duration) error {
+	inputData, contentType, err := prepareInput(input, contentType)
+	if err != nil {
+		return maskAny(err)
+	}
+	op := func() error {
+		client := createClient(timeout)
+		url, err := c.createURL(urlPath, query)
+		if err != nil {
+			return maskAny(errgo.WithCausef(nil, err, "Failed creating URL for path '%s': %v", urlPath, err))
+		}
+		req, err := http.NewRequest("PATCH", url, bytes.NewReader(inputData))
+		if err != nil {
+			return maskAny(errgo.WithCausef(nil, err, "Failed creating DELETE request for path '%s': %v", urlPath, err))
+		}
+		req.Header.Set("Content-Type", contentType)
+		resp, err := client.Do(req)
+		if err != nil {
+			c.lastCoordinatorURL = nil // Change coordinator
+			return maskAny(errgo.WithCausef(nil, err, "Failed performing PATCH request to %s: %v", url, err))
+		}
+		// Process response
+		if err := c.handleResponse(resp, "PATCH", url, result, successStatusCodes, failureStatusCodes); err != nil {
 			return maskAny(err)
 		}
 		return nil
@@ -213,6 +235,28 @@ func tryDecodeBody(body []byte, result interface{}) error {
 		return maskAny(err)
 	}
 	return nil
+}
+
+func prepareInput(input interface{}, contentType string) ([]byte, string, error) {
+	inputData, ok := input.([]byte)
+	if !ok {
+		var err error
+		if rd, ok := input.(io.Reader); ok {
+			inputData, err = ioutil.ReadAll(rd)
+			if err != nil {
+				return nil, "", maskAny(err)
+			}
+		} else {
+			inputData, err = json.Marshal(input)
+			if err != nil {
+				return nil, "", maskAny(err)
+			}
+		}
+	}
+	if contentType == "" {
+		contentType = contentTypeJson
+	}
+	return inputData, contentType, nil
 }
 
 func formatHeaders(resp *http.Response) string {

@@ -57,12 +57,14 @@ Up: {{.Uptime}}
     <tr>
         <th>Name</th>
         <th>State</th>
+        <th>Actions</th>
     </tr>
     </thead>
 {{ range $t := .Tests }}
-    <tr>
+    <tr class="{{ cssTestOK $t.Failures }}">
         <td><a href="test/{{$t.Name}}">{{$t.Name}}</td>
-        <td class="{{ cssTestOK $t.Failures }}">{{$t.Failures}} failures</td>
+        <td>{{$t.Failures}} failures</td>
+        <td>{{$t.Actions}}</td>
     </tr>
 {{ end }}
 </table>
@@ -88,7 +90,7 @@ Up: {{.Uptime}}
 
 <h2>Recent chaos</h2>
 <p>
-    Chaos monkey is {{.Chaos.State}}.
+    Status: {{.Chaos.State}}
     {{if .Chaos.Active}}
         <a href="/chaos/pause" class="ui mini right floated button">Pause</a>
     {{else}}

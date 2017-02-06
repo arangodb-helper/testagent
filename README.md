@@ -38,8 +38,8 @@ The test operations covered in those scripts will include (among others):
 - [x] Read non-existing documents 
 - [x] Remove existing documents 
 - [x] Remove non-existing documents 
-- [ ] Update existing documents 
-- [ ] Update non-existing documents 
+- [x] Update existing documents 
+- [x] Update non-existing documents 
 - [ ] Query documents (AQL)
 - [ ] Backup entire databases
 

@@ -1,5 +1,5 @@
 .ready, .ready a { color: green; }
 .notready, .notready a { color: orange; }
 
-.testok { background-color: green }
-.testfailures { background-color: red }
+.testok { background-color: rgba(0,255,0,0.2) }
+.testfailures { background-color: rgba(255,0,0,0.2) }

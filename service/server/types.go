@@ -27,6 +27,7 @@ type Machine struct {
 type Test struct {
 	Name     string
 	Failures int
+	Actions  int
 	Messages []string
 }
 
@@ -83,6 +84,7 @@ func testFromTestScript(ct test.TestScript) Test {
 	return Test{
 		Name:     ct.Name(),
 		Failures: status.Failures,
+		Actions:  status.Actions,
 		Messages: status.Messages,
 	}
 }

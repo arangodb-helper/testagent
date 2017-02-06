@@ -26,10 +26,13 @@ type simpleTest struct {
 	active                   bool
 	client                   *util.ArangoClient
 	failures                 int
+	actions                  int
 	existingDocs             map[string]UserDocument
 	readExistingCounter      counter
 	readNonExistingCounter   counter
 	createCounter            counter
+	updateExistingCounter    counter
+	updateNonExistingCounter counter
 	deleteExistingCounter    counter
 	deleteNonExistingCounter counter
 	importCounter            counter
@@ -76,21 +79,26 @@ func (t *simpleTest) Stop() error {
 func (t *simpleTest) Status() test.TestStatus {
 	return test.TestStatus{
 		Failures: t.failures,
+		Actions:  t.actions,
 		Messages: []string{
 			fmt.Sprintf("Current #documents: %d", len(t.existingDocs)),
 			"Succeeded:",
 			fmt.Sprintf("#documents created: %d", t.createCounter.succeeded),
 			fmt.Sprintf("#existing documents read: %d", t.readExistingCounter.succeeded),
+			fmt.Sprintf("#existing documents updated: %d", t.updateExistingCounter.succeeded),
 			fmt.Sprintf("#existing documents removed: %d", t.deleteExistingCounter.succeeded),
 			fmt.Sprintf("#non-existing documents read: %d", t.readNonExistingCounter.succeeded),
+			fmt.Sprintf("#non-existing documents updated: %d", t.updateNonExistingCounter.succeeded),
 			fmt.Sprintf("#non-existing documents removed: %d", t.deleteNonExistingCounter.succeeded),
 			fmt.Sprintf("#import operations: %d", t.importCounter.succeeded),
 			"",
 			"Failed:",
 			fmt.Sprintf("#documents created: %d", t.createCounter.failed),
 			fmt.Sprintf("#existing documents read: %d", t.readExistingCounter.failed),
+			fmt.Sprintf("#existing documents updated: %d", t.updateExistingCounter.failed),
 			fmt.Sprintf("#existing documents removed: %d", t.deleteExistingCounter.failed),
 			fmt.Sprintf("#non-existing documents read: %d", t.readNonExistingCounter.failed),
+			fmt.Sprintf("#non-existing documents updated: %d", t.updateNonExistingCounter.failed),
 			fmt.Sprintf("#non-existing documents removed: %d", t.deleteNonExistingCounter.failed),
 			fmt.Sprintf("#import operations: %d", t.importCounter.failed),
 		},
@@ -123,16 +131,19 @@ func (t *simpleTest) testLoop() {
 	defer func() { t.active = false }()
 
 	t.existingDocs = make(map[string]UserDocument)
+	t.actions = 0
 	if err := t.createCollection(collUser, 3, 2); err != nil {
 		t.log.Errorf("Failed to create collection (%v). Giving up", err)
 		return
 	}
+	t.actions++
 
 	// Import documents
 	t.log.Debugf("Importing documents")
 	if err := t.importDocuments(collUser); err != nil {
 		t.log.Errorf("Failed to import documents: %#v", err)
 	}
+	t.actions++
 
 	// Create sample users
 	for i := 0; i < initialDocumentCount; i++ {
@@ -150,6 +161,7 @@ func (t *simpleTest) testLoop() {
 			t.log.Errorf("Failed to create document: %#v", err)
 		}
 		t.existingDocs[userDoc.Key] = userDoc
+		t.actions++
 	}
 
 	createNewKey := func(record bool) string {
@@ -186,6 +198,7 @@ func (t *simpleTest) testLoop() {
 		if t.shouldStop() {
 			return
 		}
+		t.actions++
 
 		switch state {
 		case 0:
@@ -244,6 +257,29 @@ func (t *simpleTest) testLoop() {
 			randomKey := createNewKey(false)
 			if err := t.removeNonExistingDocument(collUser, randomKey); err != nil {
 				t.log.Errorf("Failed to remove non-existing document '%s': %#v", randomKey, err)
+			}
+			state++
+
+		case 5:
+			// Update a random existing document
+			if len(t.existingDocs) > 0 {
+				randomKey := selectRandomKey()
+				if err := t.updateExistingDocument(collUser, randomKey); err != nil {
+					t.log.Errorf("Failed to update existing document '%s': %#v", randomKey, err)
+				} else {
+					// Updated succeeded, now try to read it, it should exist and be updated
+					if err := t.readExistingDocument(collUser, randomKey); err != nil {
+						t.log.Errorf("Failed to read just-updated document '%s': %#v", randomKey, err)
+					}
+				}
+			}
+			state++
+
+		case 6:
+			// Update a random non-existing document
+			randomKey := createNewKey(false)
+			if err := t.updateNonExistingDocument(collUser, randomKey); err != nil {
+				t.log.Errorf("Failed to update non-existing document '%s': %#v", randomKey, err)
 			}
 			state++
 
@@ -319,6 +355,46 @@ func (t *simpleTest) readNonExistingDocument(collectionName string, key string) 
 		return maskAny(err)
 	}
 	t.readNonExistingCounter.succeeded++
+	return nil
+}
+
+func (t *simpleTest) updateExistingDocument(collectionName string, key string) error {
+	timeout := time.Minute
+	q := url.Values{}
+	q.Set("waitForSync", "true")
+	newName := fmt.Sprintf("Updated name %s", time.Now())
+	delta := map[string]interface{}{
+		"name": newName,
+	}
+	doc := t.existingDocs[key]
+	if err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, delta, "", nil, []int{200, 201, 202}, []int{400, 404, 412, 307}, timeout); err != nil {
+		// This is a failure
+		t.updateExistingCounter.failed++
+		t.reportFailure(test.NewFailure("Failed to update existing document '%s' in collection '%s': %v", key, collectionName, err))
+		return maskAny(err)
+	}
+	// Update internal doc
+	doc.Name = newName
+	t.existingDocs[key] = doc
+	t.updateExistingCounter.succeeded++
+	return nil
+}
+
+func (t *simpleTest) updateNonExistingDocument(collectionName string, key string) error {
+	timeout := time.Minute
+	q := url.Values{}
+	q.Set("waitForSync", "true")
+	newName := fmt.Sprintf("Updated non-existing name %s", time.Now())
+	delta := map[string]interface{}{
+		"name": newName,
+	}
+	if err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, delta, "", nil, []int{404}, []int{200, 201, 202, 400, 412, 307}, timeout); err != nil {
+		// This is a failure
+		t.updateNonExistingCounter.failed++
+		t.reportFailure(test.NewFailure("Failed to update non-existing document '%s' in collection '%s': %v", key, collectionName, err))
+		return maskAny(err)
+	}
+	t.updateNonExistingCounter.succeeded++
 	return nil
 }
 

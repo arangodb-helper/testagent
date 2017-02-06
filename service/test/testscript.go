@@ -55,5 +55,6 @@ func NewFailure(message string, args ...interface{}) Failure {
 
 type TestStatus struct {
 	Failures int
+	Actions  int
 	Messages []string
 }
