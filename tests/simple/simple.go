@@ -475,7 +475,7 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key string) e
 	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, []int{200, 201, 202}, []int{400, 404, 412, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.deleteExistingCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to delete document '%s' in collection '%s': %v", key, collectionName, err))
+		t.reportFailure(test.NewFailure("Failed to delete existing document '%s' in collection '%s': %v", key, collectionName, err))
 		return maskAny(err)
 	}
 	t.deleteExistingCounter.succeeded++
