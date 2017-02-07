@@ -187,6 +187,17 @@ func (t *simpleTest) testLoop() {
 	}
 	t.actions++
 
+	// Check imported documents
+	for k := range t.existingDocs {
+		if t.shouldStop() {
+			return
+		}
+		if err := t.readExistingDocument(collUser, k); err != nil {
+			t.log.Errorf("Failed to read existing document '%s': %#v", k, err)
+		}
+		t.actions++
+	}
+
 	// Create sample users
 	for i := 0; i < initialDocumentCount; i++ {
 		if t.shouldStop() {
@@ -254,6 +265,11 @@ func (t *simpleTest) testLoop() {
 				t.log.Errorf("Failed to create document: %#v", err)
 			} else {
 				t.existingDocs[userDoc.Key] = userDoc
+
+				// Now try to read it, it must exist
+				if err := t.readExistingDocument(collUser, userDoc.Key); err != nil {
+					t.log.Errorf("Failed to read just-created document '%s': %#v", userDoc.Key, err)
+				}
 			}
 			state++
 
@@ -344,7 +360,7 @@ func (t *simpleTest) createCollection(name string, numberOfShards, replicationFa
 	}
 	operationTimeout, retryTimeout := time.Minute/4, time.Minute
 	t.log.Infof("Creating collection '%s' with numberOfShards=%d, replicationFactor=%d...", name, numberOfShards, replicationFactor)
-	if err := t.client.Post("/_api/collection", nil, opts, "", nil, []int{200}, []int{400, 404, 307}, operationTimeout, retryTimeout); err != nil {
+	if err := t.client.Post("/_api/collection", nil, opts, "", nil, []int{200}, []int{400, 404, 409, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.reportFailure(test.NewFailure("Failed to create collection '%s': %v", name, err))
 		return maskAny(err)
