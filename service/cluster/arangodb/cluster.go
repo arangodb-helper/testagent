@@ -26,6 +26,7 @@ type ArangodbConfig struct {
 	DockerEndpoints     []string // Endpoint used to reach the docker daemon(s)
 	DockerNetHost       bool     // If set, run containers with `--net=host`
 	Verbose             bool     // Turn on debug logging
+	Privileged          bool     // Start containers with `--privileged`
 }
 
 // arangodbClusterBuilder implements a ClusterBuilder using arangodb.

@@ -285,6 +285,9 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 	if c.DockerNetHost {
 		args = append(args, "--dockerNetHost")
 	}
+	if c.Privileged {
+		args = append(args, "--dockerPrivileged")
+	}
 	if c.ArangoImage != "" {
 		args = append(args,
 			fmt.Sprintf("--docker=%s", c.ArangodbConfig.ArangoImage),
@@ -319,6 +322,7 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 				},
 			},
 			PublishAllPorts: false,
+			Privileged:      c.Privileged,
 		},
 	}
 	if c.DockerNetHost {
