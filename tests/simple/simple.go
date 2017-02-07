@@ -23,27 +23,31 @@ const (
 )
 
 type simpleTest struct {
-	logPath                   string
-	reportDir                 string
-	log                       *logging.Logger
-	cluster                   cluster.Cluster
-	listener                  test.TestListener
-	stop                      chan struct{}
-	active                    bool
-	client                    *util.ArangoClient
-	failures                  int
-	actions                   int
-	existingDocs              map[string]UserDocument
-	readExistingCounter       counter
-	readNonExistingCounter    counter
-	createCounter             counter
-	updateExistingCounter     counter
-	updateNonExistingCounter  counter
-	replaceExistingCounter    counter
-	replaceNonExistingCounter counter
-	deleteExistingCounter     counter
-	deleteNonExistingCounter  counter
-	importCounter             counter
+	logPath                             string
+	reportDir                           string
+	log                                 *logging.Logger
+	cluster                             cluster.Cluster
+	listener                            test.TestListener
+	stop                                chan struct{}
+	active                              bool
+	client                              *util.ArangoClient
+	failures                            int
+	actions                             int
+	existingDocs                        map[string]UserDocument
+	readExistingCounter                 counter
+	readExistingWrongRevisionCounter    counter
+	readNonExistingCounter              counter
+	createCounter                       counter
+	updateExistingCounter               counter
+	updateExistingWrongRevisionCounter  counter
+	updateNonExistingCounter            counter
+	replaceExistingCounter              counter
+	replaceExistingWrongRevisionCounter counter
+	replaceNonExistingCounter           counter
+	deleteExistingCounter               counter
+	deleteExistingWrongRevisionCounter  counter
+	deleteNonExistingCounter            counter
+	importCounter                       counter
 }
 
 type counter struct {
@@ -101,6 +105,10 @@ func (t *simpleTest) Status() test.TestStatus {
 			fmt.Sprintf("#existing documents updated: %d", t.updateExistingCounter.succeeded),
 			fmt.Sprintf("#existing documents replaced: %d", t.replaceExistingCounter.succeeded),
 			fmt.Sprintf("#existing documents removed: %d", t.deleteExistingCounter.succeeded),
+			fmt.Sprintf("#existing documents wrong revision read: %d", t.readExistingWrongRevisionCounter.succeeded),
+			fmt.Sprintf("#existing documents wrong revision updated: %d", t.updateExistingWrongRevisionCounter.succeeded),
+			fmt.Sprintf("#existing documents wrong revision replaced: %d", t.replaceExistingWrongRevisionCounter.succeeded),
+			fmt.Sprintf("#existing documents wrong revision removed: %d", t.deleteExistingWrongRevisionCounter.succeeded),
 			fmt.Sprintf("#non-existing documents read: %d", t.readNonExistingCounter.succeeded),
 			fmt.Sprintf("#non-existing documents updated: %d", t.updateNonExistingCounter.succeeded),
 			fmt.Sprintf("#non-existing documents replaced: %d", t.replaceNonExistingCounter.succeeded),
@@ -113,6 +121,10 @@ func (t *simpleTest) Status() test.TestStatus {
 			fmt.Sprintf("#existing documents updated: %d", t.updateExistingCounter.failed),
 			fmt.Sprintf("#existing documents replaced: %d", t.replaceExistingCounter.failed),
 			fmt.Sprintf("#existing documents removed: %d", t.deleteExistingCounter.failed),
+			fmt.Sprintf("#existing documents wrong revision read: %d", t.readExistingWrongRevisionCounter.failed),
+			fmt.Sprintf("#existing documents wrong revision updated: %d", t.updateExistingWrongRevisionCounter.failed),
+			fmt.Sprintf("#existing documents wrong revision replaced: %d", t.replaceExistingWrongRevisionCounter.failed),
+			fmt.Sprintf("#existing documents wrong revision removed: %d", t.deleteExistingWrongRevisionCounter.failed),
 			fmt.Sprintf("#non-existing documents read: %d", t.readNonExistingCounter.failed),
 			fmt.Sprintf("#non-existing documents updated: %d", t.updateNonExistingCounter.failed),
 			fmt.Sprintf("#non-existing documents replaced: %d", t.replaceNonExistingCounter.failed),
@@ -343,13 +355,13 @@ func (t *simpleTest) testLoop() {
 		case 5:
 			// Remove a random existing document but with wrong revision
 			if len(t.existingDocs) > 1 {
-				randomKey, _ := selectRandomKey()
+				randomKey, correctRev := selectRandomKey()
 				rev := selectWrongRevision(randomKey)
 				if err := t.removeExistingDocumentWrongRevision(collUser, randomKey, rev); err != nil {
 					t.log.Errorf("Failed to remove existing document '%s' wrong revision: %#v", randomKey, err)
 				} else {
 					// Remove failed (as expected), key should still exist
-					if err := t.readExistingDocument(collUser, randomKey, rev, false); err != nil {
+					if err := t.readExistingDocument(collUser, randomKey, correctRev, false); err != nil {
 						t.log.Errorf("Failed to read not-just-removed document '%s': %#v", randomKey, err)
 					}
 				}
@@ -381,15 +393,15 @@ func (t *simpleTest) testLoop() {
 
 		case 8:
 			// Update a random existing document but with wrong revision
-			if len(t.existingDocs) > 0 {
-				randomKey, _ := selectRandomKey()
+			if len(t.existingDocs) > 1 {
+				randomKey, correctRev := selectRandomKey()
 				rev := selectWrongRevision(randomKey)
 				if err := t.updateExistingDocumentWrongRevision(collUser, randomKey, rev); err != nil {
 					t.log.Errorf("Failed to update existing document '%s' wrong revision: %#v", randomKey, err)
 				} else {
 					// Updated failed (as expected).
 					// It must still be readable.
-					if err := t.readExistingDocument(collUser, randomKey, rev, false); err != nil {
+					if err := t.readExistingDocument(collUser, randomKey, correctRev, false); err != nil {
 						t.log.Errorf("Failed to read not-just-updated document '%s': %#v", randomKey, err)
 					}
 				}
@@ -421,15 +433,15 @@ func (t *simpleTest) testLoop() {
 
 		case 11:
 			// Replace a random existing document but with wrong revision
-			if len(t.existingDocs) > 0 {
-				randomKey, _ := selectRandomKey()
+			if len(t.existingDocs) > 1 {
+				randomKey, correctRev := selectRandomKey()
 				rev := selectWrongRevision(randomKey)
 				if err := t.replaceExistingDocumentWrongRevision(collUser, randomKey, rev); err != nil {
 					t.log.Errorf("Failed to replace existing document '%s' wrong revision: %#v", randomKey, err)
 				} else {
 					// Replace failed (as expected).
 					// It must still be readable.
-					if err := t.readExistingDocument(collUser, randomKey, rev, false); err != nil {
+					if err := t.readExistingDocument(collUser, randomKey, correctRev, false); err != nil {
 						t.log.Errorf("Failed to read not-just-replaced document '%s': %#v", randomKey, err)
 					}
 				}
@@ -561,11 +573,11 @@ func (t *simpleTest) readExistingDocumentWrongRevision(collectionName string, ke
 	t.log.Infof("Reading existing document '%s' wrong revision from '%s'...", key, collectionName)
 	if err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, hdr, &result, []int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
-		t.readExistingCounter.failed++
+		t.readExistingWrongRevisionCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to read existing document '%s' wrong revision in collection '%s': %v", key, collectionName, err))
 		return maskAny(err)
 	}
-	t.readExistingCounter.succeeded++
+	t.readExistingWrongRevisionCounter.succeeded++
 	t.log.Infof("Reading existing document '%s' wrong revision from '%s' succeeded", key, collectionName)
 	return nil
 }
@@ -631,11 +643,11 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 	_, err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, delta, "", nil, []int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, retryTimeout)
 	if err != nil {
 		// This is a failure
-		t.updateExistingCounter.failed++
+		t.updateExistingWrongRevisionCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to update existing document '%s' wrong revision in collection '%s': %v", key, collectionName, err))
 		return maskAny(err)
 	}
-	t.updateExistingCounter.succeeded++
+	t.updateExistingWrongRevisionCounter.succeeded++
 	t.log.Infof("Updating existing document '%s' wrong revision in '%s' (name -> '%s') succeeded", key, collectionName, newName)
 	return nil
 }
@@ -710,11 +722,11 @@ func (t *simpleTest) replaceExistingDocumentWrongRevision(collectionName string,
 	_, err := t.client.Put(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, newDoc, "", nil, []int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, retryTimeout)
 	if err != nil {
 		// This is a failure
-		t.replaceExistingCounter.failed++
+		t.replaceExistingWrongRevisionCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to replace existing document '%s' wrong revision in collection '%s': %v", key, collectionName, err))
 		return maskAny(err)
 	}
-	t.replaceExistingCounter.succeeded++
+	t.replaceExistingWrongRevisionCounter.succeeded++
 	t.log.Infof("Replacing existing document '%s' wrong revision in '%s' (name -> '%s') succeeded", key, collectionName, newName)
 	return nil
 }
@@ -773,11 +785,11 @@ func (t *simpleTest) removeExistingDocumentWrongRevision(collectionName string, 
 	t.log.Infof("Removing existing document '%s' wrong revision from '%s'...", key, collectionName)
 	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, []int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
-		t.deleteExistingCounter.failed++
+		t.deleteExistingWrongRevisionCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to delete existing document '%s' wrong revision in collection '%s': %v", key, collectionName, err))
 		return maskAny(err)
 	}
-	t.deleteExistingCounter.succeeded++
+	t.deleteExistingWrongRevisionCounter.succeeded++
 	t.log.Infof("Removing existing document '%s' wrong revision from '%s' succeeded", key, collectionName)
 	return nil
 }
