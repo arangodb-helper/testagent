@@ -24,7 +24,9 @@ const (
 )
 
 var (
-	cmdMain = cobra.Command{
+	projectVersion = "dev"
+	projectBuild   = "dev"
+	cmdMain        = cobra.Command{
 		Use:   projectName,
 		Short: "Test long running operations on ArangoDB clusters while introducing chaos",
 		Run:   cmdMainRun,
@@ -73,6 +75,8 @@ func main() {
 }
 
 func cmdMainRun(cmd *cobra.Command, args []string) {
+	log.Infof("Starting %s version %s, build %s", projectName, projectVersion, projectBuild)
+
 	level, err := logging.LogLevel(appFlags.logLevel)
 	if err != nil {
 		Exitf("Invalid log-level '%s': %#v", appFlags.logLevel, err)
@@ -117,6 +121,8 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 
 	// Create service
 	log.Debug("creating service")
+	appFlags.ServiceConfig.ProjectVersion = projectVersion
+	appFlags.ServiceConfig.ProjectBuild = projectBuild
 	service, err := service.NewService(appFlags.ServiceConfig, service.ServiceDependencies{
 		Logger:         log,
 		ClusterBuilder: cb,

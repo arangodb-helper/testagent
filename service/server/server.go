@@ -18,6 +18,8 @@ import (
 
 type Service interface {
 	StartedAt() time.Time
+	ProjectVersion() string
+	ProjectBuild() string
 	Cluster() cluster.Cluster
 	Tests() []test.TestScript
 	ChaosMonkey() chaos.ChaosMonkey

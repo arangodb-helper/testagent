@@ -13,9 +13,11 @@ import (
 )
 
 type ServiceConfig struct {
-	AgencySize int
-	ServerPort int
-	ReportDir  string
+	ProjectVersion string
+	ProjectBuild   string
+	AgencySize     int
+	ServerPort     int
+	ReportDir      string
 }
 
 type ServiceDependencies struct {
@@ -116,6 +118,14 @@ func (s *Service) Run(stopChan chan struct{}) error {
 
 func (s *Service) StartedAt() time.Time {
 	return s.startedAt
+}
+
+func (s *Service) ProjectVersion() string {
+	return s.ServiceConfig.ProjectVersion
+}
+
+func (s *Service) ProjectBuild() string {
+	return s.ServiceConfig.ProjectBuild
 }
 
 func (s *Service) Cluster() cluster.Cluster {

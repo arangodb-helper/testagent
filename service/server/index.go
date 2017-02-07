@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"sort"
 
@@ -12,6 +13,7 @@ import (
 func indexPage(ctx *macaron.Context, log *logging.Logger, service Service) {
 	// General
 	ctx.Data["Uptime"] = humanize.Time(service.StartedAt())
+	ctx.Data["VersionInfo"] = fmt.Sprintf("%s, build %s", service.ProjectVersion(), service.ProjectBuild())
 
 	// Cluster
 	machines := []Machine{}
