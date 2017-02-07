@@ -265,14 +265,14 @@ func (t *simpleTest) testLoop() {
 		return "", "" // This should never be reached when len(t.existingDocs) > 0
 	}
 
-	selectWrongRevision := func(key string) string {
+	selectWrongRevision := func(key string) (string, bool) {
 		correctRev := t.existingDocs[key].rev
 		for _, v := range t.existingDocs {
-			if v.rev != correctRev {
-				return v.rev
+			if v.rev != correctRev && v.rev != "" {
+				return v.rev, true
 			}
 		}
-		return "" // This should never be reached when len(t.existingDocs) > 1
+		return "", false // This should never be reached when len(t.existingDocs) > 1
 	}
 
 	state := 0
@@ -319,9 +319,10 @@ func (t *simpleTest) testLoop() {
 			// Read a random existing document but with wrong revision
 			if len(t.existingDocs) > 1 {
 				randomKey, _ := selectRandomKey()
-				rev := selectWrongRevision(randomKey)
-				if err := t.readExistingDocumentWrongRevision(collUser, randomKey, rev, false); err != nil {
-					t.log.Errorf("Failed to read existing document '%s' wrong revision: %#v", randomKey, err)
+				if rev, ok := selectWrongRevision(randomKey); ok {
+					if err := t.readExistingDocumentWrongRevision(collUser, randomKey, rev, false); err != nil {
+						t.log.Errorf("Failed to read existing document '%s' wrong revision: %#v", randomKey, err)
+					}
 				}
 			}
 			state++
@@ -356,13 +357,14 @@ func (t *simpleTest) testLoop() {
 			// Remove a random existing document but with wrong revision
 			if len(t.existingDocs) > 1 {
 				randomKey, correctRev := selectRandomKey()
-				rev := selectWrongRevision(randomKey)
-				if err := t.removeExistingDocumentWrongRevision(collUser, randomKey, rev); err != nil {
-					t.log.Errorf("Failed to remove existing document '%s' wrong revision: %#v", randomKey, err)
-				} else {
-					// Remove failed (as expected), key should still exist
-					if err := t.readExistingDocument(collUser, randomKey, correctRev, false); err != nil {
-						t.log.Errorf("Failed to read not-just-removed document '%s': %#v", randomKey, err)
+				if rev, ok := selectWrongRevision(randomKey); ok {
+					if err := t.removeExistingDocumentWrongRevision(collUser, randomKey, rev); err != nil {
+						t.log.Errorf("Failed to remove existing document '%s' wrong revision: %#v", randomKey, err)
+					} else {
+						// Remove failed (as expected), key should still exist
+						if err := t.readExistingDocument(collUser, randomKey, correctRev, false); err != nil {
+							t.log.Errorf("Failed to read not-just-removed document '%s': %#v", randomKey, err)
+						}
 					}
 				}
 			}
@@ -395,14 +397,15 @@ func (t *simpleTest) testLoop() {
 			// Update a random existing document but with wrong revision
 			if len(t.existingDocs) > 1 {
 				randomKey, correctRev := selectRandomKey()
-				rev := selectWrongRevision(randomKey)
-				if err := t.updateExistingDocumentWrongRevision(collUser, randomKey, rev); err != nil {
-					t.log.Errorf("Failed to update existing document '%s' wrong revision: %#v", randomKey, err)
-				} else {
-					// Updated failed (as expected).
-					// It must still be readable.
-					if err := t.readExistingDocument(collUser, randomKey, correctRev, false); err != nil {
-						t.log.Errorf("Failed to read not-just-updated document '%s': %#v", randomKey, err)
+				if rev, ok := selectWrongRevision(randomKey); ok {
+					if err := t.updateExistingDocumentWrongRevision(collUser, randomKey, rev); err != nil {
+						t.log.Errorf("Failed to update existing document '%s' wrong revision: %#v", randomKey, err)
+					} else {
+						// Updated failed (as expected).
+						// It must still be readable.
+						if err := t.readExistingDocument(collUser, randomKey, correctRev, false); err != nil {
+							t.log.Errorf("Failed to read not-just-updated document '%s': %#v", randomKey, err)
+						}
 					}
 				}
 			}
@@ -435,14 +438,15 @@ func (t *simpleTest) testLoop() {
 			// Replace a random existing document but with wrong revision
 			if len(t.existingDocs) > 1 {
 				randomKey, correctRev := selectRandomKey()
-				rev := selectWrongRevision(randomKey)
-				if err := t.replaceExistingDocumentWrongRevision(collUser, randomKey, rev); err != nil {
-					t.log.Errorf("Failed to replace existing document '%s' wrong revision: %#v", randomKey, err)
-				} else {
-					// Replace failed (as expected).
-					// It must still be readable.
-					if err := t.readExistingDocument(collUser, randomKey, correctRev, false); err != nil {
-						t.log.Errorf("Failed to read not-just-replaced document '%s': %#v", randomKey, err)
+				if rev, ok := selectWrongRevision(randomKey); ok {
+					if err := t.replaceExistingDocumentWrongRevision(collUser, randomKey, rev); err != nil {
+						t.log.Errorf("Failed to replace existing document '%s' wrong revision: %#v", randomKey, err)
+					} else {
+						// Replace failed (as expected).
+						// It must still be readable.
+						if err := t.readExistingDocument(collUser, randomKey, correctRev, false); err != nil {
+							t.log.Errorf("Failed to read not-just-replaced document '%s': %#v", randomKey, err)
+						}
 					}
 				}
 			}
