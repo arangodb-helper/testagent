@@ -107,6 +107,16 @@ func (c *ArangoClient) Patch(urlPath string, query url.Values, header map[string
 	}
 }
 
+// Put performs a PUT operation on a coordinator.
+// The given input is send to the server, if result != nil and status == 200, the response is parsed into result.
+func (c *ArangoClient) Put(urlPath string, query url.Values, header map[string]string, input interface{}, contentType string, result interface{}, successStatusCodes, failureStatusCodes []int, operationTimeout, retryTimeout time.Duration) (ArangoUpdate, error) {
+	if update, err := c.requestWithRetry("PUT", urlPath, query, header, input, contentType, result, successStatusCodes, failureStatusCodes, operationTimeout, retryTimeout); err != nil {
+		return ArangoUpdate{}, maskAny(err)
+	} else {
+		return update, nil
+	}
+}
+
 // requestWithRetry performs an operation on a coordinator.
 // The given input is send to the server (if any), if result != nil and status is success, the response is parsed into result.
 func (c *ArangoClient) requestWithRetry(method, urlPath string, query url.Values, header map[string]string, input interface{}, contentType string, result interface{}, successStatusCodes, failureStatusCodes []int, operationTimeout, retryTimeout time.Duration) (ArangoUpdate, error) {
