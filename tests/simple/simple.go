@@ -253,6 +253,16 @@ func (t *simpleTest) testLoop() {
 		return "", "" // This should never be reached when len(t.existingDocs) > 0
 	}
 
+	selectWrongRevision := func(key string) string {
+		correctRev := t.existingDocs[key].rev
+		for _, v := range t.existingDocs {
+			if v.rev != correctRev {
+				return v.rev
+			}
+		}
+		return "" // This should never be reached when len(t.existingDocs) > 1
+	}
+
 	state := 0
 	for {
 		// Should we stop
@@ -295,8 +305,9 @@ func (t *simpleTest) testLoop() {
 
 		case 2:
 			// Read a random existing document but with wrong revision
-			if len(t.existingDocs) > 0 {
-				randomKey, rev := selectRandomKey()
+			if len(t.existingDocs) > 1 {
+				randomKey, _ := selectRandomKey()
+				rev := selectWrongRevision(randomKey)
 				if err := t.readExistingDocumentWrongRevision(collUser, randomKey, rev, false); err != nil {
 					t.log.Errorf("Failed to read existing document '%s' wrong revision: %#v", randomKey, err)
 				}
@@ -331,8 +342,9 @@ func (t *simpleTest) testLoop() {
 
 		case 5:
 			// Remove a random existing document but with wrong revision
-			if len(t.existingDocs) > 0 {
-				randomKey, rev := selectRandomKey()
+			if len(t.existingDocs) > 1 {
+				randomKey, _ := selectRandomKey()
+				rev := selectWrongRevision(randomKey)
 				if err := t.removeExistingDocumentWrongRevision(collUser, randomKey, rev); err != nil {
 					t.log.Errorf("Failed to remove existing document '%s' wrong revision: %#v", randomKey, err)
 				} else {
@@ -370,7 +382,8 @@ func (t *simpleTest) testLoop() {
 		case 8:
 			// Update a random existing document but with wrong revision
 			if len(t.existingDocs) > 0 {
-				randomKey, rev := selectRandomKey()
+				randomKey, _ := selectRandomKey()
+				rev := selectWrongRevision(randomKey)
 				if err := t.updateExistingDocumentWrongRevision(collUser, randomKey, rev); err != nil {
 					t.log.Errorf("Failed to update existing document '%s' wrong revision: %#v", randomKey, err)
 				} else {
@@ -409,7 +422,8 @@ func (t *simpleTest) testLoop() {
 		case 11:
 			// Replace a random existing document but with wrong revision
 			if len(t.existingDocs) > 0 {
-				randomKey, rev := selectRandomKey()
+				randomKey, _ := selectRandomKey()
+				rev := selectWrongRevision(randomKey)
 				if err := t.replaceExistingDocumentWrongRevision(collUser, randomKey, rev); err != nil {
 					t.log.Errorf("Failed to replace existing document '%s' wrong revision: %#v", randomKey, err)
 				} else {
@@ -543,7 +557,7 @@ func (t *simpleTest) readExistingDocument(collectionName string, key, rev string
 func (t *simpleTest) readExistingDocumentWrongRevision(collectionName string, key, rev string, updateRevision bool) error {
 	operationTimeout, retryTimeout := time.Minute/4, time.Minute
 	var result UserDocument
-	hdr := ifMatchHeader(nil, rev+"-bogus")
+	hdr := ifMatchHeader(nil, rev)
 	t.log.Infof("Reading existing document '%s' wrong revision from '%s'...", key, collectionName)
 	if err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, hdr, &result, []int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
@@ -609,7 +623,7 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated name %s", time.Now())
-	hdr := ifMatchHeader(nil, rev+"-bogus")
+	hdr := ifMatchHeader(nil, rev)
 	t.log.Infof("Updating existing document '%s' wrong revision in '%s' (name -> '%s')...", key, collectionName, newName)
 	delta := map[string]interface{}{
 		"name": newName,
@@ -685,7 +699,7 @@ func (t *simpleTest) replaceExistingDocumentWrongRevision(collectionName string,
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated name %s", time.Now())
-	hdr := ifMatchHeader(nil, rev+"-bogus")
+	hdr := ifMatchHeader(nil, rev)
 	t.log.Infof("Replacing existing document '%s' wrong revision in '%s' (name -> '%s')...", key, collectionName, newName)
 	newDoc := UserDocument{
 		Key:   key,
@@ -755,7 +769,7 @@ func (t *simpleTest) removeExistingDocumentWrongRevision(collectionName string, 
 	operationTimeout, retryTimeout := time.Minute/4, time.Minute
 	q := url.Values{}
 	q.Set("waitForSync", "true")
-	hdr := ifMatchHeader(nil, rev+"-bogus")
+	hdr := ifMatchHeader(nil, rev)
 	t.log.Infof("Removing existing document '%s' wrong revision from '%s'...", key, collectionName)
 	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, []int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
