@@ -27,3 +27,6 @@ License: Apache 2
 
 - github.com/dustin/go-humanize
 License: http://www.opensource.org/licenses/mit-license.php
+
+- github.com/coreos/go-semver/semver
+License: Apache 2

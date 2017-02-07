@@ -65,6 +65,7 @@ $(GOBUILDDIR):
 	GOPATH=$(GOBUILDDIR) go get gopkg.in/macaron.v1
 	GOPATH=$(GOBUILDDIR) go get github.com/go-macaron/bindata
 	GOPATH=$(GOBUILDDIR) go get github.com/dustin/go-humanize
+	GOPATH=$(GOBUILDDIR) go get github.com/coreos/go-semver/semver
 
 templates/templates.go: $(GOBUILDDIR) $(TEMPLATES)
 	$(GOBUILDDIR)/bin/go-bindata -pkg templates -prefix templates -modtime 0 -o templates/templates.go templates/...
@@ -93,3 +94,16 @@ endif
 
 localtest:
 	docker run -it --rm --net=host -v $(HOME)/tmp:/reports -v /var/run/docker.sock:/var/run/docker.sock arangodb/testagent --docker-net-host
+
+docker-push-version: docker
+	docker tag arangodb/testagent arangodb/testagent:$(VERSION)
+	docker push arangodb/testagent:$(VERSION)
+
+release-patch: $(GOBUILDDIR)
+	go run ./tools/release.go -type=patch 
+
+release-minor: $(GOBUILDDIR)
+	go run ./tools/release.go -type=minor
+
+release-major: $(GOBUILDDIR)
+	go run ./tools/release.go -type=major 
