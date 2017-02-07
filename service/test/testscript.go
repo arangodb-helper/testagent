@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/arangodb/testAgent/service/cluster"
+	"github.com/juju/errgo"
 )
 
 type TestListener interface {
@@ -45,9 +46,9 @@ func NewFailure(message string, args ...interface{}) Failure {
 	for _, x := range args {
 		if err, ok := x.(error); ok {
 			errors = append(errors, err)
-		}
-		if aerr, ok := x.(AggregateError); ok {
-			errors = append(errors, aerr.Errors()...)
+			if aerr, ok := errgo.Cause(err).(AggregateError); ok {
+				errors = append(errors, aerr.Errors()...)
+			}
 		}
 	}
 	return Failure{

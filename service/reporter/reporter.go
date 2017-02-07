@@ -16,6 +16,7 @@ import (
 	"github.com/arangodb/testAgent/service/chaos"
 	"github.com/arangodb/testAgent/service/cluster"
 	"github.com/arangodb/testAgent/service/test"
+	"github.com/juju/errgo"
 	logging "github.com/op/go-logging"
 	"golang.org/x/sync/errgroup"
 )
@@ -427,9 +428,18 @@ func (s *reporter) createFailureReportFile(folder string, fileNames chan string,
 		f.Message,
 	}
 	if len(f.Errors) > 0 {
-		lines = append(lines, "", "Error details:")
+		lines = append(lines,
+			"",
+			fmt.Sprintf("Error details (%d errors):", len(f.Errors)),
+			"",
+		)
 		for i, err := range f.Errors {
-			lines = append(lines, fmt.Sprintf("Error %d: %#v", i, err))
+			lines = append(lines,
+				fmt.Sprintf("Error %d", i),
+				fmt.Sprintf("Message: %v", err),
+				fmt.Sprintf("Trace: %#v", errgo.Details(err)),
+				"",
+			)
 		}
 	}
 	p := filepath.Join(folder, "failure-report.txt")

@@ -342,9 +342,9 @@ func (t *simpleTest) createCollection(name string, numberOfShards, replicationFa
 		NumberOfShards:    numberOfShards,
 		ReplicationFactor: replicationFactor,
 	}
-	timeout := time.Minute
+	operationTimeout, retryTimeout := time.Minute/4, time.Minute
 	t.log.Infof("Creating collection '%s' with numberOfShards=%d, replicationFactor=%d...", name, numberOfShards, replicationFactor)
-	if err := t.client.Post("/_api/collection", nil, opts, "", nil, []int{200}, []int{400, 404, 307}, timeout); err != nil {
+	if err := t.client.Post("/_api/collection", nil, opts, "", nil, []int{200}, []int{400, 404, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.reportFailure(test.NewFailure("Failed to create collection '%s': %v", name, err))
 		return maskAny(err)
@@ -354,11 +354,11 @@ func (t *simpleTest) createCollection(name string, numberOfShards, replicationFa
 }
 
 func (t *simpleTest) createDocument(collectionName string, document interface{}, key string) error {
-	timeout := time.Minute
+	operationTimeout, retryTimeout := time.Minute/4, time.Minute
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	t.log.Infof("Creating document '%s' in '%s'...", key, collectionName)
-	if err := t.client.Post(fmt.Sprintf("/_api/document/%s", collectionName), q, document, "", nil, []int{200, 201, 202}, []int{400, 404, 409, 307}, timeout); err != nil {
+	if err := t.client.Post(fmt.Sprintf("/_api/document/%s", collectionName), q, document, "", nil, []int{200, 201, 202}, []int{400, 404, 409, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.createCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to create document in collection '%s': %v", collectionName, err))
@@ -370,10 +370,10 @@ func (t *simpleTest) createDocument(collectionName string, document interface{},
 }
 
 func (t *simpleTest) readExistingDocument(collectionName string, key string) error {
-	timeout := time.Minute
+	operationTimeout, retryTimeout := time.Minute/4, time.Minute
 	var result UserDocument
 	t.log.Infof("Reading existing document '%s' from '%s'...", key, collectionName)
-	if err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, &result, []int{200, 201, 202}, []int{400, 404, 307}, timeout); err != nil {
+	if err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, &result, []int{200, 201, 202}, []int{400, 404, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.readExistingCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to read existing document '%s' in collection '%s': %v", key, collectionName, err))
@@ -393,10 +393,10 @@ func (t *simpleTest) readExistingDocument(collectionName string, key string) err
 }
 
 func (t *simpleTest) readNonExistingDocument(collectionName string, key string) error {
-	timeout := time.Minute
+	operationTimeout, retryTimeout := time.Minute/4, time.Minute
 	var result UserDocument
 	t.log.Infof("Reading non-existing document '%s' from '%s'...", key, collectionName)
-	if err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, &result, []int{404}, []int{200, 201, 202, 400, 307}, timeout); err != nil {
+	if err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, &result, []int{404}, []int{200, 201, 202, 400, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.readNonExistingCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to read non-existing document '%s' in collection '%s': %v", key, collectionName, err))
@@ -408,7 +408,7 @@ func (t *simpleTest) readNonExistingDocument(collectionName string, key string) 
 }
 
 func (t *simpleTest) updateExistingDocument(collectionName string, key string) error {
-	timeout := time.Minute
+	operationTimeout, retryTimeout := time.Minute/4, time.Minute
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated name %s", time.Now())
@@ -417,7 +417,7 @@ func (t *simpleTest) updateExistingDocument(collectionName string, key string) e
 		"name": newName,
 	}
 	doc := t.existingDocs[key]
-	if err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, delta, "", nil, []int{200, 201, 202}, []int{400, 404, 412, 307}, timeout); err != nil {
+	if err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, delta, "", nil, []int{200, 201, 202}, []int{400, 404, 412, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.updateExistingCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to update existing document '%s' in collection '%s': %v", key, collectionName, err))
@@ -432,7 +432,7 @@ func (t *simpleTest) updateExistingDocument(collectionName string, key string) e
 }
 
 func (t *simpleTest) updateNonExistingDocument(collectionName string, key string) error {
-	timeout := time.Minute
+	operationTimeout, retryTimeout := time.Minute/4, time.Minute
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated non-existing name %s", time.Now())
@@ -440,7 +440,7 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 	delta := map[string]interface{}{
 		"name": newName,
 	}
-	if err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, delta, "", nil, []int{404}, []int{200, 201, 202, 400, 412, 307}, timeout); err != nil {
+	if err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, delta, "", nil, []int{404}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.updateNonExistingCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to update non-existing document '%s' in collection '%s': %v", key, collectionName, err))
@@ -452,11 +452,11 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 }
 
 func (t *simpleTest) removeExistingDocument(collectionName string, key string) error {
-	timeout := time.Minute
+	operationTimeout, retryTimeout := time.Minute/4, time.Minute
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	t.log.Infof("Removing existing document '%s' from '%s'...", key, collectionName)
-	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, []int{200, 201, 202}, []int{400, 404, 412, 307}, timeout); err != nil {
+	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, []int{200, 201, 202}, []int{400, 404, 412, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.deleteExistingCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to delete document '%s' in collection '%s': %v", key, collectionName, err))
@@ -468,11 +468,11 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key string) e
 }
 
 func (t *simpleTest) removeNonExistingDocument(collectionName string, key string) error {
-	timeout := time.Minute
+	operationTimeout, retryTimeout := time.Minute/4, time.Minute
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	t.log.Infof("Removing non-existing document '%s' from '%s'...", key, collectionName)
-	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, []int{404}, []int{200, 201, 202, 400, 412, 307}, timeout); err != nil {
+	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, []int{404}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.deleteNonExistingCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to delete non-existing document '%s' in collection '%s': %v", key, collectionName, err))
@@ -504,13 +504,13 @@ func (t *simpleTest) createImportDocument() ([]byte, []UserDocument) {
 }
 
 func (t *simpleTest) importDocuments(collectionName string) error {
-	timeout := time.Minute
+	operationTimeout, retryTimeout := time.Minute, time.Minute*3
 	q := url.Values{}
 	q.Set("collection", collectionName)
 	q.Set("waitForSync", "true")
 	importData, docs := t.createImportDocument()
 	t.log.Infof("Importing %d documents ('%s' - '%s') into '%s'...", len(docs), docs[0].Key, docs[len(docs)-1].Key, collectionName)
-	if err := t.client.Post("/_api/import", q, importData, "application/x-www-form-urlencoded", nil, []int{200, 201, 202}, []int{400, 404, 409, 307}, timeout); err != nil {
+	if err := t.client.Post("/_api/import", q, importData, "application/x-www-form-urlencoded", nil, []int{200, 201, 202}, []int{400, 404, 409, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.importCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to import documents in collection '%s': %v", collectionName, err))

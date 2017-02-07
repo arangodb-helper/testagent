@@ -68,56 +68,16 @@ func (c *ArangoClient) createURL(urlPath string, query url.Values) (string, erro
 
 // Get performs a GET operation of a coordinator.
 // If result != nil and status == 200, the response is parsed into result.
-func (c *ArangoClient) Get(urlPath string, query url.Values, result interface{}, successStatusCodes, failureStatusCodes []int, timeout time.Duration) error {
-	op := func() error {
-		client := createClient(timeout)
-		url, err := c.createURL(urlPath, query)
-		if err != nil {
-			return maskAny(errgo.WithCausef(nil, err, "Failed creating URL for path '%s': %v", urlPath, err))
-		}
-		resp, err := client.Get(url)
-		if err != nil {
-			c.lastCoordinatorURL = nil // Change coordinator
-			return maskAny(errgo.WithCausef(nil, err, "Failed performing GET request to %s: %v", url, err))
-		}
-		// Process response
-		if err := c.handleResponse(resp, "GET", url, result, successStatusCodes, failureStatusCodes); err != nil {
-			return maskAny(err)
-		}
-		return nil
-	}
-
-	if err := retry(op, timeout); err != nil {
+func (c *ArangoClient) Get(urlPath string, query url.Values, result interface{}, successStatusCodes, failureStatusCodes []int, operationTimeout, retryTimeout time.Duration) error {
+	if err := c.requestWithRetry("GET", urlPath, query, nil, "", result, successStatusCodes, failureStatusCodes, operationTimeout, retryTimeout); err != nil {
 		return maskAny(err)
 	}
 	return nil
 }
 
 // Delete performs a DELETE operation of a coordinator.
-func (c *ArangoClient) Delete(urlPath string, query url.Values, successStatusCodes, failureStatusCodes []int, timeout time.Duration) error {
-	op := func() error {
-		client := createClient(timeout)
-		url, err := c.createURL(urlPath, query)
-		if err != nil {
-			return maskAny(errgo.WithCausef(nil, err, "Failed creating URL for path '%s': %v", urlPath, err))
-		}
-		req, err := http.NewRequest("DELETE", url, nil)
-		if err != nil {
-			return maskAny(errgo.WithCausef(nil, err, "Failed creating DELETE request for path '%s': %v", urlPath, err))
-		}
-		resp, err := client.Do(req)
-		if err != nil {
-			c.lastCoordinatorURL = nil // Change coordinator
-			return maskAny(errgo.WithCausef(nil, err, "Failed performing DELETE request to %s: %v", url, err))
-		}
-		// Process response
-		if err := c.handleResponse(resp, "DELETE", url, nil, successStatusCodes, failureStatusCodes); err != nil {
-			return maskAny(err)
-		}
-		return nil
-	}
-
-	if err := retry(op, timeout); err != nil {
+func (c *ArangoClient) Delete(urlPath string, query url.Values, successStatusCodes, failureStatusCodes []int, operationTimeout, retryTimeout time.Duration) error {
+	if err := c.requestWithRetry("DELETE", urlPath, query, nil, "", nil, successStatusCodes, failureStatusCodes, operationTimeout, retryTimeout); err != nil {
 		return maskAny(err)
 	}
 	return nil
@@ -125,30 +85,8 @@ func (c *ArangoClient) Delete(urlPath string, query url.Values, successStatusCod
 
 // Post performs a POST operation of a coordinator.
 // The given input is posted to the server, if result != nil and status == 200, the response is parsed into result.
-func (c *ArangoClient) Post(urlPath string, query url.Values, input interface{}, contentType string, result interface{}, successStatusCodes, failureStatusCodes []int, timeout time.Duration) error {
-	inputData, contentType, err := prepareInput(input, contentType)
-	if err != nil {
-		return maskAny(err)
-	}
-	op := func() error {
-		client := createClient(timeout)
-		url, err := c.createURL(urlPath, query)
-		if err != nil {
-			return maskAny(errgo.WithCausef(nil, err, "Failed creating URL for path '%s': %v", urlPath, err))
-		}
-		resp, err := client.Post(url, contentType, bytes.NewReader(inputData))
-		if err != nil {
-			c.lastCoordinatorURL = nil // Change coordinator
-			return maskAny(errgo.WithCausef(nil, err, "Failed performing POST request to %s: %v", url, err))
-		}
-		// Process response
-		if err := c.handleResponse(resp, "POST", url, result, successStatusCodes, failureStatusCodes); err != nil {
-			return maskAny(err)
-		}
-		return nil
-	}
-
-	if err := retry(op, timeout); err != nil {
+func (c *ArangoClient) Post(urlPath string, query url.Values, input interface{}, contentType string, result interface{}, successStatusCodes, failureStatusCodes []int, operationTimeout, retryTimeout time.Duration) error {
+	if err := c.requestWithRetry("POST", urlPath, query, input, contentType, result, successStatusCodes, failureStatusCodes, operationTimeout, retryTimeout); err != nil {
 		return maskAny(err)
 	}
 	return nil
@@ -156,46 +94,64 @@ func (c *ArangoClient) Post(urlPath string, query url.Values, input interface{},
 
 // Patch performs a PATCH operation on a coordinator.
 // The given input is send to the server, if result != nil and status == 200, the response is parsed into result.
-func (c *ArangoClient) Patch(urlPath string, query url.Values, input interface{}, contentType string, result interface{}, successStatusCodes, failureStatusCodes []int, timeout time.Duration) error {
-	inputData, contentType, err := prepareInput(input, contentType)
-	if err != nil {
-		return maskAny(err)
-	}
-	op := func() error {
-		client := createClient(timeout)
-		url, err := c.createURL(urlPath, query)
-		if err != nil {
-			return maskAny(errgo.WithCausef(nil, err, "Failed creating URL for path '%s': %v", urlPath, err))
-		}
-		req, err := http.NewRequest("PATCH", url, bytes.NewReader(inputData))
-		if err != nil {
-			return maskAny(errgo.WithCausef(nil, err, "Failed creating DELETE request for path '%s': %v", urlPath, err))
-		}
-		req.Header.Set("Content-Type", contentType)
-		resp, err := client.Do(req)
-		if err != nil {
-			c.lastCoordinatorURL = nil // Change coordinator
-			return maskAny(errgo.WithCausef(nil, err, "Failed performing PATCH request to %s: %v", url, err))
-		}
-		// Process response
-		if err := c.handleResponse(resp, "PATCH", url, result, successStatusCodes, failureStatusCodes); err != nil {
-			return maskAny(err)
-		}
-		return nil
-	}
-
-	if err := retry(op, timeout); err != nil {
+func (c *ArangoClient) Patch(urlPath string, query url.Values, input interface{}, contentType string, result interface{}, successStatusCodes, failureStatusCodes []int, operationTimeout, retryTimeout time.Duration) error {
+	if err := c.requestWithRetry("PATCH", urlPath, query, input, contentType, result, successStatusCodes, failureStatusCodes, operationTimeout, retryTimeout); err != nil {
 		return maskAny(err)
 	}
 	return nil
 }
 
-func (c *ArangoClient) handleResponse(resp *http.Response, method, url string, result interface{}, successStatusCodes, failureStatusCodes []int) error {
+// requestWithRetry performs an operation on a coordinator.
+// The given input is send to the server (if any), if result != nil and status is success, the response is parsed into result.
+func (c *ArangoClient) requestWithRetry(method, urlPath string, query url.Values, input interface{}, contentType string, result interface{}, successStatusCodes, failureStatusCodes []int, operationTimeout, retryTimeout time.Duration) error {
+	inputData, contentType, err := prepareInput(input, contentType)
+	if err != nil {
+		return maskAny(err)
+	}
+	attempt := 0
+	op := func() error {
+		attempt++
+		start := time.Now()
+		client := createClient(operationTimeout)
+		url, err := c.createURL(urlPath, query)
+		if err != nil {
+			return maskAny(errgo.WithCausef(nil, err, "Failed creating URL for path '%s' (attempt %d, after %s, error %v)", urlPath, attempt, time.Since(start), err))
+		}
+		var rd io.Reader
+		if inputData != nil {
+			rd = bytes.NewReader(inputData)
+		}
+		req, err := http.NewRequest(method, url, rd)
+		if err != nil {
+			return maskAny(errgo.WithCausef(nil, err, "Failed creating %s request for path '%s' (attempt %d, after %s, error %v)", method, urlPath, attempt, time.Since(start), err))
+		}
+		if inputData != nil {
+			req.Header.Set("Content-Type", contentType)
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			c.lastCoordinatorURL = nil // Change coordinator
+			return maskAny(errgo.WithCausef(nil, err, "Failed performing %s request to %s (attempt %d, after %s, error %v)", method, url, attempt, time.Since(start), err))
+		}
+		// Process response
+		if err := c.handleResponse(resp, method, url, result, successStatusCodes, failureStatusCodes, attempt, start); err != nil {
+			return maskAny(err)
+		}
+		return nil
+	}
+
+	if err := retry(op, retryTimeout); err != nil {
+		return maskAny(err)
+	}
+	return nil
+}
+
+func (c *ArangoClient) handleResponse(resp *http.Response, method, url string, result interface{}, successStatusCodes, failureStatusCodes []int, attempt int, start time.Time) error {
 	// Read response body into memory
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return maskAny(errgo.WithCausef(nil, err, "Failed reading response data from %s request to %s: %v", method, url, err))
+		return maskAny(errgo.WithCausef(nil, err, "Failed reading response data from %s request to %s (attempt %d, after %s, error %v)", method, url, attempt, time.Since(start), err))
 	}
 
 	// Check for failure status
@@ -204,9 +160,9 @@ func (c *ArangoClient) handleResponse(resp *http.Response, method, url string, r
 			var aerr ArangoError
 			headers := formatHeaders(resp)
 			if tryDecodeBody(body, &aerr); err == nil {
-				return maskAny(errgo.WithCausef(nil, failureError, "Received status %d, from %s request to %s, which is a failure (%s); headers:\n%s", resp.StatusCode, method, url, aerr.Error(), headers))
+				return maskAny(errgo.WithCausef(nil, failureError, "Received status %d, from %s request to %s, which is a failure (attempt %d, after %s, error %s, headers\n%s\n)", resp.StatusCode, method, url, attempt, time.Since(start), aerr.Error(), headers))
 			}
-			return maskAny(errgo.WithCausef(nil, failureError, "Received status %d, from %s request to %s, which is a failure; headers:\n%s\n\nbody:\n%s", resp.StatusCode, method, url, headers, string(body)))
+			return maskAny(errgo.WithCausef(nil, failureError, "Received status %d, from %s request to %s, which is a failure (attempt %d, after %s, headers\n%s\n\nbody\n%s\n)", resp.StatusCode, method, url, attempt, time.Since(start), headers, string(body)))
 		}
 	}
 
@@ -216,7 +172,7 @@ func (c *ArangoClient) handleResponse(resp *http.Response, method, url string, r
 			// Found a success status
 			if isSuccessStatusCode(code) && result != nil {
 				if err := json.Unmarshal(body, result); err != nil {
-					return maskAny(errgo.WithCausef(nil, err, "Failed decoding response data from %s request to %s: %v", method, url, err))
+					return maskAny(errgo.WithCausef(nil, err, "Failed decoding response data from %s request to %s (attempt %d, after %s, error %v)", method, url, attempt, time.Since(start), err))
 				}
 			}
 			// Return success
@@ -227,7 +183,7 @@ func (c *ArangoClient) handleResponse(resp *http.Response, method, url string, r
 	// Unexpected status code
 	c.lastCoordinatorURL = nil // Change coordinator
 	headers := formatHeaders(resp)
-	return maskAny(fmt.Errorf("Unexpected status %d from %s request to %s; headers:\n%s\n\nbody:\n%s", resp.StatusCode, method, url, headers, string(body)))
+	return maskAny(fmt.Errorf("Unexpected status %d from %s request to %s (attempt %d, after %s, headers\n%s\n\nbody\n%s\n)", resp.StatusCode, method, url, attempt, time.Since(start), headers, string(body)))
 }
 
 func tryDecodeBody(body []byte, result interface{}) error {
@@ -238,6 +194,12 @@ func tryDecodeBody(body []byte, result interface{}) error {
 }
 
 func prepareInput(input interface{}, contentType string) ([]byte, string, error) {
+	if contentType == "" {
+		contentType = contentTypeJson
+	}
+	if input == nil {
+		return nil, contentType, nil
+	}
 	inputData, ok := input.([]byte)
 	if !ok {
 		var err error
@@ -252,9 +214,6 @@ func prepareInput(input interface{}, contentType string) ([]byte, string, error)
 				return nil, "", maskAny(err)
 			}
 		}
-	}
-	if contentType == "" {
-		contentType = contentTypeJson
 	}
 	return inputData, contentType, nil
 }
