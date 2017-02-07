@@ -3,8 +3,12 @@ package simple
 import (
 	"bytes"
 	"fmt"
+	"io"
+	stdlog "log"
 	"math/rand"
 	"net/url"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/arangodb/testAgent/service/cluster"
@@ -19,6 +23,8 @@ const (
 )
 
 type simpleTest struct {
+	logPath                  string
+	reportDir                string
 	log                      *logging.Logger
 	cluster                  cluster.Cluster
 	listener                 test.TestListener
@@ -44,8 +50,9 @@ type counter struct {
 }
 
 // NewSimpleTest creates a simple test
-func NewSimpleTest(log *logging.Logger) test.TestScript {
+func NewSimpleTest(log *logging.Logger, reportDir string) test.TestScript {
 	return &simpleTest{
+		reportDir:    reportDir,
 		log:          log,
 		existingDocs: make(map[string]UserDocument),
 	}
@@ -59,6 +66,10 @@ func (t *simpleTest) Name() string {
 // Start triggers the test script to start.
 // It should spwan actions in a go routine.
 func (t *simpleTest) Start(cluster cluster.Cluster, listener test.TestListener) error {
+	if err := t.setupLogger(cluster); err != nil {
+		return maskAny(err)
+	}
+
 	t.cluster = cluster
 	t.listener = listener
 	t.client = util.NewArangoClient(t.log, cluster)
@@ -105,6 +116,38 @@ func (t *simpleTest) Status() test.TestStatus {
 	}
 }
 
+// CollectLogs copies all logging info to the given writer.
+func (t *simpleTest) CollectLogs(w io.Writer) error {
+	if logPath := t.logPath; logPath == "" {
+		// Nothing to log yet
+		return nil
+	} else {
+		rd, err := os.Open(logPath)
+		if err != nil {
+			return maskAny(err)
+		}
+		defer rd.Close()
+		if _, err := io.Copy(w, rd); err != nil {
+			return maskAny(err)
+		}
+		return nil
+	}
+}
+
+// setupLogger creates a new logger that is backed by stderr AND a file.
+func (t *simpleTest) setupLogger(cluster cluster.Cluster) error {
+	t.logPath = filepath.Join(t.reportDir, fmt.Sprintf("simple-%s.log", cluster.ID()))
+	logFile, err := os.Create(t.logPath)
+	if err != nil {
+		return maskAny(err)
+	}
+	fileBackend := logging.NewLogBackend(logFile, "", stdlog.LstdFlags)
+	log := logging.MustGetLogger("simple")
+	log.SetBackend(logging.MultiLogger(fileBackend, logging.NewLogBackend(os.Stderr, "", stdlog.LstdFlags)))
+	t.log = log
+	return nil
+}
+
 func (t *simpleTest) shouldStop() bool {
 	// Should we stop?
 	if stop := t.stop; stop != nil {
@@ -139,7 +182,6 @@ func (t *simpleTest) testLoop() {
 	t.actions++
 
 	// Import documents
-	t.log.Debugf("Importing documents")
 	if err := t.importDocuments(collUser); err != nil {
 		t.log.Errorf("Failed to import documents: %#v", err)
 	}
@@ -156,8 +198,7 @@ func (t *simpleTest) testLoop() {
 			Name:  fmt.Sprintf("User %d", i),
 			Odd:   i%2 == 1,
 		}
-		t.log.Debugf("Trying to create document %#v", userDoc)
-		if err := t.createDocument(collUser, userDoc); err != nil {
+		if err := t.createDocument(collUser, userDoc, userDoc.Key); err != nil {
 			t.log.Errorf("Failed to create document: %#v", err)
 		}
 		t.existingDocs[userDoc.Key] = userDoc
@@ -209,7 +250,7 @@ func (t *simpleTest) testLoop() {
 				Name:  fmt.Sprintf("User %d", time.Now().Nanosecond()),
 				Odd:   time.Now().Nanosecond()%2 == 1,
 			}
-			if err := t.createDocument(collUser, userDoc); err != nil {
+			if err := t.createDocument(collUser, userDoc, userDoc.Key); err != nil {
 				t.log.Errorf("Failed to create document: %#v", err)
 			} else {
 				t.existingDocs[userDoc.Key] = userDoc
@@ -302,18 +343,21 @@ func (t *simpleTest) createCollection(name string, numberOfShards, replicationFa
 		ReplicationFactor: replicationFactor,
 	}
 	timeout := time.Minute
+	t.log.Infof("Creating collection '%s' with numberOfShards=%d, replicationFactor=%d...", name, numberOfShards, replicationFactor)
 	if err := t.client.Post("/_api/collection", nil, opts, "", nil, []int{200}, []int{400, 404, 307}, timeout); err != nil {
 		// This is a failure
 		t.reportFailure(test.NewFailure("Failed to create collection '%s': %v", name, err))
 		return maskAny(err)
 	}
+	t.log.Infof("Creating collection '%s' with numberOfShards=%d, replicationFactor=%d succeeded", name, numberOfShards, replicationFactor)
 	return nil
 }
 
-func (t *simpleTest) createDocument(collectionName string, document interface{}) error {
+func (t *simpleTest) createDocument(collectionName string, document interface{}, key string) error {
 	timeout := time.Minute
 	q := url.Values{}
 	q.Set("waitForSync", "true")
+	t.log.Infof("Creating document '%s' in '%s'...", key, collectionName)
 	if err := t.client.Post(fmt.Sprintf("/_api/document/%s", collectionName), q, document, "", nil, []int{200, 201, 202}, []int{400, 404, 409, 307}, timeout); err != nil {
 		// This is a failure
 		t.createCounter.failed++
@@ -321,12 +365,14 @@ func (t *simpleTest) createDocument(collectionName string, document interface{})
 		return maskAny(err)
 	}
 	t.createCounter.succeeded++
+	t.log.Infof("Creating document '%s' in '%s' succeeded", key, collectionName)
 	return nil
 }
 
 func (t *simpleTest) readExistingDocument(collectionName string, key string) error {
 	timeout := time.Minute
 	var result UserDocument
+	t.log.Infof("Reading existing document '%s' from '%s'...", key, collectionName)
 	if err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, &result, []int{200, 201, 202}, []int{400, 404, 307}, timeout); err != nil {
 		// This is a failure
 		t.readExistingCounter.failed++
@@ -342,12 +388,14 @@ func (t *simpleTest) readExistingDocument(collectionName string, key string) err
 		return maskAny(fmt.Errorf("Read returned invalid values"))
 	}
 	t.readExistingCounter.succeeded++
+	t.log.Infof("Reading existing document '%s' from '%s' succeeded", key, collectionName)
 	return nil
 }
 
 func (t *simpleTest) readNonExistingDocument(collectionName string, key string) error {
 	timeout := time.Minute
 	var result UserDocument
+	t.log.Infof("Reading non-existing document '%s' from '%s'...", key, collectionName)
 	if err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, &result, []int{404}, []int{200, 201, 202, 400, 307}, timeout); err != nil {
 		// This is a failure
 		t.readNonExistingCounter.failed++
@@ -355,6 +403,7 @@ func (t *simpleTest) readNonExistingDocument(collectionName string, key string) 
 		return maskAny(err)
 	}
 	t.readNonExistingCounter.succeeded++
+	t.log.Infof("Reading non-existing document '%s' from '%s' succeeded", key, collectionName)
 	return nil
 }
 
@@ -363,6 +412,7 @@ func (t *simpleTest) updateExistingDocument(collectionName string, key string) e
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated name %s", time.Now())
+	t.log.Infof("Updating existing document '%s' in '%s' (name -> '%s')...", key, collectionName, newName)
 	delta := map[string]interface{}{
 		"name": newName,
 	}
@@ -377,6 +427,7 @@ func (t *simpleTest) updateExistingDocument(collectionName string, key string) e
 	doc.Name = newName
 	t.existingDocs[key] = doc
 	t.updateExistingCounter.succeeded++
+	t.log.Infof("Updating existing document '%s' in '%s' (name -> '%s') succeeded", key, collectionName, newName)
 	return nil
 }
 
@@ -385,6 +436,7 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated non-existing name %s", time.Now())
+	t.log.Infof("Updating non-existing document '%s' in '%s' (name -> '%s')...", key, collectionName, newName)
 	delta := map[string]interface{}{
 		"name": newName,
 	}
@@ -395,6 +447,7 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 		return maskAny(err)
 	}
 	t.updateNonExistingCounter.succeeded++
+	t.log.Infof("Updating non-existing document '%s' in '%s' (name -> '%s') succeeded", key, collectionName, newName)
 	return nil
 }
 
@@ -402,6 +455,7 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key string) e
 	timeout := time.Minute
 	q := url.Values{}
 	q.Set("waitForSync", "true")
+	t.log.Infof("Removing existing document '%s' from '%s'...", key, collectionName)
 	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, []int{200, 201, 202}, []int{400, 404, 412, 307}, timeout); err != nil {
 		// This is a failure
 		t.deleteExistingCounter.failed++
@@ -409,6 +463,7 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key string) e
 		return maskAny(err)
 	}
 	t.deleteExistingCounter.succeeded++
+	t.log.Infof("Removing existing document '%s' from '%s' succeeded", key, collectionName)
 	return nil
 }
 
@@ -416,6 +471,7 @@ func (t *simpleTest) removeNonExistingDocument(collectionName string, key string
 	timeout := time.Minute
 	q := url.Values{}
 	q.Set("waitForSync", "true")
+	t.log.Infof("Removing non-existing document '%s' from '%s'...", key, collectionName)
 	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, []int{404}, []int{200, 201, 202, 400, 412, 307}, timeout); err != nil {
 		// This is a failure
 		t.deleteNonExistingCounter.failed++
@@ -423,6 +479,7 @@ func (t *simpleTest) removeNonExistingDocument(collectionName string, key string
 		return maskAny(err)
 	}
 	t.deleteNonExistingCounter.succeeded++
+	t.log.Infof("Removing non-existing document '%s' from '%s' succeeded", key, collectionName)
 	return nil
 }
 
@@ -452,6 +509,7 @@ func (t *simpleTest) importDocuments(collectionName string) error {
 	q.Set("collection", collectionName)
 	q.Set("waitForSync", "true")
 	importData, docs := t.createImportDocument()
+	t.log.Infof("Importing %d documents ('%s' - '%s') into '%s'...", len(docs), docs[0].Key, docs[len(docs)-1].Key, collectionName)
 	if err := t.client.Post("/_api/import", q, importData, "application/x-www-form-urlencoded", nil, []int{200, 201, 202}, []int{400, 404, 409, 307}, timeout); err != nil {
 		// This is a failure
 		t.importCounter.failed++
@@ -462,5 +520,6 @@ func (t *simpleTest) importDocuments(collectionName string) error {
 		t.existingDocs[d.Key] = d
 	}
 	t.importCounter.succeeded++
+	t.log.Infof("Importing %d documents ('%s' - '%s') into '%s' succeeded", len(docs), docs[0].Key, docs[len(docs)-1].Key, collectionName)
 	return nil
 }

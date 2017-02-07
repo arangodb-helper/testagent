@@ -2,6 +2,7 @@ package test
 
 import (
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/arangodb/testAgent/service/cluster"
@@ -24,6 +25,9 @@ type TestScript interface {
 
 	// Stop any running test. This should not return until tests are actually stopped.
 	Stop() error
+
+	// CollectLogs copies all logging info to the given writer.
+	CollectLogs(io.Writer) error
 }
 
 type Failure struct {

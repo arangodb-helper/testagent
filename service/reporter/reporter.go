@@ -130,6 +130,11 @@ func (s *reporter) ReportFailure(f test.Failure) {
 		s.log.Fatalf("Failed to create chaos monkey log: %#v", err)
 	}
 
+	// Collect test logs
+	if err := s.collectTestLogs(folder, fileNames, s.service.Tests()); err != nil {
+		s.log.Fatalf("Failed to collect test logs: %#v", err)
+	}
+
 	// Wrap up report file
 	close(fileNames)
 	if err := tarGroup.Wait(); err != nil {
@@ -212,87 +217,122 @@ func (s *reporter) collectServerLogs(folder string, fileNames chan string, machi
 				}
 				return nil
 			})
-			g.Go(func() error {
-				// Collect dbserver logs
-				if fileName, err := func() (string, error) {
-					f, err := os.Create(filepath.Join(folder, fmt.Sprintf("%s-dbserver.log", filePrefix)))
-					if err != nil {
-						return "", maskAny(err)
-					}
-					defer f.Close()
-					if err := m.CollectDBServerLogs(f); err != nil {
-						fmt.Fprintf(f, "\nError fetching logs: %#v\n", err)
-						s.log.Errorf("Error fetching dbserver logs: %#v", err)
-					}
-					return f.Name(), nil
-				}(); err != nil {
-					return maskAny(err)
-				} else {
-					fileNames <- fileName
-				}
-				return nil
-			})
-			g.Go(func() error {
-				// Collect coordinator logs
-				if fileName, err := func() (string, error) {
-					f, err := os.Create(filepath.Join(folder, fmt.Sprintf("%s-coordinator.log", filePrefix)))
-					if err != nil {
-						return "", maskAny(err)
-					}
-					defer f.Close()
-					if err := m.CollectCoordinatorLogs(f); err != nil {
-						fmt.Fprintf(f, "\nError fetching logs: %#v\n", err)
-						s.log.Errorf("Error fetching coordinator logs: %#v", err)
-					}
-					return f.Name(), nil
-				}(); err != nil {
-					return maskAny(err)
-				} else {
-					fileNames <- fileName
-				}
-				return nil
-			})
-			g.Go(func() error {
-				// Collect machine logs
-				if fileName, err := func() (string, error) {
-					f, err := os.Create(filepath.Join(folder, fmt.Sprintf("%s-machine.log", filePrefix)))
-					if err != nil {
-						return "", maskAny(err)
-					}
-					defer f.Close()
-					if err := m.CollectMachineLogs(f); err != nil {
-						fmt.Fprintf(f, "\nError fetching logs: %#v\n", err)
-						s.log.Errorf("Error fetching machine logs: %#v", err)
-					}
-					return f.Name(), nil
-				}(); err != nil {
-					return maskAny(err)
-				} else {
-					fileNames <- fileName
-				}
-				return nil
-			})
-			g.Go(func() error {
-				// Collect network logs
-				if fileName, err := func() (string, error) {
-					f, err := os.Create(filepath.Join(folder, fmt.Sprintf("%s-network.log", filePrefix)))
-					if err != nil {
-						return "", maskAny(err)
-					}
-					defer f.Close()
-					if err := m.CollectNetworkLogs(f); err != nil {
-						fmt.Fprintf(f, "\nError fetching logs: %#v\n", err)
-						s.log.Errorf("Error fetching network logs: %#v", err)
-					}
-					return f.Name(), nil
-				}(); err != nil {
-					return maskAny(err)
-				} else {
-					fileNames <- fileName
-				}
-				return nil
-			})
 		}
+		g.Go(func() error {
+			// Collect dbserver logs
+			if fileName, err := func() (string, error) {
+				f, err := os.Create(filepath.Join(folder, fmt.Sprintf("%s-dbserver.log", filePrefix)))
+				if err != nil {
+					return "", maskAny(err)
+				}
+				defer f.Close()
+				if err := m.CollectDBServerLogs(f); err != nil {
+					fmt.Fprintf(f, "\nError fetching logs: %#v\n", err)
+					s.log.Errorf("Error fetching dbserver logs: %#v", err)
+				}
+				return f.Name(), nil
+			}(); err != nil {
+				return maskAny(err)
+			} else {
+				fileNames <- fileName
+			}
+			return nil
+		})
+		g.Go(func() error {
+			// Collect coordinator logs
+			if fileName, err := func() (string, error) {
+				f, err := os.Create(filepath.Join(folder, fmt.Sprintf("%s-coordinator.log", filePrefix)))
+				if err != nil {
+					return "", maskAny(err)
+				}
+				defer f.Close()
+				if err := m.CollectCoordinatorLogs(f); err != nil {
+					fmt.Fprintf(f, "\nError fetching logs: %#v\n", err)
+					s.log.Errorf("Error fetching coordinator logs: %#v", err)
+				}
+				return f.Name(), nil
+			}(); err != nil {
+				return maskAny(err)
+			} else {
+				fileNames <- fileName
+			}
+			return nil
+		})
+		g.Go(func() error {
+			// Collect machine logs
+			if fileName, err := func() (string, error) {
+				f, err := os.Create(filepath.Join(folder, fmt.Sprintf("%s-machine.log", filePrefix)))
+				if err != nil {
+					return "", maskAny(err)
+				}
+				defer f.Close()
+				if err := m.CollectMachineLogs(f); err != nil {
+					fmt.Fprintf(f, "\nError fetching logs: %#v\n", err)
+					s.log.Errorf("Error fetching machine logs: %#v", err)
+				}
+				return f.Name(), nil
+			}(); err != nil {
+				return maskAny(err)
+			} else {
+				fileNames <- fileName
+			}
+			return nil
+		})
+		g.Go(func() error {
+			// Collect network logs
+			if fileName, err := func() (string, error) {
+				f, err := os.Create(filepath.Join(folder, fmt.Sprintf("%s-network.log", filePrefix)))
+				if err != nil {
+					return "", maskAny(err)
+				}
+				defer f.Close()
+				if err := m.CollectNetworkLogs(f); err != nil {
+					fmt.Fprintf(f, "\nError fetching logs: %#v\n", err)
+					s.log.Errorf("Error fetching network logs: %#v", err)
+				}
+				return f.Name(), nil
+			}(); err != nil {
+				return maskAny(err)
+			} else {
+				fileNames <- fileName
+			}
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return maskAny(err)
+	}
+
+	return nil
+}
+
+// collectTestLogs collects logs from all tests and adds their filenames to the given channel.
+func (s *reporter) collectTestLogs(folder string, fileNames chan string, tests []test.TestScript) error {
+	g := errgroup.Group{}
+	for _, t := range tests {
+		t := t // Used in nested func
+		fileSuffix := fileNameFixer.Replace(t.Name())
+		g.Go(func() error {
+			// Collect test logs
+			if fileName, err := func() (string, error) {
+				f, err := os.Create(filepath.Join(folder, fmt.Sprintf("test-%s.log", fileSuffix)))
+				if err != nil {
+					return "", maskAny(err)
+				}
+				defer f.Close()
+				if err := t.CollectLogs(f); err != nil {
+					fmt.Fprintf(f, "\nError fetching logs: %#v\n", err)
+					s.log.Errorf("Error fetching test logs: %#v", err)
+				}
+				return f.Name(), nil
+			}(); err != nil {
+				return maskAny(err)
+			} else {
+				fileNames <- fileName
+			}
+			return nil
+		})
 	}
 
 	if err := g.Wait(); err != nil {
