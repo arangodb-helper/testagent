@@ -545,7 +545,7 @@ func (t *simpleTest) readExistingDocument(collectionName string, key, rev string
 	var result UserDocument
 	hdr, ifMatchStatus := createRandomIfMatchHeader(nil, rev)
 	t.log.Infof("Reading existing document '%s' (%s) from '%s'...", key, ifMatchStatus, collectionName)
-	if err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, hdr, &result, []int{200, 201, 202}, []int{400, 404, 307}, operationTimeout, retryTimeout); err != nil {
+	if _, err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, hdr, &result, []int{200, 201, 202}, []int{400, 404, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.readExistingCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to read existing document '%s' (%s) in collection '%s': %v", key, ifMatchStatus, collectionName, err))
@@ -575,7 +575,7 @@ func (t *simpleTest) readExistingDocumentWrongRevision(collectionName string, ke
 	var result UserDocument
 	hdr := ifMatchHeader(nil, rev)
 	t.log.Infof("Reading existing document '%s' wrong revision from '%s'...", key, collectionName)
-	if err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, hdr, &result, []int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, retryTimeout); err != nil {
+	if _, err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, hdr, &result, []int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.readExistingWrongRevisionCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to read existing document '%s' wrong revision in collection '%s': %v", key, collectionName, err))
@@ -592,7 +592,7 @@ func (t *simpleTest) readNonExistingDocument(collectionName string, key string) 
 	operationTimeout, retryTimeout := time.Minute/4, time.Minute
 	var result UserDocument
 	t.log.Infof("Reading non-existing document '%s' from '%s'...", key, collectionName)
-	if err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, nil, &result, []int{404}, []int{200, 201, 202, 400, 307}, operationTimeout, retryTimeout); err != nil {
+	if _, err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, nil, &result, []int{404}, []int{200, 201, 202, 400, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.readNonExistingCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to read non-existing document '%s' in collection '%s': %v", key, collectionName, err))
@@ -768,7 +768,7 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 	q.Set("waitForSync", "true")
 	hdr, ifMatchStatus := createRandomIfMatchHeader(nil, rev)
 	t.log.Infof("Removing existing document '%s' (%s) from '%s'...", key, ifMatchStatus, collectionName)
-	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, []int{200, 201, 202}, []int{400, 404, 412, 307}, operationTimeout, retryTimeout); err != nil {
+	if _, err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, []int{200, 201, 202}, []int{400, 404, 412, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.deleteExistingCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to delete existing document '%s' (%s) in collection '%s': %v", key, ifMatchStatus, collectionName, err))
@@ -787,7 +787,7 @@ func (t *simpleTest) removeExistingDocumentWrongRevision(collectionName string, 
 	q.Set("waitForSync", "true")
 	hdr := ifMatchHeader(nil, rev)
 	t.log.Infof("Removing existing document '%s' wrong revision from '%s'...", key, collectionName)
-	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, []int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, retryTimeout); err != nil {
+	if _, err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, []int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.deleteExistingWrongRevisionCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to delete existing document '%s' wrong revision in collection '%s': %v", key, collectionName, err))
@@ -805,7 +805,7 @@ func (t *simpleTest) removeNonExistingDocument(collectionName string, key string
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	t.log.Infof("Removing non-existing document '%s' from '%s'...", key, collectionName)
-	if err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, nil, []int{404}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, retryTimeout); err != nil {
+	if _, err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, nil, []int{404}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.deleteNonExistingCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to delete non-existing document '%s' in collection '%s': %v", key, collectionName, err))

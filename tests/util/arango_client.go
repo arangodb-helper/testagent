@@ -40,100 +40,106 @@ type ArangoError struct {
 	ErrorNum     int    `json:"errorNum,omitempty"`
 }
 
-type ArangoUpdate struct {
-	Rev string
+type ArangoResponse struct {
+	StatusCode     int
+	CoordinatorURL string
+	Rev            string
 }
 
 func (e ArangoError) Error() string {
 	return fmt.Sprintf("%s: (code %d, errorNum %d)", e.ErrorMessage, e.Code, e.ErrorNum)
 }
 
-func (c *ArangoClient) createURL(urlPath string, query url.Values) (string, error) {
+func (c *ArangoClient) createURL(urlPath string, query url.Values) (string, url.URL, error) {
 	if c.lastCoordinatorURL == nil {
 		// Pick a random machine
 		machines, err := c.cluster.Machines()
 		if err != nil {
-			return "", maskAny(err)
+			return "", url.URL{}, maskAny(err)
 		}
 		if len(machines) == 0 {
-			return "", maskAny(fmt.Errorf("No machines available"))
+			return "", url.URL{}, maskAny(fmt.Errorf("No machines available"))
 		}
 		index := rand.Intn(len(machines))
 		u := machines[index].CoordinatorURL()
 		c.lastCoordinatorURL = &u
 	}
-	u := *c.lastCoordinatorURL
+	lastCoordinatorURL := *c.lastCoordinatorURL
+	u := lastCoordinatorURL
 	u.Path = urlPath
 	if query != nil {
 		u.RawQuery = query.Encode()
 	}
-	return u.String(), nil
+	return u.String(), lastCoordinatorURL, nil
 }
 
 // Get performs a GET operation of a coordinator.
 // If result != nil and status == 200, the response is parsed into result.
-func (c *ArangoClient) Get(urlPath string, query url.Values, header map[string]string, result interface{}, successStatusCodes, failureStatusCodes []int, operationTimeout, retryTimeout time.Duration) error {
-	if _, err := c.requestWithRetry("GET", urlPath, query, header, nil, "", result, successStatusCodes, failureStatusCodes, operationTimeout, retryTimeout); err != nil {
-		return maskAny(err)
+func (c *ArangoClient) Get(urlPath string, query url.Values, header map[string]string, result interface{}, successStatusCodes, failureStatusCodes []int, operationTimeout, retryTimeout time.Duration) (ArangoResponse, error) {
+	if aresp, err := c.requestWithRetry("GET", urlPath, query, header, nil, "", result, successStatusCodes, failureStatusCodes, operationTimeout, retryTimeout); err != nil {
+		return aresp, maskAny(err)
+	} else {
+		return aresp, nil
 	}
-	return nil
 }
 
 // Delete performs a DELETE operation of a coordinator.
-func (c *ArangoClient) Delete(urlPath string, query url.Values, header map[string]string, successStatusCodes, failureStatusCodes []int, operationTimeout, retryTimeout time.Duration) error {
-	if _, err := c.requestWithRetry("DELETE", urlPath, query, header, nil, "", nil, successStatusCodes, failureStatusCodes, operationTimeout, retryTimeout); err != nil {
-		return maskAny(err)
+func (c *ArangoClient) Delete(urlPath string, query url.Values, header map[string]string, successStatusCodes, failureStatusCodes []int, operationTimeout, retryTimeout time.Duration) (ArangoResponse, error) {
+	if aresp, err := c.requestWithRetry("DELETE", urlPath, query, header, nil, "", nil, successStatusCodes, failureStatusCodes, operationTimeout, retryTimeout); err != nil {
+		return aresp, maskAny(err)
+	} else {
+		return aresp, nil
 	}
-	return nil
 }
 
 // Post performs a POST operation of a coordinator.
 // The given input is posted to the server, if result != nil and status == 200, the response is parsed into result.
-func (c *ArangoClient) Post(urlPath string, query url.Values, header map[string]string, input interface{}, contentType string, result interface{}, successStatusCodes, failureStatusCodes []int, operationTimeout, retryTimeout time.Duration) (ArangoUpdate, error) {
-	if update, err := c.requestWithRetry("POST", urlPath, query, header, input, contentType, result, successStatusCodes, failureStatusCodes, operationTimeout, retryTimeout); err != nil {
-		return ArangoUpdate{}, maskAny(err)
+func (c *ArangoClient) Post(urlPath string, query url.Values, header map[string]string, input interface{}, contentType string, result interface{}, successStatusCodes, failureStatusCodes []int, operationTimeout, retryTimeout time.Duration) (ArangoResponse, error) {
+	if aresp, err := c.requestWithRetry("POST", urlPath, query, header, input, contentType, result, successStatusCodes, failureStatusCodes, operationTimeout, retryTimeout); err != nil {
+		return aresp, maskAny(err)
 	} else {
-		return update, nil
+		return aresp, nil
 	}
 }
 
 // Patch performs a PATCH operation on a coordinator.
 // The given input is send to the server, if result != nil and status == 200, the response is parsed into result.
-func (c *ArangoClient) Patch(urlPath string, query url.Values, header map[string]string, input interface{}, contentType string, result interface{}, successStatusCodes, failureStatusCodes []int, operationTimeout, retryTimeout time.Duration) (ArangoUpdate, error) {
-	if update, err := c.requestWithRetry("PATCH", urlPath, query, header, input, contentType, result, successStatusCodes, failureStatusCodes, operationTimeout, retryTimeout); err != nil {
-		return ArangoUpdate{}, maskAny(err)
+func (c *ArangoClient) Patch(urlPath string, query url.Values, header map[string]string, input interface{}, contentType string, result interface{}, successStatusCodes, failureStatusCodes []int, operationTimeout, retryTimeout time.Duration) (ArangoResponse, error) {
+	if aresp, err := c.requestWithRetry("PATCH", urlPath, query, header, input, contentType, result, successStatusCodes, failureStatusCodes, operationTimeout, retryTimeout); err != nil {
+		return aresp, maskAny(err)
 	} else {
-		return update, nil
+		return aresp, nil
 	}
 }
 
 // Put performs a PUT operation on a coordinator.
 // The given input is send to the server, if result != nil and status == 200, the response is parsed into result.
-func (c *ArangoClient) Put(urlPath string, query url.Values, header map[string]string, input interface{}, contentType string, result interface{}, successStatusCodes, failureStatusCodes []int, operationTimeout, retryTimeout time.Duration) (ArangoUpdate, error) {
-	if update, err := c.requestWithRetry("PUT", urlPath, query, header, input, contentType, result, successStatusCodes, failureStatusCodes, operationTimeout, retryTimeout); err != nil {
-		return ArangoUpdate{}, maskAny(err)
+func (c *ArangoClient) Put(urlPath string, query url.Values, header map[string]string, input interface{}, contentType string, result interface{}, successStatusCodes, failureStatusCodes []int, operationTimeout, retryTimeout time.Duration) (ArangoResponse, error) {
+	if aresp, err := c.requestWithRetry("PUT", urlPath, query, header, input, contentType, result, successStatusCodes, failureStatusCodes, operationTimeout, retryTimeout); err != nil {
+		return aresp, maskAny(err)
 	} else {
-		return update, nil
+		return aresp, nil
 	}
 }
 
 // requestWithRetry performs an operation on a coordinator.
 // The given input is send to the server (if any), if result != nil and status is success, the response is parsed into result.
-func (c *ArangoClient) requestWithRetry(method, urlPath string, query url.Values, header map[string]string, input interface{}, contentType string, result interface{}, successStatusCodes, failureStatusCodes []int, operationTimeout, retryTimeout time.Duration) (ArangoUpdate, error) {
+func (c *ArangoClient) requestWithRetry(method, urlPath string, query url.Values, header map[string]string, input interface{}, contentType string, result interface{}, successStatusCodes, failureStatusCodes []int, operationTimeout, retryTimeout time.Duration) (ArangoResponse, error) {
 	inputData, contentType, err := prepareInput(input, contentType)
 	if err != nil {
-		return ArangoUpdate{}, maskAny(err)
+		return ArangoResponse{}, maskAny(err)
 	}
 	attempt := 0
-	var update ArangoUpdate
+	var aresp ArangoResponse
 	op := func() error {
 		attempt++
 		start := time.Now()
 		client := createClient(operationTimeout)
-		url, err := c.createURL(urlPath, query)
+		url, lastCoordinatorURL, err := c.createURL(urlPath, query)
 		if err != nil {
 			return maskAny(errgo.WithCausef(nil, err, "Failed creating URL for path '%s' (attempt %d, after %s, error %v)", urlPath, attempt, time.Since(start), err))
 		}
+		aresp.CoordinatorURL = lastCoordinatorURL.String()
 		var rd io.Reader
 		if inputData != nil {
 			rd = bytes.NewReader(inputData)
@@ -154,19 +160,22 @@ func (c *ArangoClient) requestWithRetry(method, urlPath string, query url.Values
 			return maskAny(errgo.WithCausef(nil, err, "Failed performing %s request to %s (attempt %d, after %s, error %v)", method, url, attempt, time.Since(start), err))
 		}
 		// Process response
-		if err := c.handleResponse(resp, method, url, result, &update, successStatusCodes, failureStatusCodes, attempt, start); err != nil {
+		if err := c.handleResponse(resp, method, url, result, &aresp, successStatusCodes, failureStatusCodes, attempt, start); err != nil {
 			return maskAny(err)
 		}
 		return nil
 	}
 
 	if err := retry(op, retryTimeout); err != nil {
-		return ArangoUpdate{}, maskAny(err)
+		return aresp, maskAny(err)
 	}
-	return update, nil
+	return aresp, nil
 }
 
-func (c *ArangoClient) handleResponse(resp *http.Response, method, url string, result interface{}, update *ArangoUpdate, successStatusCodes, failureStatusCodes []int, attempt int, start time.Time) error {
+func (c *ArangoClient) handleResponse(resp *http.Response, method, url string, result interface{}, aresp *ArangoResponse, successStatusCodes, failureStatusCodes []int, attempt int, start time.Time) error {
+	// Store status code
+	aresp.StatusCode = resp.StatusCode
+
 	// Read response body into memory
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
@@ -190,7 +199,7 @@ func (c *ArangoClient) handleResponse(resp *http.Response, method, url string, r
 	for _, code := range successStatusCodes {
 		if resp.StatusCode == code {
 			// Fetch update headers
-			update.Rev = resp.Header.Get("etag")
+			aresp.Rev = resp.Header.Get("etag")
 
 			// Found a success status
 			if isSuccessStatusCode(code) && result != nil {
