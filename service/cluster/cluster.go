@@ -24,6 +24,9 @@ type Cluster interface {
 	// Block until all servers on all machines are ready
 	WaitUntilReady() error
 
+	// Add adds a single machine to the cluster
+	Add() (Machine, error)
+
 	// Remove the entire cluster
 	Destroy() error
 }
