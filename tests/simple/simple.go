@@ -1,12 +1,10 @@
 package simple
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	stdlog "log"
 	"math/rand"
-	"net/url"
 	"os"
 	"path/filepath"
 	"time"
@@ -48,6 +46,9 @@ type simpleTest struct {
 	deleteExistingWrongRevisionCounter  counter
 	deleteNonExistingCounter            counter
 	importCounter                       counter
+	queryCreateCursorCounter            counter
+	queryNextBatchCounter               counter
+	queryNextBatchNewCoordinatorCounter counter
 }
 
 type counter struct {
@@ -114,6 +115,9 @@ func (t *simpleTest) Status() test.TestStatus {
 			fmt.Sprintf("#non-existing documents replaced: %d", t.replaceNonExistingCounter.succeeded),
 			fmt.Sprintf("#non-existing documents removed: %d", t.deleteNonExistingCounter.succeeded),
 			fmt.Sprintf("#import operations: %d", t.importCounter.succeeded),
+			fmt.Sprintf("#create AQL cursor operations: %d", t.queryCreateCursorCounter.succeeded),
+			fmt.Sprintf("#fetch next AQL cursor batch operations: %d", t.queryNextBatchCounter.succeeded),
+			fmt.Sprintf("#fetch next AQL cursor batch after coordinator change operations: %d", t.queryNextBatchNewCoordinatorCounter.succeeded),
 			"",
 			"Failed:",
 			fmt.Sprintf("#documents created: %d", t.createCounter.failed),
@@ -130,6 +134,9 @@ func (t *simpleTest) Status() test.TestStatus {
 			fmt.Sprintf("#non-existing documents replaced: %d", t.replaceNonExistingCounter.failed),
 			fmt.Sprintf("#non-existing documents removed: %d", t.deleteNonExistingCounter.failed),
 			fmt.Sprintf("#import operations: %d", t.importCounter.failed),
+			fmt.Sprintf("#create AQL cursor operations: %d", t.queryCreateCursorCounter.failed),
+			fmt.Sprintf("#fetch next AQL cursor batch operations: %d", t.queryNextBatchCounter.failed),
+			fmt.Sprintf("#fetch next AQL cursor batch after coordinator change operations: %d", t.queryNextBatchNewCoordinatorCounter.failed),
 		},
 	}
 }
@@ -460,6 +467,13 @@ func (t *simpleTest) testLoop() {
 			}
 			state++
 
+		case 13:
+			// Query documents
+			if err := t.queryDocuments(collUser); err != nil {
+				t.log.Errorf("Failed to query documents documents: %#v", err)
+			}
+			state++
+
 		default:
 			state = 0
 		}
@@ -494,368 +508,4 @@ func ifMatchHeader(hdr map[string]string, rev string) map[string]string {
 	}
 	hdr["If-Match"] = rev
 	return hdr
-}
-
-// createCollection creates a new collection.
-// The operation is expected to succeed.
-func (t *simpleTest) createCollection(name string, numberOfShards, replicationFactor int) error {
-	opts := struct {
-		Name              string `json:"name"`
-		NumberOfShards    int    `json:"numberOfShards"`
-		ReplicationFactor int    `json:"replicationFactor"`
-	}{
-		Name:              name,
-		NumberOfShards:    numberOfShards,
-		ReplicationFactor: replicationFactor,
-	}
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
-	t.log.Infof("Creating collection '%s' with numberOfShards=%d, replicationFactor=%d...", name, numberOfShards, replicationFactor)
-	if _, err := t.client.Post("/_api/collection", nil, nil, opts, "", nil, []int{200}, []int{400, 404, 409, 307}, operationTimeout, retryTimeout); err != nil {
-		// This is a failure
-		t.reportFailure(test.NewFailure("Failed to create collection '%s': %v", name, err))
-		return maskAny(err)
-	}
-	t.log.Infof("Creating collection '%s' with numberOfShards=%d, replicationFactor=%d succeeded", name, numberOfShards, replicationFactor)
-	return nil
-}
-
-// createDocument creates a new document.
-// The operation is expected to succeed.
-func (t *simpleTest) createDocument(collectionName string, document interface{}, key string) (string, error) {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
-	q := url.Values{}
-	q.Set("waitForSync", "true")
-	t.log.Infof("Creating document '%s' in '%s'...", key, collectionName)
-	update, err := t.client.Post(fmt.Sprintf("/_api/document/%s", collectionName), q, nil, document, "", nil, []int{200, 201, 202}, []int{400, 404, 409, 307}, operationTimeout, retryTimeout)
-	if err != nil {
-		// This is a failure
-		t.createCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to create document in collection '%s': %v", collectionName, err))
-		return "", maskAny(err)
-	}
-	t.createCounter.succeeded++
-	t.log.Infof("Creating document '%s' in '%s' succeeded", key, collectionName)
-	return update.Rev, nil
-}
-
-// readExistingDocument reads an existing document with an optional explicit revision.
-// The operation is expected to succeed.
-func (t *simpleTest) readExistingDocument(collectionName string, key, rev string, updateRevision bool) error {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
-	var result UserDocument
-	hdr, ifMatchStatus := createRandomIfMatchHeader(nil, rev)
-	t.log.Infof("Reading existing document '%s' (%s) from '%s'...", key, ifMatchStatus, collectionName)
-	if _, err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, hdr, &result, []int{200, 201, 202}, []int{400, 404, 307}, operationTimeout, retryTimeout); err != nil {
-		// This is a failure
-		t.readExistingCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to read existing document '%s' (%s) in collection '%s': %v", key, ifMatchStatus, collectionName, err))
-		return maskAny(err)
-	}
-	// Compare document against expected document
-	expected := t.existingDocs[key]
-	if result.Value != expected.Value || result.Name != expected.Name || result.Odd != expected.Odd {
-		// This is a failure
-		t.readExistingCounter.failed++
-		t.reportFailure(test.NewFailure("Read existing document '%s' (%s) returned different values '%s': got %q expected %q", key, ifMatchStatus, collectionName, result, expected))
-		return maskAny(fmt.Errorf("Read returned invalid values"))
-	}
-	if updateRevision {
-		// Store read document so we have the last revision
-		t.existingDocs[key] = result
-	}
-	t.readExistingCounter.succeeded++
-	t.log.Infof("Reading existing document '%s' (%s) from '%s' succeeded", key, ifMatchStatus, collectionName)
-	return nil
-}
-
-// readExistingDocumentWrongRevision reads an existing document with an explicit wrong revision.
-// The operation is expected to fail.
-func (t *simpleTest) readExistingDocumentWrongRevision(collectionName string, key, rev string, updateRevision bool) error {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
-	var result UserDocument
-	hdr := ifMatchHeader(nil, rev)
-	t.log.Infof("Reading existing document '%s' wrong revision from '%s'...", key, collectionName)
-	if _, err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, hdr, &result, []int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, retryTimeout); err != nil {
-		// This is a failure
-		t.readExistingWrongRevisionCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to read existing document '%s' wrong revision in collection '%s': %v", key, collectionName, err))
-		return maskAny(err)
-	}
-	t.readExistingWrongRevisionCounter.succeeded++
-	t.log.Infof("Reading existing document '%s' wrong revision from '%s' succeeded", key, collectionName)
-	return nil
-}
-
-// readNonExistingDocument reads a non-existing document.
-// The operation is expected to fail.
-func (t *simpleTest) readNonExistingDocument(collectionName string, key string) error {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
-	var result UserDocument
-	t.log.Infof("Reading non-existing document '%s' from '%s'...", key, collectionName)
-	if _, err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, nil, &result, []int{404}, []int{200, 201, 202, 400, 307}, operationTimeout, retryTimeout); err != nil {
-		// This is a failure
-		t.readNonExistingCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to read non-existing document '%s' in collection '%s': %v", key, collectionName, err))
-		return maskAny(err)
-	}
-	t.readNonExistingCounter.succeeded++
-	t.log.Infof("Reading non-existing document '%s' from '%s' succeeded", key, collectionName)
-	return nil
-}
-
-// updateExistingDocument updates an existing document with an optional explicit revision.
-// The operation is expected to succeed.
-func (t *simpleTest) updateExistingDocument(collectionName string, key, rev string) (string, error) {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
-	q := url.Values{}
-	q.Set("waitForSync", "true")
-	newName := fmt.Sprintf("Updated name %s", time.Now())
-	hdr, ifMatchStatus := createRandomIfMatchHeader(nil, rev)
-	t.log.Infof("Updating existing document '%s' (%s) in '%s' (name -> '%s')...", key, ifMatchStatus, collectionName, newName)
-	delta := map[string]interface{}{
-		"name": newName,
-	}
-	doc := t.existingDocs[key]
-	update, err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, delta, "", nil, []int{200, 201, 202}, []int{400, 404, 412, 307}, operationTimeout, retryTimeout)
-	if err != nil {
-		// This is a failure
-		t.updateExistingCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to update existing document '%s' (%s) in collection '%s': %v", key, ifMatchStatus, collectionName, err))
-		return "", maskAny(err)
-	}
-	// Update internal doc
-	doc.Name = newName
-	doc.rev = update.Rev
-	t.existingDocs[key] = doc
-	t.updateExistingCounter.succeeded++
-	t.log.Infof("Updating existing document '%s' (%s) in '%s' (name -> '%s') succeeded", key, ifMatchStatus, collectionName, newName)
-	return update.Rev, nil
-}
-
-// updateExistingDocumentWrongRevision updates an existing document with an explicit wrong revision.
-// The operation is expected to fail.
-func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, key, rev string) error {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
-	q := url.Values{}
-	q.Set("waitForSync", "true")
-	newName := fmt.Sprintf("Updated name %s", time.Now())
-	hdr := ifMatchHeader(nil, rev)
-	t.log.Infof("Updating existing document '%s' wrong revision in '%s' (name -> '%s')...", key, collectionName, newName)
-	delta := map[string]interface{}{
-		"name": newName,
-	}
-	_, err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, delta, "", nil, []int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, retryTimeout)
-	if err != nil {
-		// This is a failure
-		t.updateExistingWrongRevisionCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to update existing document '%s' wrong revision in collection '%s': %v", key, collectionName, err))
-		return maskAny(err)
-	}
-	t.updateExistingWrongRevisionCounter.succeeded++
-	t.log.Infof("Updating existing document '%s' wrong revision in '%s' (name -> '%s') succeeded", key, collectionName, newName)
-	return nil
-}
-
-// updateNonExistingDocument updates a non-existing document.
-// The operation is expected to fail.
-func (t *simpleTest) updateNonExistingDocument(collectionName string, key string) error {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
-	q := url.Values{}
-	q.Set("waitForSync", "true")
-	newName := fmt.Sprintf("Updated non-existing name %s", time.Now())
-	t.log.Infof("Updating non-existing document '%s' in '%s' (name -> '%s')...", key, collectionName, newName)
-	delta := map[string]interface{}{
-		"name": newName,
-	}
-	if _, err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, nil, delta, "", nil, []int{404}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, retryTimeout); err != nil {
-		// This is a failure
-		t.updateNonExistingCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to update non-existing document '%s' in collection '%s': %v", key, collectionName, err))
-		return maskAny(err)
-	}
-	t.updateNonExistingCounter.succeeded++
-	t.log.Infof("Updating non-existing document '%s' in '%s' (name -> '%s') succeeded", key, collectionName, newName)
-	return nil
-}
-
-// replaceExistingDocument replaces an existing document with an optional explicit revision.
-// The operation is expected to succeed.
-func (t *simpleTest) replaceExistingDocument(collectionName string, key, rev string) (string, error) {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
-	q := url.Values{}
-	q.Set("waitForSync", "true")
-	newName := fmt.Sprintf("Updated name %s", time.Now())
-	hdr, ifMatchStatus := createRandomIfMatchHeader(nil, rev)
-	t.log.Infof("Replacing existing document '%s' (%s) in '%s' (name -> '%s')...", key, ifMatchStatus, collectionName, newName)
-	newDoc := UserDocument{
-		Key:   key,
-		Name:  fmt.Sprintf("Replaced named %s", key),
-		Value: rand.Int(),
-		Odd:   rand.Int()%2 == 0,
-	}
-	update, err := t.client.Put(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, newDoc, "", nil, []int{200, 201, 202}, []int{400, 404, 412, 307}, operationTimeout, retryTimeout)
-	if err != nil {
-		// This is a failure
-		t.replaceExistingCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to replace existing document '%s' (%s) in collection '%s': %v", key, ifMatchStatus, collectionName, err))
-		return "", maskAny(err)
-	}
-	// Update internal doc
-	newDoc.rev = update.Rev
-	t.existingDocs[key] = newDoc
-	t.replaceExistingCounter.succeeded++
-	t.log.Infof("Replacing existing document '%s' (%s) in '%s' (name -> '%s') succeeded", key, ifMatchStatus, collectionName, newName)
-	return update.Rev, nil
-}
-
-// replaceExistingDocumentWrongRevision replaces an existing document with an explicit wrong revision.
-// The operation is expected to fail.
-func (t *simpleTest) replaceExistingDocumentWrongRevision(collectionName string, key, rev string) error {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
-	q := url.Values{}
-	q.Set("waitForSync", "true")
-	newName := fmt.Sprintf("Updated name %s", time.Now())
-	hdr := ifMatchHeader(nil, rev)
-	t.log.Infof("Replacing existing document '%s' wrong revision in '%s' (name -> '%s')...", key, collectionName, newName)
-	newDoc := UserDocument{
-		Key:   key,
-		Name:  fmt.Sprintf("Replaced named %s", key),
-		Value: rand.Int(),
-		Odd:   rand.Int()%2 == 0,
-	}
-	_, err := t.client.Put(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, newDoc, "", nil, []int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, retryTimeout)
-	if err != nil {
-		// This is a failure
-		t.replaceExistingWrongRevisionCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to replace existing document '%s' wrong revision in collection '%s': %v", key, collectionName, err))
-		return maskAny(err)
-	}
-	t.replaceExistingWrongRevisionCounter.succeeded++
-	t.log.Infof("Replacing existing document '%s' wrong revision in '%s' (name -> '%s') succeeded", key, collectionName, newName)
-	return nil
-}
-
-// replaceNonExistingDocument replaces a non-existing document.
-// The operation is expected to fail.
-func (t *simpleTest) replaceNonExistingDocument(collectionName string, key string) error {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
-	q := url.Values{}
-	q.Set("waitForSync", "true")
-	newName := fmt.Sprintf("Updated non-existing name %s", time.Now())
-	t.log.Infof("Replacing non-existing document '%s' in '%s' (name -> '%s')...", key, collectionName, newName)
-	newDoc := UserDocument{
-		Key:   key,
-		Name:  fmt.Sprintf("Replaced named %s", key),
-		Value: rand.Int(),
-		Odd:   rand.Int()%2 == 0,
-	}
-	if _, err := t.client.Put(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, nil, newDoc, "", nil, []int{404}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, retryTimeout); err != nil {
-		// This is a failure
-		t.replaceNonExistingCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to replace non-existing document '%s' in collection '%s': %v", key, collectionName, err))
-		return maskAny(err)
-	}
-	t.replaceNonExistingCounter.succeeded++
-	t.log.Infof("Replacing non-existing document '%s' in '%s' (name -> '%s') succeeded", key, collectionName, newName)
-	return nil
-}
-
-// removeExistingDocument removes an existing document with an optional explicit revision.
-// The operation is expected to succeed.
-func (t *simpleTest) removeExistingDocument(collectionName string, key, rev string) error {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
-	q := url.Values{}
-	q.Set("waitForSync", "true")
-	hdr, ifMatchStatus := createRandomIfMatchHeader(nil, rev)
-	t.log.Infof("Removing existing document '%s' (%s) from '%s'...", key, ifMatchStatus, collectionName)
-	if _, err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, []int{200, 201, 202}, []int{400, 404, 412, 307}, operationTimeout, retryTimeout); err != nil {
-		// This is a failure
-		t.deleteExistingCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to delete existing document '%s' (%s) in collection '%s': %v", key, ifMatchStatus, collectionName, err))
-		return maskAny(err)
-	}
-	t.deleteExistingCounter.succeeded++
-	t.log.Infof("Removing existing document '%s' (%s) from '%s' succeeded", key, ifMatchStatus, collectionName)
-	return nil
-}
-
-// removeExistingDocumentWrongRevision removes an existing document with an explicit wrong revision.
-// The operation is expected to fail.
-func (t *simpleTest) removeExistingDocumentWrongRevision(collectionName string, key, rev string) error {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
-	q := url.Values{}
-	q.Set("waitForSync", "true")
-	hdr := ifMatchHeader(nil, rev)
-	t.log.Infof("Removing existing document '%s' wrong revision from '%s'...", key, collectionName)
-	if _, err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, []int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, retryTimeout); err != nil {
-		// This is a failure
-		t.deleteExistingWrongRevisionCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to delete existing document '%s' wrong revision in collection '%s': %v", key, collectionName, err))
-		return maskAny(err)
-	}
-	t.deleteExistingWrongRevisionCounter.succeeded++
-	t.log.Infof("Removing existing document '%s' wrong revision from '%s' succeeded", key, collectionName)
-	return nil
-}
-
-// removeNonExistingDocument removes a non-existing document.
-// The operation is expected to fail.
-func (t *simpleTest) removeNonExistingDocument(collectionName string, key string) error {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
-	q := url.Values{}
-	q.Set("waitForSync", "true")
-	t.log.Infof("Removing non-existing document '%s' from '%s'...", key, collectionName)
-	if _, err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, nil, []int{404}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, retryTimeout); err != nil {
-		// This is a failure
-		t.deleteNonExistingCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to delete non-existing document '%s' in collection '%s': %v", key, collectionName, err))
-		return maskAny(err)
-	}
-	t.deleteNonExistingCounter.succeeded++
-	t.log.Infof("Removing non-existing document '%s' from '%s' succeeded", key, collectionName)
-	return nil
-}
-
-// createImportDocument creates a #document based import file.
-func (t *simpleTest) createImportDocument() ([]byte, []UserDocument) {
-	buf := &bytes.Buffer{}
-	docs := make([]UserDocument, 0, 10000)
-	fmt.Fprintf(buf, `[ "_key", "value", "name", "odd" ]`)
-	fmt.Fprintln(buf)
-	for i := 0; i < 10000; i++ {
-		key := fmt.Sprintf("docimp%05d", i)
-		userDoc := UserDocument{
-			Key:   key,
-			Value: i,
-			Name:  fmt.Sprintf("Imported %d", i),
-			Odd:   i%2 == 0,
-		}
-		docs = append(docs, userDoc)
-		fmt.Fprintf(buf, `[ "%s", %d, "%s", %v ]`, userDoc.Key, userDoc.Value, userDoc.Name, userDoc.Odd)
-		fmt.Fprintln(buf)
-	}
-	return buf.Bytes(), docs
-}
-
-// importDocuments imports a bulk set of documents.
-// The operation is expected to succeed.
-func (t *simpleTest) importDocuments(collectionName string) error {
-	operationTimeout, retryTimeout := time.Minute, time.Minute*3
-	q := url.Values{}
-	q.Set("collection", collectionName)
-	q.Set("waitForSync", "true")
-	importData, docs := t.createImportDocument()
-	t.log.Infof("Importing %d documents ('%s' - '%s') into '%s'...", len(docs), docs[0].Key, docs[len(docs)-1].Key, collectionName)
-	if _, err := t.client.Post("/_api/import", q, nil, importData, "application/x-www-form-urlencoded", nil, []int{200, 201, 202}, []int{400, 404, 409, 307}, operationTimeout, retryTimeout); err != nil {
-		// This is a failure
-		t.importCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to import documents in collection '%s': %v", collectionName, err))
-		return maskAny(err)
-	}
-	for _, d := range docs {
-		t.existingDocs[d.Key] = d
-	}
-	t.importCounter.succeeded++
-	t.log.Infof("Importing %d documents ('%s' - '%s') into '%s' succeeded", len(docs), docs[0].Key, docs[len(docs)-1].Key, collectionName)
-	return nil
 }
