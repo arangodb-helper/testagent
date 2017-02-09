@@ -19,7 +19,7 @@ type CursorResponse struct {
 	Result  []interface{} `json:"result,omitempty"`
 }
 
-// queryDocuments runs a long running AQL query.
+// queryDocuments runs an AQL query.
 // The operation is expected to succeed.
 func (t *simpleTest) queryDocuments(collectionName string) error {
 	if len(t.existingDocs) < 10 {
@@ -29,7 +29,7 @@ func (t *simpleTest) queryDocuments(collectionName string) error {
 
 	operationTimeout, retryTimeout := time.Minute/3, time.Minute
 
-	t.log.Infof("Creating long running AQL query cursor for '%s'...", collectionName)
+	t.log.Infof("Creating AQL query cursor for '%s'...", collectionName)
 	queryReq := QueryRequest{
 		//		Query:     fmt.Sprintf("FOR d IN %s LIMIT 10 RETURN {d, s: SLEEP(10)}", collectionName),
 		Query:     fmt.Sprintf("FOR d IN %s LIMIT 10 RETURN d", collectionName),
@@ -98,6 +98,42 @@ func (t *simpleTest) queryDocuments(collectionName string) error {
 	}
 
 	// We've fetched all documents, check result count
+	if resultCount != 10 {
+		t.reportFailure(test.NewFailure("Number of documents was %d, expected 10", resultCount))
+		return maskAny(fmt.Errorf("Number of documents was %d, expected 10", resultCount))
+	}
+
+	return nil
+}
+
+// queryDocumentsLongRunning runs a long running AQL query.
+// The operation is expected to succeed.
+func (t *simpleTest) queryDocumentsLongRunning(collectionName string) error {
+	if len(t.existingDocs) < 10 {
+		t.log.Infof("Skipping query test, we need 10 or more documents")
+		return nil
+	}
+
+	operationTimeout, retryTimeout := time.Minute/2, time.Minute*2
+
+	t.log.Infof("Creating long running AQL query for '%s'...", collectionName)
+	queryReq := QueryRequest{
+		Query:     fmt.Sprintf("FOR d IN %s LIMIT 10 RETURN {d:d, s:SLEEP(2)}", collectionName),
+		BatchSize: 10,
+		Count:     false,
+	}
+	var cursorResp CursorResponse
+	if _, err := t.client.Post("/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{201}, []int{200, 202, 400, 404, 409, 307}, operationTimeout, retryTimeout); err != nil {
+		// This is a failure
+		t.queryLongRunningCounter.failed++
+		t.reportFailure(test.NewFailure("Failed to create long running AQL cursor in collection '%s': %v", collectionName, err))
+		return maskAny(err)
+	}
+	resultCount := len(cursorResp.Result)
+	t.queryLongRunningCounter.succeeded++
+	t.log.Infof("Creating long running AQL query for collection '%s' succeeded", collectionName)
+
+	// We should've fetched all documents, check result count
 	if resultCount != 10 {
 		t.reportFailure(test.NewFailure("Number of documents was %d, expected 10", resultCount))
 		return maskAny(fmt.Errorf("Number of documents was %d, expected 10", resultCount))

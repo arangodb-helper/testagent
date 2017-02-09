@@ -49,6 +49,7 @@ type simpleTest struct {
 	queryCreateCursorCounter            counter
 	queryNextBatchCounter               counter
 	queryNextBatchNewCoordinatorCounter counter
+	queryLongRunningCounter             counter
 }
 
 type counter struct {
@@ -118,6 +119,7 @@ func (t *simpleTest) Status() test.TestStatus {
 			fmt.Sprintf("#create AQL cursor operations: %d", t.queryCreateCursorCounter.succeeded),
 			fmt.Sprintf("#fetch next AQL cursor batch operations: %d", t.queryNextBatchCounter.succeeded),
 			fmt.Sprintf("#fetch next AQL cursor batch after coordinator change operations: %d", t.queryNextBatchNewCoordinatorCounter.succeeded),
+			fmt.Sprintf("#long running AQL query operations: %d", t.queryLongRunningCounter.succeeded),
 			"",
 			"Failed:",
 			fmt.Sprintf("#documents created: %d", t.createCounter.failed),
@@ -137,6 +139,7 @@ func (t *simpleTest) Status() test.TestStatus {
 			fmt.Sprintf("#create AQL cursor operations: %d", t.queryCreateCursorCounter.failed),
 			fmt.Sprintf("#fetch next AQL cursor batch operations: %d", t.queryNextBatchCounter.failed),
 			fmt.Sprintf("#fetch next AQL cursor batch after coordinator change operations: %d", t.queryNextBatchNewCoordinatorCounter.failed),
+			fmt.Sprintf("#long running AQL query operations: %d", t.queryLongRunningCounter.failed),
 		},
 	}
 }
@@ -470,7 +473,14 @@ func (t *simpleTest) testLoop() {
 		case 13:
 			// Query documents
 			if err := t.queryDocuments(collUser); err != nil {
-				t.log.Errorf("Failed to query documents documents: %#v", err)
+				t.log.Errorf("Failed to query documents: %#v", err)
+			}
+			state++
+
+		case 14:
+			// Query documents (long running)
+			if err := t.queryDocumentsLongRunning(collUser); err != nil {
+				t.log.Errorf("Failed to query (long running) documents: %#v", err)
 			}
 			state++
 

@@ -48,8 +48,8 @@ The test operations covered in those scripts will include (among others):
 - [x] Replace existing documents with explicit & last revision
 - [x] Replace existing documents with explicit & non-last revision
 - [x] Replace non-existing documents 
-- [ ] Query documents (AQL)
-- [ ] Query documents with long running query (AQL SLEEP)
+- [x] Query documents (AQL)
+- [x] Query documents with long running query (AQL SLEEP)
 - [ ] Backup entire databases
 
 ## Usage 
