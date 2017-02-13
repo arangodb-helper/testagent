@@ -11,8 +11,8 @@ ENV RUNNING_IN_DOCKER=true
 ENV ARANGODB_IMAGE=arangodb/arangodb-starter:0.3.1
 
 # Database image 
-#ENV ARANGO_IMAGE=arangodb/arangodb:3.1.10
-ENV ARANGO_IMAGE=neunhoef/arangodb:3.2.devel
+ENV ARANGO_IMAGE=arangodb/arangodb:3.1.10
+#ENV ARANGO_IMAGE=neunhoef/arangodb:3.2.devel
 
 # network-blocker image
 ENV NETWORK_BLOCKER_IMAGE=arangodb/network-blocker:0.0.1
