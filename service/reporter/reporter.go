@@ -393,10 +393,14 @@ func (s *reporter) createRecentChaosFile(folder string, fileNames chan string) e
 	if cm := s.service.ChaosMonkey(); cm != nil {
 		lines = append(lines, fmt.Sprintf("Chaos monkey on=%v", cm.Active()))
 
-		stats := cm.Statistics()
+		actions := cm.Actions()
 		lines = append(lines, "", "Statistics:")
-		for _, st := range stats {
-			lines = append(lines, fmt.Sprintf("%s: %d", st.Name, st.Value))
+		for _, a := range actions {
+			lines = append(lines,
+				fmt.Sprintf("%s succeeded: %d", a.Name(), a.Succeeded()),
+				fmt.Sprintf("%s failed: %d", a.Name(), a.Failed()),
+				fmt.Sprintf("%s skipped: %d", a.Name(), a.Skipped()),
+			)
 		}
 
 		lines = append(lines, "", "Recent events:")

@@ -32,10 +32,19 @@ type Test struct {
 }
 
 type Chaos struct {
-	Active     bool
-	State      string
-	Events     []chaos.Event
-	Statistics []chaos.Statistic
+	Active  bool
+	State   string
+	Events  []chaos.Event
+	Actions []ChaosAction
+}
+
+type ChaosAction struct {
+	ID        string
+	Name      string
+	Succeeded int
+	Failed    int
+	Skipped   int
+	Enabled   bool
 }
 
 type FailureReport struct {
@@ -104,7 +113,16 @@ func chaosFromCluster(cm chaos.ChaosMonkey, maxEvents int) Chaos {
 		chaos.Active = cm.Active()
 		chaos.State = cm.State()
 		chaos.Events = cm.GetRecentEvents(maxEvents)
-		chaos.Statistics = cm.Statistics()
+		for _, a := range cm.Actions() {
+			chaos.Actions = append(chaos.Actions, ChaosAction{
+				ID:        a.ID(),
+				Name:      a.Name(),
+				Succeeded: a.Succeeded(),
+				Failed:    a.Failed(),
+				Skipped:   a.Skipped(),
+				Enabled:   a.Enabled(),
+			})
+		}
 	}
 	return chaos
 }
