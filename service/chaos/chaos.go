@@ -58,7 +58,7 @@ func NewChaosMonkey(log *logging.Logger, cluster cluster.Cluster, config ChaosMo
 		&chaosAction{c.dropAgentTraffic, "Drop Agent Traffic", 0, 0, 0, false},
 		&chaosAction{c.dropDBServerTraffic, "Drop DBServer Traffic", 0, 0, 0, false},
 		&chaosAction{c.dropCoordinatorTraffic, "Drop Coordinator Traffic", 0, 0, 0, false},
-		&chaosAction{c.addMachine, "Add New Machine", 0, 0, 0, false},
+		&chaosAction{c.addMachine, "Add New Machine", 0, 0, 0, true},
 	}
 	return c
 }
