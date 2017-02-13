@@ -169,6 +169,11 @@ func (c *arangodbCluster) ID() string {
 	return c.id
 }
 
+// ArangoImage returns the arango (database) docker image used on this cluster
+func (c *arangodbCluster) ArangoImage() string {
+	return c.ArangodbConfig.ArangoImage
+}
+
 // Machines returns all machines in the cluster
 func (c *arangodbCluster) Machines() ([]cluster.Machine, error) {
 	c.mutex.Lock()

@@ -1,13 +1,26 @@
 {{template "base/head" .}}
 
 <h1>Welcome to TestAgent</h1>
-<p>
-ID: {{.ID}}
-<br/>
-Up: {{.Uptime}}
-<br/>
-Version: {{.VersionInfo}}
-</p>
+
+<table class="ui collapsing very compact striped table">
+    <thead>
+    <tr>
+        <td>ID</td>
+        <td>{{.ID}}</td>
+    </tr>
+    <tr>
+        <td>Up</td>
+        <td>{{.Uptime}}</td>
+    </tr>
+    <tr>
+        <td>Version</td>
+        <td>{{.VersionInfo}}</td>
+    </tr>
+    <tr>
+        <td>Arango image</td>
+        <td>{{.ArangoImage}}</td>
+    </tr>
+</table>
 
 <h2>Cluster</h2>
 

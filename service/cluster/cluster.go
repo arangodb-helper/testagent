@@ -18,6 +18,9 @@ type Cluster interface {
 	// ID returns a unique identifier for this cluster
 	ID() string
 
+	// ArangoImage returns the arango (database) docker image used on this cluster
+	ArangoImage() string
+
 	// Machines returns all current machines in the cluster.
 	Machines() ([]Machine, error)
 

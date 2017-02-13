@@ -14,6 +14,9 @@ func indexPage(ctx *macaron.Context, log *logging.Logger, service Service) {
 	// General
 	ctx.Data["Uptime"] = humanize.Time(service.StartedAt())
 	ctx.Data["VersionInfo"] = fmt.Sprintf("%s, build %s", service.ProjectVersion(), service.ProjectBuild())
+	if c := service.Cluster(); c != nil {
+		ctx.Data["ArangoImage"] = c.ArangoImage()
+	}
 
 	// Cluster
 	machines := []Machine{}

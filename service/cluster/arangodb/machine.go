@@ -288,7 +288,7 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 	if c.Privileged {
 		args = append(args, "--dockerPrivileged")
 	}
-	if c.ArangoImage != "" {
+	if c.ArangodbConfig.ArangoImage != "" {
 		args = append(args,
 			fmt.Sprintf("--docker=%s", c.ArangodbConfig.ArangoImage),
 		)
