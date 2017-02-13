@@ -167,10 +167,18 @@ func (c *arangodbCluster) Machines() ([]cluster.Machine, error) {
 
 // Add adds a single machine to the cluster
 func (c *arangodbCluster) Add() (cluster.Machine, error) {
+	// Create & start machine
 	m, err := c.add()
 	if err != nil {
 		return nil, maskAny(err)
 	}
+
+	// Wait until all servers are reachable
+	ma := m.(*arangodb)
+	if err := ma.waitUntilServersReady(c.log, serverReadyTimeout); err != nil {
+		return nil, maskAny(err)
+	}
+
 	return m, nil
 }
 
