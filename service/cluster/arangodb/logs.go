@@ -7,13 +7,13 @@ import (
 	"time"
 
 	dc "github.com/fsouza/go-dockerclient"
-	"github.com/juju/errgo"
+	"github.com/pkg/errors"
 )
 
 // CollectMachineLogs collects recent logs from the machine running the servers and writes them to the given writer.
 func (m *arangodb) CollectMachineLogs(w io.Writer) error {
 	// Collect logs from arangodb
-	if err := m.collectContainerLogs(w, m.containerID); err != nil && errgo.Cause(err) != io.EOF {
+	if err := m.collectContainerLogs(w, m.containerID); err != nil && errors.Cause(err) != io.EOF {
 		return maskAny(err)
 	}
 	return nil
@@ -22,7 +22,7 @@ func (m *arangodb) CollectMachineLogs(w io.Writer) error {
 // CollectNetworkLogs collects recent logs from the network(-blocker) running the servers and writes them to the given writer.
 func (m *arangodb) CollectNetworkLogs(w io.Writer) error {
 	// Collect logs from network-blocker
-	if err := m.collectContainerLogs(w, m.nwBlockerContainerID); err != nil && errgo.Cause(err) != io.EOF {
+	if err := m.collectContainerLogs(w, m.nwBlockerContainerID); err != nil && errors.Cause(err) != io.EOF {
 		return maskAny(err)
 	}
 	return nil
@@ -34,7 +34,7 @@ func (m *arangodb) CollectAgentLogs(w io.Writer) error {
 		if err := m.updateServerInfo(); err != nil {
 			return maskAny(err)
 		}
-		if err := m.collectServerLogs(w, "agent"); err != nil && errgo.Cause(err) != io.EOF {
+		if err := m.collectServerLogs(w, "agent"); err != nil && errors.Cause(err) != io.EOF {
 			return maskAny(err)
 		}
 		return nil
@@ -47,7 +47,7 @@ func (m *arangodb) CollectDBServerLogs(w io.Writer) error {
 	if err := m.updateServerInfo(); err != nil {
 		return maskAny(err)
 	}
-	if err := m.collectServerLogs(w, "dbserver"); err != nil && errgo.Cause(err) != io.EOF {
+	if err := m.collectServerLogs(w, "dbserver"); err != nil && errors.Cause(err) != io.EOF {
 		return maskAny(err)
 	}
 	return nil
@@ -58,7 +58,7 @@ func (m *arangodb) CollectCoordinatorLogs(w io.Writer) error {
 	if err := m.updateServerInfo(); err != nil {
 		return maskAny(err)
 	}
-	if err := m.collectServerLogs(w, "coordinator"); err != nil && errgo.Cause(err) != io.EOF {
+	if err := m.collectServerLogs(w, "coordinator"); err != nil && errors.Cause(err) != io.EOF {
 		return maskAny(err)
 	}
 	return nil
@@ -76,7 +76,7 @@ func (m *arangodb) collectContainerLogs(w io.Writer, containerID string) error {
 		Stderr:       true,
 		Since:        since.Unix(),
 		Timestamps:   false,
-	}); err != nil && errgo.Cause(err) != io.EOF {
+	}); err != nil && errors.Cause(err) != io.EOF {
 		m.log.Debugf("failed to fetching logs from %s: %v", containerID, err)
 		return maskAny(err)
 	}

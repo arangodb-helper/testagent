@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/juju/errgo"
+	"github.com/pkg/errors"
 )
 
 type client struct {
@@ -98,7 +98,7 @@ func (c *client) handleResponse(resp *http.Response, method, url string, result 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return maskAny(errgo.WithCausef(nil, err, "Failed reading response data from %s request to %s: %v", method, url, err))
+		return maskAny(errors.Wrapf(err, "Failed reading response data from %s request to %s: %v", method, url, err))
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -112,7 +112,7 @@ func (c *client) handleResponse(resp *http.Response, method, url string, result 
 	// Got a success status
 	if result != nil {
 		if err := json.Unmarshal(body, result); err != nil {
-			return maskAny(errgo.WithCausef(nil, err, "Failed decoding response data from %s request to %s: %v", method, url, err))
+			return maskAny(errors.Wrapf(err, "Failed decoding response data from %s request to %s: %v", method, url, err))
 		}
 	}
 	return nil

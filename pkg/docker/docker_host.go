@@ -6,7 +6,7 @@ import (
 	"net/url"
 
 	dc "github.com/fsouza/go-dockerclient"
-	"github.com/juju/errgo"
+	"github.com/pkg/errors"
 )
 
 type DockerHost struct {
@@ -16,7 +16,7 @@ type DockerHost struct {
 }
 
 var (
-	maskAny = errgo.MaskFunc(errgo.Any)
+	maskAny = errors.WithStack
 )
 
 // NewDockerHosts creates DockerHosts for each of the given endpoints.

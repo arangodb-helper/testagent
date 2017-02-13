@@ -16,7 +16,6 @@ import (
 	"github.com/arangodb/testAgent/service/chaos"
 	"github.com/arangodb/testAgent/service/cluster"
 	"github.com/arangodb/testAgent/service/test"
-	"github.com/juju/errgo"
 	logging "github.com/op/go-logging"
 	"golang.org/x/sync/errgroup"
 )
@@ -437,7 +436,7 @@ func (s *reporter) createFailureReportFile(folder string, fileNames chan string,
 			lines = append(lines,
 				fmt.Sprintf("Error %d", i),
 				fmt.Sprintf("Message: %v", err),
-				fmt.Sprintf("Trace: %#v", errgo.Details(err)),
+				fmt.Sprintf("Trace: %+v", err),
 				"",
 			)
 		}

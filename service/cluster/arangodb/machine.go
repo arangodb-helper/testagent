@@ -17,8 +17,8 @@ import (
 	"github.com/arangodb/testAgent/service/cluster"
 	"github.com/cenkalti/backoff"
 	dc "github.com/fsouza/go-dockerclient"
-	"github.com/juju/errgo"
 	logging "github.com/op/go-logging"
+	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -564,7 +564,7 @@ func (m *arangodb) testInstance(log *logging.Logger, url url.URL, name string, t
 
 		atomic.StoreInt32(activeVar, 0)
 		if time.Since(start) > timeout {
-			return maskAny(errgo.WithCausef(nil, cluster.TimeoutError, "%s-%d on %s is not ready in time", name, m.index, url.String()))
+			return maskAny(errors.Wrapf(cluster.TimeoutError, "%s-%d on %s is not ready in time", name, m.index, url.String()))
 		}
 		time.Sleep(time.Millisecond * 500)
 	}

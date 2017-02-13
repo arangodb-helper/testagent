@@ -4,8 +4,8 @@ License: http://creativecommons.org/publicdomain/zero/1.0
 - github.com/fsouza/go-dockerclient
 License: BSD
 
-- github.com/juju/errgo
-License: LGPLv3
+- github.com/pkg/errors
+License: BSD
 
 - github.com/op/go-logging
 License: BSD

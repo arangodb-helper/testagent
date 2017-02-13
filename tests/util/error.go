@@ -1,12 +1,12 @@
 package util
 
-import "github.com/juju/errgo"
+import "github.com/pkg/errors"
 
 var (
-	maskAny      = errgo.MaskFunc(errgo.Any)
-	failureError = errgo.New("failure")
+	maskAny      = errors.WithStack
+	failureError = errors.New("failure")
 )
 
 func isFailure(err error) bool {
-	return errgo.Cause(err) == failureError
+	return errors.Cause(err) == failureError
 }

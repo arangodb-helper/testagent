@@ -56,16 +56,6 @@ $(GOBUILDDIR):
 	@mkdir -p $(ORGDIR)
 	@rm -f $(REPODIR) && ln -s ../../../.. $(REPODIR)
 	GOPATH=$(GOBUILDDIR) go get -u github.com/jteeuwen/go-bindata/...
-	GOPATH=$(GOBUILDDIR) go get github.com/fsouza/go-dockerclient
-	GOPATH=$(GOBUILDDIR) go get github.com/juju/errgo
-	GOPATH=$(GOBUILDDIR) go get github.com/op/go-logging
-	GOPATH=$(GOBUILDDIR) go get github.com/spf13/cobra
-	GOPATH=$(GOBUILDDIR) go get golang.org/x/sync/errgroup
-	GOPATH=$(GOBUILDDIR) go get github.com/cenkalti/backoff
-	GOPATH=$(GOBUILDDIR) go get gopkg.in/macaron.v1
-	GOPATH=$(GOBUILDDIR) go get github.com/go-macaron/bindata
-	GOPATH=$(GOBUILDDIR) go get github.com/dustin/go-humanize
-	GOPATH=$(GOBUILDDIR) go get github.com/coreos/go-semver/semver
 
 templates/templates.go: $(GOBUILDDIR) $(TEMPLATES)
 	$(GOBUILDDIR)/bin/go-bindata -pkg templates -prefix templates -modtime 0 -o templates/templates.go templates/...
