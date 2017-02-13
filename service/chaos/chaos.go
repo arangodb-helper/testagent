@@ -34,16 +34,21 @@ type ChaosMonkey interface {
 	Statistics() []Statistic
 }
 
+type ChaosMonkeyConfig struct {
+	MaxMachines int // Maximum number of machines to allow in a cluster.
+}
+
 type Statistic struct {
 	Name  string
 	Value int
 }
 
 // NewChaosMonkey creates a new chaos monkey for the given cluster
-func NewChaosMonkey(log *logging.Logger, cluster cluster.Cluster) ChaosMonkey {
+func NewChaosMonkey(log *logging.Logger, cluster cluster.Cluster, config ChaosMonkeyConfig) ChaosMonkey {
 	c := &chaosMonkey{
-		log:     log,
-		cluster: cluster,
+		ChaosMonkeyConfig: config,
+		log:               log,
+		cluster:           cluster,
 	}
 	c.actions = []*chaosAction{
 		&chaosAction{c.restartAgent, "Restart Agent", 0, 0, 0},
@@ -59,11 +64,13 @@ func NewChaosMonkey(log *logging.Logger, cluster cluster.Cluster) ChaosMonkey {
 		&chaosAction{c.dropAgentTraffic, "Drop Agent Traffic", 0, 0, 0},
 		&chaosAction{c.dropDBServerTraffic, "Drop DBServer Traffic", 0, 0, 0},
 		&chaosAction{c.dropCoordinatorTraffic, "Drop Coordinator Traffic", 0, 0, 0},
+		&chaosAction{c.addMachine, "Add New Machine", 0, 0, 0},
 	}
 	return c
 }
 
 type chaosMonkey struct {
+	ChaosMonkeyConfig
 	mutex        sync.Mutex
 	log          *logging.Logger
 	cluster      cluster.Cluster

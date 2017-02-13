@@ -18,6 +18,7 @@ type ServiceConfig struct {
 	AgencySize     int
 	ServerPort     int
 	ReportDir      string
+	ChaosConfig    chaos.ChaosMonkeyConfig
 }
 
 type ServiceDependencies struct {
@@ -71,7 +72,7 @@ func (s *Service) Run(stopChan chan struct{}) error {
 
 	// Create & start a chaos monkey
 	s.Logger.Info("Creating chaos monkey")
-	s.chaosMonkey = chaos.NewChaosMonkey(s.Logger, s.cluster)
+	s.chaosMonkey = chaos.NewChaosMonkey(s.Logger, s.cluster, s.ChaosConfig)
 	s.chaosMonkey.Start()
 
 	// Run tests

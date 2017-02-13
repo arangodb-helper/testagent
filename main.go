@@ -55,6 +55,7 @@ func init() {
 	f.BoolVar(&appFlags.DockerNetHost, "docker-net-host", false, "If set, run all containers with `--net=host`")
 	f.StringVar(&appFlags.ReportDir, "report-dir", getEnvVar("REPORT_DIR", "."), "Directory in which failure reports will be created")
 	f.BoolVar(&appFlags.Privileged, "privileged", false, "If set, run all containers with `--privileged`")
+	f.IntVar(&appFlags.ChaosConfig.MaxMachines, "max-machines", 10, "Upper limit to the number of machines in a cluster")
 }
 
 // handleSignal listens for termination signals and stops this process onup termination.

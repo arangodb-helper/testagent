@@ -1,9 +1,9 @@
 package arangodb
 
 import (
-	"encoding/json"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -12,10 +12,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/arangodb/testAgent/pkg/arangostarter"
 	"github.com/arangodb/testAgent/pkg/docker"
 	"github.com/arangodb/testAgent/pkg/networkblocker"
+	"github.com/arangodb/testAgent/pkg/retry"
 	"github.com/arangodb/testAgent/service/cluster"
-	"github.com/cenkalti/backoff"
 	dc "github.com/fsouza/go-dockerclient"
 	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
@@ -259,11 +260,19 @@ func (m *arangodb) Destroy() error {
 
 // createMachine creates a volume and all configuration needed to start arangodb.
 func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
+	// Create machine ID
+	// Create random ID
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		return nil, maskAny(err)
+	}
+	machineID := hex.EncodeToString(b)
+
 	// Pick a docker host
 	dockerHost := c.dockerHosts[index%len(c.dockerHosts)]
 
 	// Create volume
-	name := fmt.Sprintf("arangodb-%s-%d", c.id, index)
+	name := fmt.Sprintf("arangodb-%s-%d-%s", c.id, index, machineID)
 	volName := name + "-vol"
 	c.log.Debugf("Creating docker volume for arangodb %d on %s", index, dockerHost.IP)
 	_, err := dockerHost.Client.CreateVolume(dc.CreateVolumeOptions{
@@ -273,7 +282,25 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 		return nil, maskAny(err)
 	}
 
+	var arangodbPort int
+	if index == 0 {
+		// Master
+		arangodbPort = c.MasterPort
+	} else {
+		// Ask master to prepare slave
+		client, err := c.masterArangodbClient()
+		if err != nil {
+			return nil, maskAny(err)
+		}
+		peer, err := client.PrepareSlave(machineID, dockerHost.IP, c.MasterPort, "/tmp/"+machineID)
+		if err != nil {
+			return nil, maskAny(err)
+		}
+		arangodbPort = peer.Port + peer.PortOffset
+	}
+
 	args := []string{
+		fmt.Sprintf("--id=%s", machineID),
 		fmt.Sprintf("--masterPort=%d", c.MasterPort),
 		fmt.Sprintf("--dockerContainer=%s", name),
 		fmt.Sprintf("--dockerEndpoint=%s", dockerHost.Endpoint),
@@ -298,7 +325,6 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 			fmt.Sprintf("--join=%s:%d", c.dockerHosts[0].IP, c.MasterPort),
 		)
 	}
-	arangodbPort := c.MasterPort + (index * 5)
 	opts := dc.CreateContainerOptions{
 		Name: name,
 		Config: &dc.Config{
@@ -469,24 +495,18 @@ type ServerProcess struct {
 // updateServerInfo connects to arangodb to query the port numbers & container info
 // of all servers on the machine
 func (m *arangodb) updateServerInfo() error {
-	addr := fmt.Sprintf("http://%s:%d/process", m.dockerHost.IP, m.arangodbPort)
-	fetchInfo := func() error {
-		resp, err := http.Get(addr)
+	m.log.Debugf("Updating server info for %d on %s:%d", m.index, m.dockerHost.IP, m.arangodbPort)
+	client, err := arangostarter.NewArangoStarterClient(m.dockerHost.IP, m.arangodbPort)
+	if err != nil {
+		return maskAny(err)
+	}
+
+	op := func() error {
+		plResp, err := client.GetProcesses()
 		if err != nil {
 			return maskAny(err)
 		}
-		if resp.StatusCode != http.StatusOK {
-			return maskAny(fmt.Errorf("Invalid status; expected %d, got %d", http.StatusOK, resp.StatusCode))
-		}
-		var plResp ProcessListResponse
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return maskAny(err)
-		}
-		if err := json.Unmarshal(body, &plResp); err != nil {
-			return maskAny(err)
-		}
+
 		if !plResp.ServersStarted {
 			return maskAny(fmt.Errorf("Servers not yet started"))
 		}
@@ -508,12 +528,9 @@ func (m *arangodb) updateServerInfo() error {
 		m.hasAgent = hasAgent
 		return nil
 	}
-
-	err := backoff.Retry(fetchInfo, backoff.NewExponentialBackOff())
-	if err != nil {
+	if err := retry.Retry(op, time.Minute*5); err != nil {
 		return maskAny(err)
 	}
-
 	return nil
 }
 

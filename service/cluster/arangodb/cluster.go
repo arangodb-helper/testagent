@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/arangodb/testAgent/pkg/arangostarter"
 	"github.com/arangodb/testAgent/pkg/docker"
 	"github.com/arangodb/testAgent/service/cluster"
 	logging "github.com/op/go-logging"
@@ -95,19 +96,25 @@ func (cb *arangodbClusterBuilder) Create(agencySize int) (cluster.Cluster, error
 		lastMachineIndex: 0,
 	}
 
-	// Start arangodb several times
-	g := errgroup.Group{}
-	for i := 0; i < agencySize; i++ {
-		g.Go(func() error {
-			// Add machine
-			if _, err := c.add(); err != nil {
-				return maskAny(err)
-			}
-			return nil
-		})
-	}
-	if err := g.Wait(); err != nil {
+	// Start arangodb master
+	if _, err := c.add(); err != nil {
 		return nil, maskAny(err)
+	}
+	// Start arangodb slave several times
+	if agencySize > 1 {
+		g := errgroup.Group{}
+		for i := 1; i < agencySize; i++ {
+			g.Go(func() error {
+				// Add machine
+				if _, err := c.add(); err != nil {
+					return maskAny(err)
+				}
+				return nil
+			})
+		}
+		if err := g.Wait(); err != nil {
+			return nil, maskAny(err)
+		}
 	}
 
 	return c, nil
@@ -224,4 +231,23 @@ func (c *arangodbCluster) add() (cluster.Machine, error) {
 	m.watchdog()
 
 	return m, nil
+}
+
+// masterArangodbClient creates a client for the master arangodb starter.
+func (c *arangodbCluster) masterArangodbClient() (arangostarter.API, error) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	if len(c.machines) == 0 {
+		return nil, maskAny(fmt.Errorf("No master found"))
+	}
+	master := c.machines[0]
+	masterIP := master.dockerHost.IP
+	masterPort := master.arangodbPort
+
+	client, err := arangostarter.NewArangoStarterClient(masterIP, masterPort)
+	if err != nil {
+		return nil, maskAny(err)
+	}
+	return client, nil
 }
