@@ -56,6 +56,7 @@ $(GOBUILDDIR):
 	@mkdir -p $(ORGDIR)
 	@rm -f $(REPODIR) && ln -s ../../../.. $(REPODIR)
 	@rm -f $(GOBUILDDIR)/src/github.com/jteeuwen && ln -s ../../../vendor/github.com/jteeuwen $(GOBUILDDIR)/src/github.com/jteeuwen
+	@rm -f $(GOBUILDDIR)/src/github.com/coreos && ln -s ../../../vendor/github.com/coreos $(GOBUILDDIR)/src/github.com/coreos
 
 templates/templates.go: $(GOBUILDDIR) $(TEMPLATES)
 	GOPATH=$(GOBUILDDIR) go build -o $(GOBUILDDIR)/bin/go-bindata github.com/jteeuwen/go-bindata/go-bindata
@@ -91,10 +92,10 @@ docker-push-version: docker
 	docker push arangodb/testagent:$(VERSION)
 
 release-patch: $(GOBUILDDIR)
-	go run ./tools/release.go -type=patch 
+	GOPATH=$(GOBUILDDIR) go run ./tools/release.go -type=patch 
 
 release-minor: $(GOBUILDDIR)
-	go run ./tools/release.go -type=minor
+	GOPATH=$(GOBUILDDIR) go run ./tools/release.go -type=minor
 
 release-major: $(GOBUILDDIR)
-	go run ./tools/release.go -type=major 
+	GOPATH=$(GOBUILDDIR) go run ./tools/release.go -type=major 
