@@ -35,12 +35,14 @@ func (c *chaosMonkey) dropAgentTraffic(ctx context.Context, action *chaosAction)
 	select {
 	case <-ctx.Done():
 	case <-time.After(timeout):
-		action.succeeded++
-		if err := m.AcceptAgentTraffic(); err != nil {
-			c.recordEvent(newEvent("Restoring network traffic to agent on %s failed: %v", m.ID(), err))
-		} else {
-			c.recordEvent(newEvent("Restoring network traffic to agent on %s succeeded", m.ID()))
-		}
+	}
+
+	// Cleanup
+	action.succeeded++
+	if err := m.AcceptAgentTraffic(); err != nil {
+		c.recordEvent(newEvent("Restoring network traffic to agent on %s failed: %v", m.ID(), err))
+	} else {
+		c.recordEvent(newEvent("Restoring network traffic to agent on %s succeeded", m.ID()))
 	}
 
 	return true
@@ -80,12 +82,14 @@ func (c *chaosMonkey) dropDBServerTraffic(ctx context.Context, action *chaosActi
 	select {
 	case <-ctx.Done():
 	case <-time.After(createNetworkTimeout()):
-		action.succeeded++
-		if err := m.AcceptDBServerTraffic(); err != nil {
-			c.recordEvent(newEvent("Restoring network traffic to dbserver on %s failed: %v", m.ID(), err))
-		} else {
-			c.recordEvent(newEvent("Restoring network traffic to dbserver on %s succeeded", m.ID()))
-		}
+	}
+
+	// Cleanup
+	action.succeeded++
+	if err := m.AcceptDBServerTraffic(); err != nil {
+		c.recordEvent(newEvent("Restoring network traffic to dbserver on %s failed: %v", m.ID(), err))
+	} else {
+		c.recordEvent(newEvent("Restoring network traffic to dbserver on %s succeeded", m.ID()))
 	}
 
 	return true
@@ -120,12 +124,14 @@ func (c *chaosMonkey) dropCoordinatorTraffic(ctx context.Context, action *chaosA
 	select {
 	case <-ctx.Done():
 	case <-time.After(timeout):
-		action.succeeded++
-		if err := m.AcceptCoordinatorTraffic(); err != nil {
-			c.recordEvent(newEvent("Restoring network traffic to coordinator on %s failed: %v", m.ID(), err))
-		} else {
-			c.recordEvent(newEvent("Restoring network traffic to coordinator on %s succeeded", m.ID()))
-		}
+	}
+
+	// Cleanup
+	action.succeeded++
+	if err := m.AcceptCoordinatorTraffic(); err != nil {
+		c.recordEvent(newEvent("Restoring network traffic to coordinator on %s failed: %v", m.ID(), err))
+	} else {
+		c.recordEvent(newEvent("Restoring network traffic to coordinator on %s succeeded", m.ID()))
 	}
 
 	return true

@@ -11,7 +11,7 @@ type Event struct {
 }
 
 func (e Event) String() string {
-	return fmt.Sprintf("[%s] %s", e.Time, e.Action)
+	return fmt.Sprintf("[%s] %s", e.Time.Format("2006-01-02 15:04:05"), e.Action)
 }
 
 // Get a list of recent events

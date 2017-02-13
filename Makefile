@@ -55,20 +55,12 @@ deps:
 $(GOBUILDDIR):
 	@mkdir -p $(ORGDIR)
 	@rm -f $(REPODIR) && ln -s ../../../.. $(REPODIR)
-	GOPATH=$(GOBUILDDIR) go get -u github.com/jteeuwen/go-bindata/...
-	GOPATH=$(GOBUILDDIR) go get github.com/fsouza/go-dockerclient
-	GOPATH=$(GOBUILDDIR) go get github.com/juju/errgo
-	GOPATH=$(GOBUILDDIR) go get github.com/op/go-logging
-	GOPATH=$(GOBUILDDIR) go get github.com/spf13/cobra
-	GOPATH=$(GOBUILDDIR) go get golang.org/x/sync/errgroup
-	GOPATH=$(GOBUILDDIR) go get github.com/cenkalti/backoff
-	GOPATH=$(GOBUILDDIR) go get gopkg.in/macaron.v1
-	GOPATH=$(GOBUILDDIR) go get github.com/go-macaron/bindata
-	GOPATH=$(GOBUILDDIR) go get github.com/dustin/go-humanize
-	GOPATH=$(GOBUILDDIR) go get github.com/coreos/go-semver/semver
+	@rm -f $(GOBUILDDIR)/src/github.com/jteeuwen && ln -s ../../../vendor/github.com/jteeuwen $(GOBUILDDIR)/src/github.com/jteeuwen
+	@rm -f $(GOBUILDDIR)/src/github.com/coreos && ln -s ../../../vendor/github.com/coreos $(GOBUILDDIR)/src/github.com/coreos
 
 templates/templates.go: $(GOBUILDDIR) $(TEMPLATES)
-	$(GOBUILDDIR)/bin/go-bindata -pkg templates -prefix templates -modtime 0 -o templates/templates.go templates/...
+	GOPATH=$(GOBUILDDIR) go build -o $(GOBUILDDIR)/bin/go-bindata github.com/jteeuwen/go-bindata/go-bindata
+	$(GOBUILDDIR)/bin/go-bindata -pkg templates -prefix templates -modtime 1486974991 -ignore templates.go -o templates/templates.go templates/...
 
 $(BIN): $(GOBUILDDIR) $(SOURCES) templates/templates.go
 	@mkdir -p $(BINDIR)
@@ -100,10 +92,10 @@ docker-push-version: docker
 	docker push arangodb/testagent:$(VERSION)
 
 release-patch: $(GOBUILDDIR)
-	go run ./tools/release.go -type=patch 
+	GOPATH=$(GOBUILDDIR) go run ./tools/release.go -type=patch 
 
 release-minor: $(GOBUILDDIR)
-	go run ./tools/release.go -type=minor
+	GOPATH=$(GOBUILDDIR) go run ./tools/release.go -type=minor
 
 release-major: $(GOBUILDDIR)
-	go run ./tools/release.go -type=major 
+	GOPATH=$(GOBUILDDIR) go run ./tools/release.go -type=major 

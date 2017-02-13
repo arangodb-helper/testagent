@@ -12,8 +12,8 @@ import (
 	arangodb "github.com/arangodb/testAgent/service/cluster/arangodb"
 	"github.com/arangodb/testAgent/service/test"
 	"github.com/arangodb/testAgent/tests/simple"
-	"github.com/juju/errgo"
 	logging "github.com/op/go-logging"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -38,7 +38,7 @@ var (
 		arangodb.ArangodbConfig
 		logLevel string
 	}
-	maskAny = errgo.MaskFunc(errgo.Any)
+	maskAny = errors.WithStack
 )
 
 func init() {

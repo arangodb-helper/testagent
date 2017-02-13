@@ -1,9 +1,9 @@
 package chaos
 
 import (
-	"github.com/juju/errgo"
+	"github.com/pkg/errors"
 )
 
 var (
-	maskAny = errgo.MaskFunc(errgo.Any)
+	maskAny = errors.WithStack
 )

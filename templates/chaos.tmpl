@@ -39,7 +39,7 @@
     </thead>
 {{ range $e := .Chaos.Events }}
     <tr>
-        <td>{{$e.Time}}</td>
+        <td>{{$e.Time | formatTime}}</td>
         <td>{{$e.Action}}</td>
     </tr>
 {{ end }}

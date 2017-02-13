@@ -1,10 +1,10 @@
 package cluster
 
 import (
-	"github.com/juju/errgo"
+	"github.com/pkg/errors"
 )
 
 var (
-	maskAny      = errgo.MaskFunc(errgo.Any)
-	TimeoutError = errgo.New("timeout")
+	maskAny      = errors.WithStack
+	TimeoutError = errors.New("timeout")
 )

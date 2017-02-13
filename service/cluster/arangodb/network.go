@@ -1,7 +1,10 @@
 package arangodb
 
-import "fmt"
-import "github.com/juju/errgo"
+import (
+	"fmt"
+
+	"github.com/pkg/errors"
+)
 
 // Actively reject all network traffic to the agent
 func (m *arangodb) RejectAgentTraffic() error {
@@ -12,7 +15,7 @@ func (m *arangodb) RejectAgentTraffic() error {
 		return maskAny(fmt.Errorf("network-blocker not yet initialized"))
 	} else {
 		if err := api.RejectTCP(m.agentPort); err != nil {
-			return maskAny(errgo.WithCausef(nil, err, "Failed to reject agent traffic"))
+			return maskAny(errors.Wrap(err, "Failed to reject agent traffic"))
 		}
 	}
 	return nil
@@ -24,7 +27,7 @@ func (m *arangodb) RejectDBServerTraffic() error {
 		return maskAny(fmt.Errorf("network-blocker not yet initialized"))
 	} else {
 		if err := api.RejectTCP(m.dbserverPort); err != nil {
-			return maskAny(errgo.WithCausef(nil, err, "Failed to reject dbserver traffic"))
+			return maskAny(errors.Wrap(err, "Failed to reject dbserver traffic"))
 		}
 	}
 	return nil
@@ -36,7 +39,7 @@ func (m *arangodb) RejectCoordinatorTraffic() error {
 		return maskAny(fmt.Errorf("network-blocker not yet initialized"))
 	} else {
 		if err := api.RejectTCP(m.coordinatorPort); err != nil {
-			return maskAny(errgo.WithCausef(nil, err, "Failed to reject coordinator traffic"))
+			return maskAny(errors.Wrap(err, "Failed to reject coordinator traffic"))
 		}
 	}
 	return nil
@@ -51,7 +54,7 @@ func (m *arangodb) DropAgentTraffic() error {
 		return maskAny(fmt.Errorf("network-blocker not yet initialized"))
 	} else {
 		if err := api.DropTCP(m.agentPort); err != nil {
-			return maskAny(errgo.WithCausef(nil, err, "Failed to drop agent traffic"))
+			return maskAny(errors.Wrap(err, "Failed to drop agent traffic"))
 		}
 	}
 	return nil
@@ -63,7 +66,7 @@ func (m *arangodb) DropDBServerTraffic() error {
 		return maskAny(fmt.Errorf("network-blocker not yet initialized"))
 	} else {
 		if err := api.DropTCP(m.dbserverPort); err != nil {
-			return maskAny(errgo.WithCausef(nil, err, "Failed to drop dbserver traffic"))
+			return maskAny(errors.Wrap(err, "Failed to drop dbserver traffic"))
 		}
 	}
 	return nil
@@ -75,7 +78,7 @@ func (m *arangodb) DropCoordinatorTraffic() error {
 		return maskAny(fmt.Errorf("network-blocker not yet initialized"))
 	} else {
 		if err := api.DropTCP(m.coordinatorPort); err != nil {
-			return maskAny(errgo.WithCausef(nil, err, "Failed to drop coordinator traffic"))
+			return maskAny(errors.Wrap(err, "Failed to drop coordinator traffic"))
 		}
 	}
 	return nil
@@ -90,7 +93,7 @@ func (m *arangodb) AcceptAgentTraffic() error {
 		return maskAny(fmt.Errorf("network-blocker not yet initialized"))
 	} else {
 		if err := api.AcceptTCP(m.agentPort); err != nil {
-			return maskAny(errgo.WithCausef(nil, err, "Failed to accept agent traffic"))
+			return maskAny(errors.Wrap(err, "Failed to accept agent traffic"))
 		}
 	}
 	return nil
@@ -102,7 +105,7 @@ func (m *arangodb) AcceptDBServerTraffic() error {
 		return maskAny(fmt.Errorf("network-blocker not yet initialized"))
 	} else {
 		if err := api.AcceptTCP(m.dbserverPort); err != nil {
-			return maskAny(errgo.WithCausef(nil, err, "Failed to accept dbserver traffic"))
+			return maskAny(errors.Wrap(err, "Failed to accept dbserver traffic"))
 		}
 	}
 	return nil
@@ -114,7 +117,7 @@ func (m *arangodb) AcceptCoordinatorTraffic() error {
 		return maskAny(fmt.Errorf("network-blocker not yet initialized"))
 	} else {
 		if err := api.AcceptTCP(m.coordinatorPort); err != nil {
-			return maskAny(errgo.WithCausef(nil, err, "Failed to accept coordinator traffic"))
+			return maskAny(errors.Wrap(err, "Failed to accept coordinator traffic"))
 		}
 	}
 	return nil
@@ -126,7 +129,7 @@ func (m *arangodb) CollectNetworkRules() ([]string, error) {
 		return nil, maskAny(fmt.Errorf("network-blocker not yet initialized"))
 	} else {
 		if list, err := api.Rules(); err != nil {
-			return nil, maskAny(errgo.WithCausef(nil, err, "Failed to list network rules"))
+			return nil, maskAny(errors.Wrap(err, "Failed to list network rules"))
 		} else {
 			return list, nil
 		}

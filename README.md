@@ -50,6 +50,8 @@ The test operations covered in those scripts will include (among others):
 - [x] Replace non-existing documents 
 - [x] Query documents (AQL)
 - [x] Query documents with long running query (AQL SLEEP)
+- [ ] Modify documents with query (AQL)
+- [ ] Modify documents with long running query (AQL SLEEP)
 - [ ] Backup entire databases
 
 ## Usage 

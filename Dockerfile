@@ -8,15 +8,14 @@ EXPOSE 4200
 ENV RUNNING_IN_DOCKER=true
 
 # Image containing arangodb starter 
-#ENV ARANGODB_IMAGE=arangodb/arangodb-starter:0.2.0
-ENV ARANGODB_IMAGE=arangodb/arangodb-starter
+ENV ARANGODB_IMAGE=arangodb/arangodb-starter:0.3.1
 
 # Database image 
-ENV ARANGO_IMAGE=arangodb/arangodb:3.1.10
-#ENV ARANGO_IMAGE=neunhoef/arangodb:3.1.devel
+#ENV ARANGO_IMAGE=arangodb/arangodb:3.1.10
+ENV ARANGO_IMAGE=neunhoef/arangodb:3.2.devel
 
 # network-blocker image
-ENV NETWORK_BLOCKER_IMAGE=arangodb/network-blocker
+ENV NETWORK_BLOCKER_IMAGE=arangodb/network-blocker:0.0.1
 
 # Failure reports dir 
 ENV REPORT_DIR=/reports
