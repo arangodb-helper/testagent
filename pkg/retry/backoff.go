@@ -1,4 +1,4 @@
-package util
+package retry
 
 import (
 	"time"
@@ -22,7 +22,7 @@ func (aerr *aggregateError) Errors() []error {
 	return aerr.errors
 }
 
-func retry(op func() error, timeout time.Duration) error {
+func Retry(op func() error, timeout time.Duration) error {
 	var failure error
 	aerr := &aggregateError{}
 	wrappedOp := func() error {

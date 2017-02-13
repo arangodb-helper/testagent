@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/arangodb/testAgent/pkg/retry"
 	"github.com/arangodb/testAgent/service/cluster"
 	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
@@ -166,7 +167,7 @@ func (c *ArangoClient) requestWithRetry(method, urlPath string, query url.Values
 		return nil
 	}
 
-	if err := retry(op, retryTimeout); err != nil {
+	if err := retry.Retry(op, retryTimeout); err != nil {
 		return aresp, maskAny(err)
 	}
 	return aresp, nil
@@ -189,9 +190,9 @@ func (c *ArangoClient) handleResponse(resp *http.Response, method, url string, r
 			var aerr ArangoError
 			headers := formatHeaders(resp)
 			if tryDecodeBody(body, &aerr); err == nil {
-				return maskAny(errors.Wrapf(failureError, "Received status %d, from %s request to %s, which is a failure (attempt %d, after %s, error %s, headers\n%s\n)", resp.StatusCode, method, url, attempt, time.Since(start), aerr.Error(), headers))
+				return maskAny(errors.Wrapf(retry.FailureError, "Received status %d, from %s request to %s, which is a failure (attempt %d, after %s, error %s, headers\n%s\n)", resp.StatusCode, method, url, attempt, time.Since(start), aerr.Error(), headers))
 			}
-			return maskAny(errors.Wrapf(failureError, "Received status %d, from %s request to %s, which is a failure (attempt %d, after %s, headers\n%s\n\nbody\n%s\n)", resp.StatusCode, method, url, attempt, time.Since(start), headers, string(body)))
+			return maskAny(errors.Wrapf(retry.FailureError, "Received status %d, from %s request to %s, which is a failure (attempt %d, after %s, headers\n%s\n\nbody\n%s\n)", resp.StatusCode, method, url, attempt, time.Since(start), headers, string(body)))
 		}
 	}
 

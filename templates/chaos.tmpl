@@ -13,17 +13,31 @@
 
 <h2>Statistics</h2>
 
-<table class="ui celled striped table">
+<table class="ui compact celled striped table">
     <thead>
     <tr>
-        <th>Statistic</th>
-        <th>Value</th>
+        <th>Action</th>
+        <th>Status</th>
+        <th>Succeeded</th>
+        <th>Failed</th>
+        <th>Skipped</th>
     </tr>
     </thead>
-{{ range $st := .Chaos.Statistics }}
+{{ range $st := .Chaos.Actions }}
     <tr>
         <td>{{$st.Name}}</td>
-        <td>{{$st.Value}}</td>
+        <td>
+            {{if $st.Enabled}} 
+                Enabled
+                <a href="/chaos/{{$st.ID}}/disable" class="ui tiny right floated button">disable</a>
+            {{else}}
+                Disabled
+                <a href="/chaos/{{$st.ID}}/enable" class="ui tiny right floated button">enable</a>
+            {{end}}
+        </td>
+        <td>{{$st.Succeeded}}</td>
+        <td>{{$st.Failed}}</td>
+        <td>{{$st.Skipped}}</td>
     </tr>
 {{ end }}
 </table>

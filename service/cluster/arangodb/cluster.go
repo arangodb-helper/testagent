@@ -5,8 +5,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/arangodb/testAgent/pkg/arangostarter"
 	"github.com/arangodb/testAgent/pkg/docker"
 	"github.com/arangodb/testAgent/service/cluster"
 	logging "github.com/op/go-logging"
@@ -38,12 +40,13 @@ type arangodbClusterBuilder struct {
 type arangodbCluster struct {
 	ArangodbConfig
 
-	mutex       sync.Mutex
-	log         *logging.Logger
-	dockerHosts []*docker.DockerHost
-	id          string
-	agencySize  int
-	machines    []*arangodb
+	mutex            sync.Mutex
+	log              *logging.Logger
+	dockerHosts      []*docker.DockerHost
+	id               string
+	agencySize       int
+	machines         []*arangodb
+	lastMachineIndex int32
 }
 
 // NewArangodbClusterBuilder creates a new ClusterBuilder using arangodb.
@@ -85,57 +88,33 @@ func (cb *arangodbClusterBuilder) Create(agencySize int) (cluster.Cluster, error
 
 	// Instantiate
 	c := &arangodbCluster{
-		log:            cb.log,
-		ArangodbConfig: cb.ArangodbConfig,
-		dockerHosts:    dockerHosts,
-		agencySize:     agencySize,
-		id:             id,
+		log:              cb.log,
+		ArangodbConfig:   cb.ArangodbConfig,
+		dockerHosts:      dockerHosts,
+		agencySize:       agencySize,
+		id:               id,
+		lastMachineIndex: 0,
 	}
 
-	// Start arangodb several times
-	g := errgroup.Group{}
-	for i := 0; i < agencySize; i++ {
-		index := i // using index in goroutine
-		g.Go(func() error {
-			// Create machine
-			m, err := c.createMachine(index)
-			if err != nil {
-				return maskAny(err)
-			}
-
-			// Register machine
-			c.mutex.Lock()
-			c.machines = append(c.machines, m)
-			c.mutex.Unlock()
-
-			// Pull arangodb image
-			if err := m.pullImageIfNeeded(c.ArangodbConfig.ArangodbImage); err != nil {
-				return maskAny(err)
-			}
-
-			// Pull network-block image
-			if err := m.pullImageIfNeeded(c.ArangodbConfig.NetworkBlockerImage); err != nil {
-				return maskAny(err)
-			}
-
-			// Start network blocker
-			if err := m.startNetworkBlocker(c.ArangodbConfig.NetworkBlockerImage); err != nil {
-				return maskAny(err)
-			}
-
-			// Start machine
-			if err := m.start(); err != nil {
-				return maskAny(err)
-			}
-
-			// Start watchdog
-			m.watchdog()
-
-			return nil
-		})
-	}
-	if err := g.Wait(); err != nil {
+	// Start arangodb master
+	if _, err := c.add(); err != nil {
 		return nil, maskAny(err)
+	}
+	// Start arangodb slave several times
+	if agencySize > 1 {
+		g := errgroup.Group{}
+		for i := 1; i < agencySize; i++ {
+			g.Go(func() error {
+				// Add machine
+				if _, err := c.add(); err != nil {
+					return maskAny(err)
+				}
+				return nil
+			})
+		}
+		if err := g.Wait(); err != nil {
+			return nil, maskAny(err)
+		}
 	}
 
 	return c, nil
@@ -186,6 +165,23 @@ func (c *arangodbCluster) Machines() ([]cluster.Machine, error) {
 	return result, nil
 }
 
+// Add adds a single machine to the cluster
+func (c *arangodbCluster) Add() (cluster.Machine, error) {
+	// Create & start machine
+	m, err := c.add()
+	if err != nil {
+		return nil, maskAny(err)
+	}
+
+	// Wait until all servers are reachable
+	ma := m.(*arangodb)
+	if err := ma.waitUntilServersReady(c.log, serverReadyTimeout); err != nil {
+		return nil, maskAny(err)
+	}
+
+	return m, nil
+}
+
 // Remove the entire cluster
 func (c *arangodbCluster) Destroy() error {
 	machines, err := c.Machines()
@@ -202,4 +198,64 @@ func (c *arangodbCluster) Destroy() error {
 		return maskAny(err)
 	}
 	return nil
+}
+
+func (c *arangodbCluster) add() (cluster.Machine, error) {
+	// Create new index
+	index := int(atomic.AddInt32(&c.lastMachineIndex, 1) - 1)
+
+	// Create machine
+	m, err := c.createMachine(index)
+	if err != nil {
+		return nil, maskAny(err)
+	}
+
+	// Register machine
+	c.mutex.Lock()
+	c.machines = append(c.machines, m)
+	c.mutex.Unlock()
+
+	// Pull arangodb image
+	if err := m.pullImageIfNeeded(c.ArangodbConfig.ArangodbImage); err != nil {
+		return nil, maskAny(err)
+	}
+
+	// Pull network-block image
+	if err := m.pullImageIfNeeded(c.ArangodbConfig.NetworkBlockerImage); err != nil {
+		return nil, maskAny(err)
+	}
+
+	// Start network blocker
+	if err := m.startNetworkBlocker(c.ArangodbConfig.NetworkBlockerImage); err != nil {
+		return nil, maskAny(err)
+	}
+
+	// Start machine
+	if err := m.start(); err != nil {
+		return nil, maskAny(err)
+	}
+
+	// Start watchdog
+	m.watchdog()
+
+	return m, nil
+}
+
+// masterArangodbClient creates a client for the master arangodb starter.
+func (c *arangodbCluster) masterArangodbClient() (arangostarter.API, error) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	if len(c.machines) == 0 {
+		return nil, maskAny(fmt.Errorf("No master found"))
+	}
+	master := c.machines[0]
+	masterIP := master.dockerHost.IP
+	masterPort := master.arangodbPort
+
+	client, err := arangostarter.NewArangoStarterClient(masterIP, masterPort)
+	if err != nil {
+		return nil, maskAny(err)
+	}
+	return client, nil
 }

@@ -21,6 +21,32 @@ func chaosResumePage(ctx *macaron.Context, log *logging.Logger, service Service)
 	ctx.Redirect("/", http.StatusFound)
 }
 
+func chaosActionEnablePage(ctx *macaron.Context, log *logging.Logger, service Service) {
+	id := ctx.Params("id")
+	if cm := service.ChaosMonkey(); cm != nil {
+		for _, a := range cm.Actions() {
+			if a.ID() == id {
+				a.Enable()
+				break
+			}
+		}
+	}
+	ctx.Redirect("/chaos", http.StatusFound)
+}
+
+func chaosActionDisablePage(ctx *macaron.Context, log *logging.Logger, service Service) {
+	id := ctx.Params("id")
+	if cm := service.ChaosMonkey(); cm != nil {
+		for _, a := range cm.Actions() {
+			if a.ID() == id {
+				a.Disable()
+				break
+			}
+		}
+	}
+	ctx.Redirect("/chaos", http.StatusFound)
+}
+
 func chaosPage(ctx *macaron.Context, log *logging.Logger, service Service) {
 	// Chaos
 	chaos := chaosFromCluster(service.ChaosMonkey(), 1000)
