@@ -52,8 +52,9 @@ func StartHTTPServer(log *logging.Logger, port int, reportDir string, service Se
 	m.Use(macaron.Renderer(macaron.RenderOptions{
 		Funcs: []template.FuncMap{
 			template.FuncMap{
-				"cssReady":  cssReady,
-				"cssTestOK": cssTestOK,
+				"cssReady":   cssReady,
+				"cssTestOK":  cssTestOK,
+				"formatTime": formatTime,
 			},
 		},
 		TemplateFileSystem: bindata.Templates(bindata.Options{
