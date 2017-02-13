@@ -55,10 +55,11 @@ deps:
 $(GOBUILDDIR):
 	@mkdir -p $(ORGDIR)
 	@rm -f $(REPODIR) && ln -s ../../../.. $(REPODIR)
-	GOPATH=$(GOBUILDDIR) go get -u github.com/jteeuwen/go-bindata/...
+	@rm -f $(GOBUILDDIR)/src/github.com/jteeuwen && ln -s ../../../vendor/github.com/jteeuwen $(GOBUILDDIR)/src/github.com/jteeuwen
 
 templates/templates.go: $(GOBUILDDIR) $(TEMPLATES)
-	$(GOBUILDDIR)/bin/go-bindata -pkg templates -prefix templates -modtime 0 -o templates/templates.go templates/...
+	GOPATH=$(GOBUILDDIR) go build -o $(GOBUILDDIR)/bin/go-bindata github.com/jteeuwen/go-bindata/go-bindata
+	$(GOBUILDDIR)/bin/go-bindata -pkg templates -prefix templates -modtime 1486974991 -ignore templates.go -o templates/templates.go templates/...
 
 $(BIN): $(GOBUILDDIR) $(SOURCES) templates/templates.go
 	@mkdir -p $(BINDIR)
