@@ -21,18 +21,18 @@ type CursorResponse struct {
 
 // queryDocuments runs an AQL query.
 // The operation is expected to succeed.
-func (t *simpleTest) queryDocuments(collectionName string) error {
-	if len(t.existingDocs) < 10 {
+func (t *simpleTest) queryDocuments(c *collection) error {
+	if len(c.existingDocs) < 10 {
 		t.log.Infof("Skipping query test, we need 10 or more documents")
 		return nil
 	}
 
 	operationTimeout, retryTimeout := time.Minute/3, time.Minute
 
-	t.log.Infof("Creating AQL query cursor for '%s'...", collectionName)
+	t.log.Infof("Creating AQL query cursor for '%s'...", c.name)
 	queryReq := QueryRequest{
 		//		Query:     fmt.Sprintf("FOR d IN %s LIMIT 10 RETURN {d, s: SLEEP(10)}", collectionName),
-		Query:     fmt.Sprintf("FOR d IN %s LIMIT 10 RETURN d", collectionName),
+		Query:     fmt.Sprintf("FOR d IN %s LIMIT 10 RETURN d", c.name),
 		BatchSize: 1,
 		Count:     false,
 	}
@@ -42,11 +42,11 @@ func (t *simpleTest) queryDocuments(collectionName string) error {
 	if err != nil {
 		// This is a failure
 		t.queryCreateCursorCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to create AQL cursor in collection '%s': %v", collectionName, err))
+		t.reportFailure(test.NewFailure("Failed to create AQL cursor in collection '%s': %v", c.name, err))
 		return maskAny(err)
 	}
 	t.queryCreateCursorCounter.succeeded++
-	t.log.Infof("Creating AQL cursor for collection '%s' succeeded", collectionName)
+	t.log.Infof("Creating AQL cursor for collection '%s' succeeded", c.name)
 
 	// Now continue fetching results.
 	// This may fail if (and only if) the coordinator has changed.
@@ -65,7 +65,7 @@ func (t *simpleTest) queryDocuments(collectionName string) error {
 		if err != nil {
 			// This is a failure
 			t.queryNextBatchCounter.failed++
-			t.reportFailure(test.NewFailure("Failed to read next AQL cursor batch in collection '%s': %v", collectionName, err))
+			t.reportFailure(test.NewFailure("Failed to read next AQL cursor batch in collection '%s': %v", c.name, err))
 			return maskAny(err)
 		}
 
@@ -97,7 +97,7 @@ func (t *simpleTest) queryDocuments(collectionName string) error {
 
 			// Coordinator remains the same, this is a failure.
 			t.queryNextBatchCounter.failed++
-			t.reportFailure(test.NewFailure("Failed to read next AQL cursor batch in collection '%s' with same coordinator (%s): status 404", collectionName, createResp.CoordinatorURL))
+			t.reportFailure(test.NewFailure("Failed to read next AQL cursor batch in collection '%s' with same coordinator (%s): status 404", c.name, createResp.CoordinatorURL))
 			return maskAny(fmt.Errorf("Status code 404"))
 		} else if getResp.StatusCode == 200 {
 			// Request succeeded, check if coordinator is same as create-cursor request
@@ -126,17 +126,17 @@ func (t *simpleTest) queryDocuments(collectionName string) error {
 
 // queryDocumentsLongRunning runs a long running AQL query.
 // The operation is expected to succeed.
-func (t *simpleTest) queryDocumentsLongRunning(collectionName string) error {
-	if len(t.existingDocs) < 10 {
+func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
+	if len(c.existingDocs) < 10 {
 		t.log.Infof("Skipping query test, we need 10 or more documents")
 		return nil
 	}
 
 	operationTimeout, retryTimeout := time.Minute/2, time.Minute*2
 
-	t.log.Infof("Creating long running AQL query for '%s'...", collectionName)
+	t.log.Infof("Creating long running AQL query for '%s'...", c.name)
 	queryReq := QueryRequest{
-		Query:     fmt.Sprintf("FOR d IN %s LIMIT 10 RETURN {d:d, s:SLEEP(2)}", collectionName),
+		Query:     fmt.Sprintf("FOR d IN %s LIMIT 10 RETURN {d:d, s:SLEEP(2)}", c.name),
 		BatchSize: 10,
 		Count:     false,
 	}
@@ -144,12 +144,12 @@ func (t *simpleTest) queryDocumentsLongRunning(collectionName string) error {
 	if _, err := t.client.Post("/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{201}, []int{200, 202, 400, 404, 409, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.queryLongRunningCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to create long running AQL cursor in collection '%s': %v", collectionName, err))
+		t.reportFailure(test.NewFailure("Failed to create long running AQL cursor in collection '%s': %v", c.name, err))
 		return maskAny(err)
 	}
 	resultCount := len(cursorResp.Result)
 	t.queryLongRunningCounter.succeeded++
-	t.log.Infof("Creating long running AQL query for collection '%s' succeeded", collectionName)
+	t.log.Infof("Creating long running AQL query for collection '%s' succeeded", c.name)
 
 	// We should've fetched all documents, check result count
 	if resultCount != 10 {

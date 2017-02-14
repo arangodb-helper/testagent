@@ -9,31 +9,31 @@ import (
 
 // readExistingDocument reads an existing document with an optional explicit revision.
 // The operation is expected to succeed.
-func (t *simpleTest) readExistingDocument(collectionName string, key, rev string, updateRevision bool) error {
+func (t *simpleTest) readExistingDocument(c *collection, key, rev string, updateRevision bool) error {
 	operationTimeout, retryTimeout := time.Minute/4, time.Minute
 	var result UserDocument
 	hdr, ifMatchStatus := createRandomIfMatchHeader(nil, rev)
-	t.log.Infof("Reading existing document '%s' (%s) from '%s'...", key, ifMatchStatus, collectionName)
-	if _, err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, hdr, &result, []int{200, 201, 202}, []int{400, 404, 307}, operationTimeout, retryTimeout); err != nil {
+	t.log.Infof("Reading existing document '%s' (%s) from '%s'...", key, ifMatchStatus, c.name)
+	if _, err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", c.name, key), nil, hdr, &result, []int{200, 201, 202}, []int{400, 404, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.readExistingCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to read existing document '%s' (%s) in collection '%s': %v", key, ifMatchStatus, collectionName, err))
+		t.reportFailure(test.NewFailure("Failed to read existing document '%s' (%s) in collection '%s': %v", key, ifMatchStatus, c.name, err))
 		return maskAny(err)
 	}
 	// Compare document against expected document
-	expected := t.existingDocs[key]
+	expected := c.existingDocs[key]
 	if result.Value != expected.Value || result.Name != expected.Name || result.Odd != expected.Odd {
 		// This is a failure
 		t.readExistingCounter.failed++
-		t.reportFailure(test.NewFailure("Read existing document '%s' (%s) returned different values '%s': got %q expected %q", key, ifMatchStatus, collectionName, result, expected))
+		t.reportFailure(test.NewFailure("Read existing document '%s' (%s) returned different values '%s': got %q expected %q", key, ifMatchStatus, c.name, result, expected))
 		return maskAny(fmt.Errorf("Read returned invalid values"))
 	}
 	if updateRevision {
 		// Store read document so we have the last revision
-		t.existingDocs[key] = result
+		c.existingDocs[key] = result
 	}
 	t.readExistingCounter.succeeded++
-	t.log.Infof("Reading existing document '%s' (%s) from '%s' succeeded", key, ifMatchStatus, collectionName)
+	t.log.Infof("Reading existing document '%s' (%s) from '%s' succeeded", key, ifMatchStatus, c.name)
 	return nil
 }
 

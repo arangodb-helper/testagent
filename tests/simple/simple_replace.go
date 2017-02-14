@@ -11,31 +11,31 @@ import (
 
 // replaceExistingDocument replaces an existing document with an optional explicit revision.
 // The operation is expected to succeed.
-func (t *simpleTest) replaceExistingDocument(collectionName string, key, rev string) (string, error) {
+func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (string, error) {
 	operationTimeout, retryTimeout := time.Minute/4, time.Minute
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated name %s", time.Now())
 	hdr, ifMatchStatus := createRandomIfMatchHeader(nil, rev)
-	t.log.Infof("Replacing existing document '%s' (%s) in '%s' (name -> '%s')...", key, ifMatchStatus, collectionName, newName)
+	t.log.Infof("Replacing existing document '%s' (%s) in '%s' (name -> '%s')...", key, ifMatchStatus, c.name, newName)
 	newDoc := UserDocument{
 		Key:   key,
 		Name:  fmt.Sprintf("Replaced named %s", key),
 		Value: rand.Int(),
 		Odd:   rand.Int()%2 == 0,
 	}
-	update, err := t.client.Put(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, newDoc, "", nil, []int{200, 201, 202}, []int{400, 404, 412, 307}, operationTimeout, retryTimeout)
+	update, err := t.client.Put(fmt.Sprintf("/_api/document/%s/%s", c.name, key), q, hdr, newDoc, "", nil, []int{200, 201, 202}, []int{400, 404, 412, 307}, operationTimeout, retryTimeout)
 	if err != nil {
 		// This is a failure
 		t.replaceExistingCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to replace existing document '%s' (%s) in collection '%s': %v", key, ifMatchStatus, collectionName, err))
+		t.reportFailure(test.NewFailure("Failed to replace existing document '%s' (%s) in collection '%s': %v", key, ifMatchStatus, c.name, err))
 		return "", maskAny(err)
 	}
 	// Update internal doc
 	newDoc.rev = update.Rev
-	t.existingDocs[key] = newDoc
+	c.existingDocs[key] = newDoc
 	t.replaceExistingCounter.succeeded++
-	t.log.Infof("Replacing existing document '%s' (%s) in '%s' (name -> '%s') succeeded", key, ifMatchStatus, collectionName, newName)
+	t.log.Infof("Replacing existing document '%s' (%s) in '%s' (name -> '%s') succeeded", key, ifMatchStatus, c.name, newName)
 	return update.Rev, nil
 }
 

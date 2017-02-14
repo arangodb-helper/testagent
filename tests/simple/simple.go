@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/arangodb/testAgent/service/cluster"
@@ -17,11 +18,11 @@ import (
 )
 
 type SimpleConfig struct {
-	MaxDocuments int
+	MaxDocuments   int
+	MaxCollections int
 }
 
 const (
-	collUser             = "simple_users"
 	initialDocumentCount = 999
 )
 
@@ -37,11 +38,13 @@ type simpleTest struct {
 	client                              *util.ArangoClient
 	failures                            int
 	actions                             int
-	existingDocs                        map[string]UserDocument
+	collections                         map[string]*collection
+	collectionsMutex                    sync.Mutex
 	readExistingCounter                 counter
 	readExistingWrongRevisionCounter    counter
 	readNonExistingCounter              counter
 	createCounter                       counter
+	createCollectionCounter             counter
 	updateExistingCounter               counter
 	updateExistingWrongRevisionCounter  counter
 	updateNonExistingCounter            counter
@@ -65,13 +68,18 @@ type counter struct {
 	failed    int
 }
 
+type collection struct {
+	name         string
+	existingDocs map[string]UserDocument
+}
+
 // NewSimpleTest creates a simple test
 func NewSimpleTest(log *logging.Logger, reportDir string, config SimpleConfig) test.TestScript {
 	return &simpleTest{
 		SimpleConfig: config,
 		reportDir:    reportDir,
 		log:          log,
-		existingDocs: make(map[string]UserDocument),
+		collections:  make(map[string]*collection),
 	}
 }
 
@@ -113,13 +121,11 @@ func (t *simpleTest) Status() test.TestStatus {
 		}
 	}
 
-	return test.TestStatus{
+	status := test.TestStatus{
 		Failures: t.failures,
 		Actions:  t.actions,
-		Messages: []string{
-			fmt.Sprintf("Current #documents: %d", len(t.existingDocs)),
-		},
 		Counters: []test.Counter{
+			cc("#collections created", t.createCollectionCounter),
 			cc("#documents created", t.createCounter),
 			cc("#existing documents read", t.readExistingCounter),
 			cc("#existing documents updated", t.updateExistingCounter),
@@ -142,6 +148,16 @@ func (t *simpleTest) Status() test.TestStatus {
 			cc("#update AQL query operations", t.queryUpdateCounter),
 		},
 	}
+
+	t.collectionsMutex.Lock()
+	for _, c := range t.collections {
+		status.Messages = append(status.Messages,
+			fmt.Sprintf("Current #documents in %s: %d", c.name, len(c.existingDocs)),
+		)
+	}
+	t.collectionsMutex.Unlock()
+
+	return status
 }
 
 // CollectLogs copies all logging info to the given writer.
@@ -200,89 +216,12 @@ func (t *simpleTest) reportFailure(f test.Failure) {
 
 func (t *simpleTest) testLoop() {
 	t.active = true
+	t.actions = 0
 	defer func() { t.active = false }()
 
-	t.existingDocs = make(map[string]UserDocument)
-	t.actions = 0
-	if err := t.createCollection(collUser, 9, 2); err != nil {
-		t.log.Errorf("Failed to create collection (%v). Giving up", err)
+	if err := t.createAndInitCollection(); err != nil {
+		t.log.Errorf("Failed to create&init first collection: %v. Giving up", err)
 		return
-	}
-	t.actions++
-
-	// Import documents
-	if err := t.importDocuments(collUser); err != nil {
-		t.log.Errorf("Failed to import documents: %#v", err)
-	}
-	t.actions++
-
-	// Check imported documents
-	for k := range t.existingDocs {
-		if t.shouldStop() {
-			return
-		}
-		if err := t.readExistingDocument(collUser, k, "", true); err != nil {
-			t.log.Errorf("Failed to read existing document '%s': %#v", k, err)
-		}
-		t.actions++
-	}
-
-	// Create sample users
-	for i := 0; i < initialDocumentCount; i++ {
-		if t.shouldStop() {
-			return
-		}
-		userDoc := UserDocument{
-			Key:   fmt.Sprintf("doc%05d", i),
-			Value: i,
-			Name:  fmt.Sprintf("User %d", i),
-			Odd:   i%2 == 1,
-		}
-		if rev, err := t.createDocument(collUser, userDoc, userDoc.Key); err != nil {
-			t.log.Errorf("Failed to create document: %#v", err)
-		} else {
-			userDoc.rev = rev
-			t.existingDocs[userDoc.Key] = userDoc
-		}
-		t.actions++
-	}
-
-	createNewKey := func(record bool) string {
-		for {
-			key := fmt.Sprintf("newkey%07d", rand.Int31n(100*1000))
-			_, found := t.existingDocs[key]
-			if !found {
-				if record {
-					t.existingDocs[key] = UserDocument{}
-				}
-				return key
-			}
-		}
-	}
-
-	removeExistingKey := func(key string) {
-		delete(t.existingDocs, key)
-	}
-
-	selectRandomKey := func() (string, string) {
-		index := rand.Intn(len(t.existingDocs))
-		for k, v := range t.existingDocs {
-			if index == 0 {
-				return k, v.rev
-			}
-			index--
-		}
-		return "", "" // This should never be reached when len(t.existingDocs) > 0
-	}
-
-	selectWrongRevision := func(key string) (string, bool) {
-		correctRev := t.existingDocs[key].rev
-		for _, v := range t.existingDocs {
-			if v.rev != correctRev && v.rev != "" {
-				return v.rev, true
-			}
-		}
-		return "", false // This should never be reached when len(t.existingDocs) > 1
 	}
 
 	var plan []int
@@ -294,96 +233,100 @@ func (t *simpleTest) testLoop() {
 		}
 		t.actions++
 		if plan == nil || planIndex >= len(plan) {
-			plan = createTestPlan(17) // Update when more tests are added
+			plan = createTestPlan(18) // Update when more tests are added
 			planIndex = 0
 		}
 
 		switch plan[planIndex] {
 		case 0:
-			// Create a random document
-			if len(t.existingDocs) < t.MaxDocuments {
-				userDoc := UserDocument{
-					Key:   createNewKey(true),
-					Value: rand.Int(),
-					Name:  fmt.Sprintf("User %d", time.Now().Nanosecond()),
-					Odd:   time.Now().Nanosecond()%2 == 1,
-				}
-				if rev, err := t.createDocument(collUser, userDoc, userDoc.Key); err != nil {
-					t.log.Errorf("Failed to create document: %#v", err)
-				} else {
-					userDoc.rev = rev
-					t.existingDocs[userDoc.Key] = userDoc
+			// Create collection with initial data
+			if err := t.createAndInitCollection(); err != nil {
+				t.log.Errorf("Failed to create&init collection: %v", err)
+			}
+			planIndex++
 
-					// Now try to read it, it must exist
-					t.client.SetCoordinator("")
-					if err := t.readExistingDocument(collUser, userDoc.Key, rev, false); err != nil {
-						t.log.Errorf("Failed to read just-created document '%s': %#v", userDoc.Key, err)
+		case 1:
+			// Create a random document
+			if len(t.collections) > 0 {
+				c := t.selectRandomCollection()
+				if len(c.existingDocs) < t.MaxDocuments {
+					userDoc := UserDocument{
+						Key:   c.createNewKey(true),
+						Value: rand.Int(),
+						Name:  fmt.Sprintf("User %d", time.Now().Nanosecond()),
+						Odd:   time.Now().Nanosecond()%2 == 1,
+					}
+					if rev, err := t.createDocument(c.name, userDoc, userDoc.Key); err != nil {
+						t.log.Errorf("Failed to create document: %#v", err)
+					} else {
+						userDoc.rev = rev
+						c.existingDocs[userDoc.Key] = userDoc
+
+						// Now try to read it, it must exist
+						t.client.SetCoordinator("")
+						if err := t.readExistingDocument(c, userDoc.Key, rev, false); err != nil {
+							t.log.Errorf("Failed to read just-created document '%s': %#v", userDoc.Key, err)
+						}
 					}
 				}
 			}
 			planIndex++
 
-		case 1:
-			// Read a random existing document
-			if len(t.existingDocs) > 0 {
-				randomKey, rev := selectRandomKey()
-				if err := t.readExistingDocument(collUser, randomKey, rev, false); err != nil {
-					t.log.Errorf("Failed to read existing document '%s': %#v", randomKey, err)
-				}
-			}
-			planIndex++
-
 		case 2:
-			// Read a random existing document but with wrong revision
-			if len(t.existingDocs) > 1 {
-				randomKey, _ := selectRandomKey()
-				if rev, ok := selectWrongRevision(randomKey); ok {
-					if err := t.readExistingDocumentWrongRevision(collUser, randomKey, rev, false); err != nil {
-						t.log.Errorf("Failed to read existing document '%s' wrong revision: %#v", randomKey, err)
+			// Read a random existing document
+			if len(t.collections) > 0 {
+				c := t.selectRandomCollection()
+				if len(c.existingDocs) > 0 {
+					randomKey, rev := c.selectRandomKey()
+					if err := t.readExistingDocument(c, randomKey, rev, false); err != nil {
+						t.log.Errorf("Failed to read existing document '%s': %#v", randomKey, err)
 					}
 				}
 			}
 			planIndex++
 
 		case 3:
-			// Read a random non-existing document
-			randomKey := createNewKey(false)
-			if err := t.readNonExistingDocument(collUser, randomKey); err != nil {
-				t.log.Errorf("Failed to read non-existing document '%s': %#v", randomKey, err)
-			}
-			planIndex++
-
-		case 4:
-			// Remove a random existing document
-			if len(t.existingDocs) > 0 {
-				randomKey, rev := selectRandomKey()
-				if err := t.removeExistingDocument(collUser, randomKey, rev); err != nil {
-					t.log.Errorf("Failed to remove existing document '%s': %#v", randomKey, err)
-				} else {
-					// Remove succeeded, key should no longer exist
-					removeExistingKey(randomKey)
-
-					// Now try to read it, it should not exist
-					t.client.SetCoordinator("")
-					if err := t.readNonExistingDocument(collUser, randomKey); err != nil {
-						t.log.Errorf("Failed to read just-removed document '%s': %#v", randomKey, err)
+			// Read a random existing document but with wrong revision
+			if len(t.collections) > 0 {
+				c := t.selectRandomCollection()
+				if len(c.existingDocs) > 1 {
+					randomKey, _ := c.selectRandomKey()
+					if rev, ok := c.selectWrongRevision(randomKey); ok {
+						if err := t.readExistingDocumentWrongRevision(c.name, randomKey, rev, false); err != nil {
+							t.log.Errorf("Failed to read existing document '%s' wrong revision: %#v", randomKey, err)
+						}
 					}
 				}
 			}
 			planIndex++
 
+		case 4:
+			// Read a random non-existing document
+			if len(t.collections) > 0 {
+				c := t.selectRandomCollection()
+				randomKey := c.createNewKey(false)
+				if err := t.readNonExistingDocument(c.name, randomKey); err != nil {
+					t.log.Errorf("Failed to read non-existing document '%s': %#v", randomKey, err)
+				}
+			}
+			planIndex++
+
 		case 5:
-			// Remove a random existing document but with wrong revision
-			if len(t.existingDocs) > 1 {
-				randomKey, correctRev := selectRandomKey()
-				if rev, ok := selectWrongRevision(randomKey); ok {
-					if err := t.removeExistingDocumentWrongRevision(collUser, randomKey, rev); err != nil {
-						t.log.Errorf("Failed to remove existing document '%s' wrong revision: %#v", randomKey, err)
+			// Remove a random existing document
+			if len(t.collections) > 0 {
+				c := t.selectRandomCollection()
+				if len(c.existingDocs) > 0 {
+					randomKey, rev := c.selectRandomKey()
+					if err := t.removeExistingDocument(c.name, randomKey, rev); err != nil {
+						t.log.Errorf("Failed to remove existing document '%s': %#v", randomKey, err)
 					} else {
-						// Remove failed (as expected), key should still exist
+						// Remove succeeded, key should no longer exist
+						c.removeExistingKey(randomKey)
+
+						// Now try to read it, it should not exist
 						t.client.SetCoordinator("")
-						if err := t.readExistingDocument(collUser, randomKey, correctRev, false); err != nil {
-							t.log.Errorf("Failed to read not-just-removed document '%s': %#v", randomKey, err)
+						if err := t.readNonExistingDocument(c.name, randomKey); err != nil {
+							t.log.Errorf("Failed to read just-removed document '%s': %#v", randomKey, err)
 						}
 					}
 				}
@@ -391,42 +334,50 @@ func (t *simpleTest) testLoop() {
 			planIndex++
 
 		case 6:
-			// Remove a random non-existing document
-			randomKey := createNewKey(false)
-			if err := t.removeNonExistingDocument(collUser, randomKey); err != nil {
-				t.log.Errorf("Failed to remove non-existing document '%s': %#v", randomKey, err)
-			}
-			planIndex++
-
-		case 7:
-			// Update a random existing document
-			if len(t.existingDocs) > 0 {
-				randomKey, rev := selectRandomKey()
-				if newRev, err := t.updateExistingDocument(collUser, randomKey, rev); err != nil {
-					t.log.Errorf("Failed to update existing document '%s': %#v", randomKey, err)
-				} else {
-					// Updated succeeded, now try to read it, it should exist and be updated
-					t.client.SetCoordinator("")
-					if err := t.readExistingDocument(collUser, randomKey, newRev, false); err != nil {
-						t.log.Errorf("Failed to read just-updated document '%s': %#v", randomKey, err)
+			// Remove a random existing document but with wrong revision
+			if len(t.collections) > 0 {
+				c := t.selectRandomCollection()
+				if len(c.existingDocs) > 1 {
+					randomKey, correctRev := c.selectRandomKey()
+					if rev, ok := c.selectWrongRevision(randomKey); ok {
+						if err := t.removeExistingDocumentWrongRevision(c.name, randomKey, rev); err != nil {
+							t.log.Errorf("Failed to remove existing document '%s' wrong revision: %#v", randomKey, err)
+						} else {
+							// Remove failed (as expected), key should still exist
+							t.client.SetCoordinator("")
+							if err := t.readExistingDocument(c, randomKey, correctRev, false); err != nil {
+								t.log.Errorf("Failed to read not-just-removed document '%s': %#v", randomKey, err)
+							}
+						}
 					}
 				}
 			}
 			planIndex++
 
+		case 7:
+			// Remove a random non-existing document
+			if len(t.collections) > 0 {
+				c := t.selectRandomCollection()
+				randomKey := c.createNewKey(false)
+				if err := t.removeNonExistingDocument(c.name, randomKey); err != nil {
+					t.log.Errorf("Failed to remove non-existing document '%s': %#v", randomKey, err)
+				}
+			}
+			planIndex++
+
 		case 8:
-			// Update a random existing document but with wrong revision
-			if len(t.existingDocs) > 1 {
-				randomKey, correctRev := selectRandomKey()
-				if rev, ok := selectWrongRevision(randomKey); ok {
-					if err := t.updateExistingDocumentWrongRevision(collUser, randomKey, rev); err != nil {
-						t.log.Errorf("Failed to update existing document '%s' wrong revision: %#v", randomKey, err)
+			// Update a random existing document
+			if len(t.collections) > 0 {
+				c := t.selectRandomCollection()
+				if len(c.existingDocs) > 0 {
+					randomKey, rev := c.selectRandomKey()
+					if newRev, err := t.updateExistingDocument(c, randomKey, rev); err != nil {
+						t.log.Errorf("Failed to update existing document '%s': %#v", randomKey, err)
 					} else {
-						// Updated failed (as expected).
-						// It must still be readable.
+						// Updated succeeded, now try to read it, it should exist and be updated
 						t.client.SetCoordinator("")
-						if err := t.readExistingDocument(collUser, randomKey, correctRev, false); err != nil {
-							t.log.Errorf("Failed to read not-just-updated document '%s': %#v", randomKey, err)
+						if err := t.readExistingDocument(c, randomKey, newRev, false); err != nil {
+							t.log.Errorf("Failed to read just-updated document '%s': %#v", randomKey, err)
 						}
 					}
 				}
@@ -434,42 +385,51 @@ func (t *simpleTest) testLoop() {
 			planIndex++
 
 		case 9:
-			// Update a random non-existing document
-			randomKey := createNewKey(false)
-			if err := t.updateNonExistingDocument(collUser, randomKey); err != nil {
-				t.log.Errorf("Failed to update non-existing document '%s': %#v", randomKey, err)
-			}
-			planIndex++
-
-		case 10:
-			// Replace a random existing document
-			if len(t.existingDocs) > 0 {
-				randomKey, rev := selectRandomKey()
-				if newRev, err := t.replaceExistingDocument(collUser, randomKey, rev); err != nil {
-					t.log.Errorf("Failed to replace existing document '%s': %#v", randomKey, err)
-				} else {
-					// Replace succeeded, now try to read it, it should exist and be replaced
-					t.client.SetCoordinator("")
-					if err := t.readExistingDocument(collUser, randomKey, newRev, false); err != nil {
-						t.log.Errorf("Failed to read just-replaced document '%s': %#v", randomKey, err)
+			// Update a random existing document but with wrong revision
+			if len(t.collections) > 0 {
+				c := t.selectRandomCollection()
+				if len(c.existingDocs) > 1 {
+					randomKey, correctRev := c.selectRandomKey()
+					if rev, ok := c.selectWrongRevision(randomKey); ok {
+						if err := t.updateExistingDocumentWrongRevision(c.name, randomKey, rev); err != nil {
+							t.log.Errorf("Failed to update existing document '%s' wrong revision: %#v", randomKey, err)
+						} else {
+							// Updated failed (as expected).
+							// It must still be readable.
+							t.client.SetCoordinator("")
+							if err := t.readExistingDocument(c, randomKey, correctRev, false); err != nil {
+								t.log.Errorf("Failed to read not-just-updated document '%s': %#v", randomKey, err)
+							}
+						}
 					}
 				}
 			}
 			planIndex++
 
+		case 10:
+			// Update a random non-existing document
+			if len(t.collections) > 0 {
+				c := t.selectRandomCollection()
+				randomKey := c.createNewKey(false)
+				if err := t.updateNonExistingDocument(c.name, randomKey); err != nil {
+					t.log.Errorf("Failed to update non-existing document '%s': %#v", randomKey, err)
+				}
+			}
+			planIndex++
+
 		case 11:
-			// Replace a random existing document but with wrong revision
-			if len(t.existingDocs) > 1 {
-				randomKey, correctRev := selectRandomKey()
-				if rev, ok := selectWrongRevision(randomKey); ok {
-					if err := t.replaceExistingDocumentWrongRevision(collUser, randomKey, rev); err != nil {
-						t.log.Errorf("Failed to replace existing document '%s' wrong revision: %#v", randomKey, err)
+			// Replace a random existing document
+			if len(t.collections) > 0 {
+				c := t.selectRandomCollection()
+				if len(c.existingDocs) > 0 {
+					randomKey, rev := c.selectRandomKey()
+					if newRev, err := t.replaceExistingDocument(c, randomKey, rev); err != nil {
+						t.log.Errorf("Failed to replace existing document '%s': %#v", randomKey, err)
 					} else {
-						// Replace failed (as expected).
-						// It must still be readable.
+						// Replace succeeded, now try to read it, it should exist and be replaced
 						t.client.SetCoordinator("")
-						if err := t.readExistingDocument(collUser, randomKey, correctRev, false); err != nil {
-							t.log.Errorf("Failed to read not-just-replaced document '%s': %#v", randomKey, err)
+						if err := t.readExistingDocument(c, randomKey, newRev, false); err != nil {
+							t.log.Errorf("Failed to read just-replaced document '%s': %#v", randomKey, err)
 						}
 					}
 				}
@@ -477,45 +437,79 @@ func (t *simpleTest) testLoop() {
 			planIndex++
 
 		case 12:
-			// Replace a random non-existing document
-			randomKey := createNewKey(false)
-			if err := t.replaceNonExistingDocument(collUser, randomKey); err != nil {
-				t.log.Errorf("Failed to replace non-existing document '%s': %#v", randomKey, err)
+			// Replace a random existing document but with wrong revision
+			if len(t.collections) > 0 {
+				c := t.selectRandomCollection()
+				if len(c.existingDocs) > 1 {
+					randomKey, correctRev := c.selectRandomKey()
+					if rev, ok := c.selectWrongRevision(randomKey); ok {
+						if err := t.replaceExistingDocumentWrongRevision(c.name, randomKey, rev); err != nil {
+							t.log.Errorf("Failed to replace existing document '%s' wrong revision: %#v", randomKey, err)
+						} else {
+							// Replace failed (as expected).
+							// It must still be readable.
+							t.client.SetCoordinator("")
+							if err := t.readExistingDocument(c, randomKey, correctRev, false); err != nil {
+								t.log.Errorf("Failed to read not-just-replaced document '%s': %#v", randomKey, err)
+							}
+						}
+					}
+				}
 			}
 			planIndex++
 
 		case 13:
-			// Query documents
-			if err := t.queryDocuments(collUser); err != nil {
-				t.log.Errorf("Failed to query documents: %#v", err)
+			// Replace a random non-existing document
+			if len(t.collections) > 0 {
+				c := t.selectRandomCollection()
+				randomKey := c.createNewKey(false)
+				if err := t.replaceNonExistingDocument(c.name, randomKey); err != nil {
+					t.log.Errorf("Failed to replace non-existing document '%s': %#v", randomKey, err)
+				}
 			}
 			planIndex++
 
 		case 14:
-			// Query documents (long running)
-			if err := t.queryDocumentsLongRunning(collUser); err != nil {
-				t.log.Errorf("Failed to query (long running) documents: %#v", err)
+			// Query documents
+			if len(t.collections) > 0 {
+				c := t.selectRandomCollection()
+				if err := t.queryDocuments(c); err != nil {
+					t.log.Errorf("Failed to query documents: %#v", err)
+				}
 			}
 			planIndex++
 
 		case 15:
+			// Query documents (long running)
+			if len(t.collections) > 0 {
+				c := t.selectRandomCollection()
+				if err := t.queryDocumentsLongRunning(c); err != nil {
+					t.log.Errorf("Failed to query (long running) documents: %#v", err)
+				}
+			}
+			planIndex++
+
+		case 16:
 			// Rebalance shards
 			if err := t.rebalanceShards(); err != nil {
 				t.log.Errorf("Failed to rebalance shards: %#v", err)
 			}
 			planIndex++
 
-		case 16:
+		case 17:
 			// AQL update query
-			if len(t.existingDocs) > 0 {
-				randomKey, _ := selectRandomKey()
-				if newRev, err := t.queryUpdateDocuments(collUser, randomKey); err != nil {
-					t.log.Errorf("Failed to update document using AQL query: %#v", err)
-				} else {
-					// Updated succeeded, now try to read it (anywhere), it should exist and be updated
-					t.client.SetCoordinator("")
-					if err := t.readExistingDocument(collUser, randomKey, newRev, false); err != nil {
-						t.log.Errorf("Failed to read just-updated document '%s': %#v", randomKey, err)
+			if len(t.collections) > 0 {
+				c := t.selectRandomCollection()
+				if len(c.existingDocs) > 0 {
+					randomKey, _ := c.selectRandomKey()
+					if newRev, err := t.queryUpdateDocuments(c, randomKey); err != nil {
+						t.log.Errorf("Failed to update document using AQL query: %#v", err)
+					} else {
+						// Updated succeeded, now try to read it (anywhere), it should exist and be updated
+						t.client.SetCoordinator("")
+						if err := t.readExistingDocument(c, randomKey, newRev, false); err != nil {
+							t.log.Errorf("Failed to read just-updated document '%s': %#v", randomKey, err)
+						}
 					}
 				}
 			}
@@ -561,4 +555,120 @@ func ifMatchHeader(hdr map[string]string, rev string) map[string]string {
 	}
 	hdr["If-Match"] = rev
 	return hdr
+}
+
+// createNewCollectionName returns a new (unique) collection name
+func (t *simpleTest) createNewCollectionName() string {
+	i := 1
+	for {
+		name := fmt.Sprintf("simple_user_%d", i)
+		if _, found := t.collections[name]; !found {
+			return name
+		}
+		i++
+	}
+}
+
+func (t *simpleTest) selectRandomCollection() *collection {
+	index := rand.Intn(len(t.collections))
+	for _, c := range t.collections {
+		if index == 0 {
+			return c
+		}
+		index--
+	}
+	return nil // This should never be reached when len(t.collections) > 0
+}
+
+func (t *simpleTest) createAndInitCollection() error {
+	c := &collection{
+		name:         t.createNewCollectionName(),
+		existingDocs: make(map[string]UserDocument),
+	}
+	if err := t.createCollection(c.name, 9, 2); err != nil {
+		t.log.Errorf("Failed to create collection: %v", err)
+		t.reportFailure(test.NewFailure("Creating collection '%s' failed: %v", c.name, err))
+		return maskAny(err)
+	}
+	t.collectionsMutex.Lock()
+	t.collections[c.name] = c
+	t.collectionsMutex.Unlock()
+	t.createCollectionCounter.succeeded++
+	t.actions++
+
+	// Import documents
+	if err := t.importDocuments(c); err != nil {
+		t.log.Errorf("Failed to import documents: %#v", err)
+	}
+	t.actions++
+
+	// Check imported documents
+	for k := range c.existingDocs {
+		if t.shouldStop() {
+			return nil
+		}
+		if err := t.readExistingDocument(c, k, "", true); err != nil {
+			t.log.Errorf("Failed to read existing document '%s': %#v", k, err)
+		}
+		t.actions++
+	}
+
+	// Create sample users
+	for i := 0; i < initialDocumentCount; i++ {
+		if t.shouldStop() {
+			return nil
+		}
+		userDoc := UserDocument{
+			Key:   fmt.Sprintf("doc%05d", i),
+			Value: i,
+			Name:  fmt.Sprintf("User %d", i),
+			Odd:   i%2 == 1,
+		}
+		if rev, err := t.createDocument(c.name, userDoc, userDoc.Key); err != nil {
+			t.log.Errorf("Failed to create document: %#v", err)
+		} else {
+			userDoc.rev = rev
+			c.existingDocs[userDoc.Key] = userDoc
+		}
+		t.actions++
+	}
+	return nil
+}
+
+func (c *collection) createNewKey(record bool) string {
+	for {
+		key := fmt.Sprintf("newkey%07d", rand.Int31n(100*1000))
+		_, found := c.existingDocs[key]
+		if !found {
+			if record {
+				c.existingDocs[key] = UserDocument{}
+			}
+			return key
+		}
+	}
+}
+
+func (c *collection) removeExistingKey(key string) {
+	delete(c.existingDocs, key)
+}
+
+func (c *collection) selectRandomKey() (string, string) {
+	index := rand.Intn(len(c.existingDocs))
+	for k, v := range c.existingDocs {
+		if index == 0 {
+			return k, v.rev
+		}
+		index--
+	}
+	return "", "" // This should never be reached when len(t.existingDocs) > 0
+}
+
+func (c *collection) selectWrongRevision(key string) (string, bool) {
+	correctRev := c.existingDocs[key].rev
+	for _, v := range c.existingDocs {
+		if v.rev != correctRev && v.rev != "" {
+			return v.rev, true
+		}
+	}
+	return "", false // This should never be reached when len(t.existingDocs) > 1
 }

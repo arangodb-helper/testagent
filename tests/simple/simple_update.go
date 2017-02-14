@@ -10,30 +10,30 @@ import (
 
 // updateExistingDocument updates an existing document with an optional explicit revision.
 // The operation is expected to succeed.
-func (t *simpleTest) updateExistingDocument(collectionName string, key, rev string) (string, error) {
+func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (string, error) {
 	operationTimeout, retryTimeout := time.Minute/4, time.Minute
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated name %s", time.Now())
 	hdr, ifMatchStatus := createRandomIfMatchHeader(nil, rev)
-	t.log.Infof("Updating existing document '%s' (%s) in '%s' (name -> '%s')...", key, ifMatchStatus, collectionName, newName)
+	t.log.Infof("Updating existing document '%s' (%s) in '%s' (name -> '%s')...", key, ifMatchStatus, c.name, newName)
 	delta := map[string]interface{}{
 		"name": newName,
 	}
-	doc := t.existingDocs[key]
-	update, err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, delta, "", nil, []int{200, 201, 202}, []int{400, 404, 412, 307}, operationTimeout, retryTimeout)
+	doc := c.existingDocs[key]
+	update, err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", c.name, key), q, hdr, delta, "", nil, []int{200, 201, 202}, []int{400, 404, 412, 307}, operationTimeout, retryTimeout)
 	if err != nil {
 		// This is a failure
 		t.updateExistingCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to update existing document '%s' (%s) in collection '%s': %v", key, ifMatchStatus, collectionName, err))
+		t.reportFailure(test.NewFailure("Failed to update existing document '%s' (%s) in collection '%s': %v", key, ifMatchStatus, c.name, err))
 		return "", maskAny(err)
 	}
 	// Update internal doc
 	doc.Name = newName
 	doc.rev = update.Rev
-	t.existingDocs[key] = doc
+	c.existingDocs[key] = doc
 	t.updateExistingCounter.succeeded++
-	t.log.Infof("Updating existing document '%s' (%s) in '%s' (name -> '%s') succeeded", key, ifMatchStatus, collectionName, newName)
+	t.log.Infof("Updating existing document '%s' (%s) in '%s' (name -> '%s') succeeded", key, ifMatchStatus, c.name, newName)
 	return update.Rev, nil
 }
 
