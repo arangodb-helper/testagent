@@ -432,8 +432,9 @@ func (m *arangodb) stop(destroy bool) error {
 	// Remove container
 	m.log.Infof("Removing container %s", m.containerID)
 	if err := m.dockerHost.Client.RemoveContainer(dc.RemoveContainerOptions{
-		Force: true, // Just in case
-		ID:    m.containerID,
+		Force:         true, // Just in case
+		ID:            m.containerID,
+		RemoveVolumes: destroy,
 	}); err != nil {
 		return maskAny(err)
 	}
@@ -493,8 +494,9 @@ func (m *arangodb) stopNetworkBlocker() error {
 	// Remove container
 	m.log.Infof("Removing container %s", m.nwBlockerContainerID)
 	if err := m.dockerHost.Client.RemoveContainer(dc.RemoveContainerOptions{
-		Force: true, // Just in case
-		ID:    m.nwBlockerContainerID,
+		Force:         true, // Just in case
+		ID:            m.nwBlockerContainerID,
+		RemoveVolumes: true,
 	}); err != nil {
 		return maskAny(err)
 	}
