@@ -74,6 +74,21 @@ func (c *ArangoClient) createURL(urlPath string, query url.Values) (string, url.
 	return u.String(), lastCoordinatorURL, nil
 }
 
+// SetCoordinator sets the URL of the coordinator to use for the next request.
+// Passing an empty string will use a random coordinator for the next request.
+func (c *ArangoClient) SetCoordinator(coordinatorURL string) error {
+	if coordinatorURL == "" {
+		c.lastCoordinatorURL = nil
+	} else {
+		u, err := url.Parse(coordinatorURL)
+		if err != nil {
+			return maskAny(err)
+		}
+		c.lastCoordinatorURL = u
+	}
+	return nil
+}
+
 // Get performs a GET operation of a coordinator.
 // If result != nil and status == 200, the response is parsed into result.
 func (c *ArangoClient) Get(urlPath string, query url.Values, header map[string]string, result interface{}, successStatusCodes, failureStatusCodes []int, operationTimeout, retryTimeout time.Duration) (ArangoResponse, error) {

@@ -50,6 +50,7 @@ type simpleTest struct {
 	queryNextBatchCounter               counter
 	queryNextBatchNewCoordinatorCounter counter
 	queryLongRunningCounter             counter
+	rebalanceShardsCounter              counter
 }
 
 type counter struct {
@@ -120,6 +121,7 @@ func (t *simpleTest) Status() test.TestStatus {
 			fmt.Sprintf("#fetch next AQL cursor batch operations: %d", t.queryNextBatchCounter.succeeded),
 			fmt.Sprintf("#fetch next AQL cursor batch after coordinator change operations: %d", t.queryNextBatchNewCoordinatorCounter.succeeded),
 			fmt.Sprintf("#long running AQL query operations: %d", t.queryLongRunningCounter.succeeded),
+			fmt.Sprintf("#rebalance shards operations: %d", t.rebalanceShardsCounter.succeeded),
 			"",
 			"Failed:",
 			fmt.Sprintf("#documents created: %d", t.createCounter.failed),
@@ -140,6 +142,7 @@ func (t *simpleTest) Status() test.TestStatus {
 			fmt.Sprintf("#fetch next AQL cursor batch operations: %d", t.queryNextBatchCounter.failed),
 			fmt.Sprintf("#fetch next AQL cursor batch after coordinator change operations: %d", t.queryNextBatchNewCoordinatorCounter.failed),
 			fmt.Sprintf("#long running AQL query operations: %d", t.queryLongRunningCounter.failed),
+			fmt.Sprintf("#rebalance shards operations: %d", t.rebalanceShardsCounter.failed),
 		},
 	}
 }
@@ -481,6 +484,13 @@ func (t *simpleTest) testLoop() {
 			// Query documents (long running)
 			if err := t.queryDocumentsLongRunning(collUser); err != nil {
 				t.log.Errorf("Failed to query (long running) documents: %#v", err)
+			}
+			state++
+
+		case 15:
+			// Rebalance shards
+			if err := t.rebalanceShards(); err != nil {
+				t.log.Errorf("Failed to rebalance shards: %#v", err)
 			}
 			state++
 
