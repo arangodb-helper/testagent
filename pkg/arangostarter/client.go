@@ -36,10 +36,17 @@ type HelloRequest struct {
 	DataDir      string // Directory used for data by this slave
 }
 
+type VersionResponse struct {
+	Version string `json:"version"`
+	Build   string `json:"build"`
+}
+
 const (
 	contentTypeJSON = "application/json"
 )
 
+// PrepareSlave prepare the launch of an arangodb slave.
+// Given an ID, host, port & dataDir will it reserve a peer slot and return a stable port offset.
 func (c *client) PrepareSlave(id, hostIP string, port int, dataDir string) (Peer, error) {
 	helloReq := HelloRequest{
 		SlaveID:      id,
@@ -79,8 +86,7 @@ func (c *client) PrepareSlave(id, hostIP string, port int, dataDir string) (Peer
 	return result, nil
 }
 
-// updateServerInfo connects to arangodb to query the port numbers & container info
-// of all servers on the machine
+// GetProcesses loads information of all the server processes launched by a specific arangodb.
 func (c *client) GetProcesses() (ProcessListResponse, error) {
 	url := c.createURL("/process", nil)
 
@@ -101,6 +107,60 @@ func (c *client) GetProcesses() (ProcessListResponse, error) {
 	}
 
 	return result, nil
+}
+
+// Shutdown will shutdown a specific arangodb (and all its started servers).
+// With goodbye set, it will remove the peer slot for this arangodb instance.
+func (c *client) Shutdown(goodbye bool) error {
+	q := url.Values{}
+	if goodbye {
+		q.Set("mode", "goodbye")
+	}
+	url := c.createURL("/shutdown", q)
+
+	op := func() error {
+		resp, err := c.client.Post(url, "", nil)
+		if err != nil {
+			return maskAny(err)
+		}
+		if err := c.handleResponse(resp, "POST", url, nil); err != nil {
+			return maskAny(err)
+		}
+		return nil
+	}
+
+	if err := retry.Retry(op, time.Minute*2); err != nil {
+		return maskAny(err)
+	}
+
+	return nil
+}
+
+// WaitUntilGone will block until the specific arangodb instance can no longer be reached.
+func (c *client) WaitUntilGone() error {
+	url := c.createURL("/version", nil)
+
+	var result VersionResponse
+	op := func() error {
+		resp, err := c.client.Get(url)
+		if err != nil {
+			// When the arangodb is gone, we expect an error here.
+			// In that case we're done
+			return nil
+		}
+		if err := c.handleResponse(resp, "POST", url, &result); err != nil {
+			// When the arangodb is gone, we expect an error here.
+			// In that case we're done
+			return nil
+		}
+		return maskAny(fmt.Errorf("Still not gone"))
+	}
+
+	if err := retry.Retry(op, time.Minute*2); err != nil {
+		return maskAny(err)
+	}
+
+	return nil
 }
 
 func (c *client) handleResponse(resp *http.Response, method, url string, result interface{}) error {

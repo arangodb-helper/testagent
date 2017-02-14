@@ -238,7 +238,7 @@ func (m *arangodb) DestroyAllowed() bool {
 // Remove the machine without the ability to recover it
 func (m *arangodb) Destroy() error {
 	// Terminate arangodb. It will terminate the servers.
-	if err := m.stop(); err != nil {
+	if err := m.stop(true); err != nil {
 		return maskAny(err)
 	}
 
@@ -250,11 +250,6 @@ func (m *arangodb) Destroy() error {
 		return maskAny(err)
 	}
 
-	// Remove volume
-	m.log.Infof("Removing volume %s", m.volumeID)
-	if err := m.dockerHost.Client.RemoveVolume(m.volumeID); err != nil {
-		return maskAny(err)
-	}
 	return nil
 }
 
@@ -408,12 +403,30 @@ func (m *arangodb) start() error {
 	return nil
 }
 
-func (m *arangodb) stop() error {
-	// Stop the arangodb container  (it will stop the servers )
-	m.state = cluster.MachineStateShutdown
-	m.log.Infof("Stopping container %s", m.containerID)
-	if err := m.dockerHost.Client.StopContainer(m.containerID, stopMachineTimeout); err != nil {
+func (m *arangodb) stop(destroy bool) error {
+	// Prepare arangodb client
+	client, err := arangostarter.NewArangoStarterClient(m.dockerHost.IP, m.arangodbPort)
+	if err != nil {
 		return maskAny(err)
+	}
+
+	// Perform a graceful shutdown
+	m.log.Infof("Stopping arangodb at %s:%d", m.dockerHost.IP, m.arangodbPort)
+	m.state = cluster.MachineStateShutdown
+	if err := client.Shutdown(destroy); err != nil {
+		return maskAny(err)
+	}
+
+	// Wait until arangodb is really gone
+	if err := client.WaitUntilGone(); err != nil {
+		m.log.Errorf("Arangodb at %s:%d is not gone after a while... (error %v)", m.dockerHost.IP, m.arangodbPort, err)
+	}
+
+	// In case the graceful shutdown fails anyway, we're stopping using the docker container ID.
+	m.log.Infof("Stopping container %s", m.containerID)
+	// Stop the arangodb container  (it will stop the servers )
+	if err := m.dockerHost.Client.StopContainer(m.containerID, stopMachineTimeout); err != nil {
+		m.log.Debugf("failed to stop container %s, shutdown will have succeeded already", m.containerID)
 	}
 
 	// Remove container
@@ -424,6 +437,15 @@ func (m *arangodb) stop() error {
 	}); err != nil {
 		return maskAny(err)
 	}
+
+	// Remove volume (in case of destroy)
+	if destroy {
+		m.log.Infof("Removing volume %s", m.volumeID)
+	}
+	if err := m.dockerHost.Client.RemoveVolume(m.volumeID); err != nil {
+		m.log.Errorf("Failed to remove volume %s: %v", m.volumeID, err)
+	}
+
 	return nil
 }
 

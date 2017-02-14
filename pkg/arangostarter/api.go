@@ -1,8 +1,19 @@
 package arangostarter
 
 type API interface {
+	// PrepareSlave prepare the launch of an arangodb slave.
+	// Given an ID, host, port & dataDir will it reserve a peer slot and return a stable port offset.
 	PrepareSlave(id, hostIP string, port int, dataDir string) (Peer, error)
+
+	// GetProcesses loads information of all the server processes launched by a specific arangodb.
 	GetProcesses() (ProcessListResponse, error)
+
+	// Shutdown will shutdown a specific arangodb (and all its started servers).
+	// With goodbye set, it will remove the peer slot for this arangodb instance.
+	Shutdown(goodbye bool) error
+
+	// WaitUntilGone will block until the specific arangodb instance can no longer be reached.
+	WaitUntilGone() error
 }
 
 type Peer struct {
