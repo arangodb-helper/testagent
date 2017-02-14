@@ -40,6 +40,17 @@ func (l MachineList) Union(other MachineList) MachineList {
 	return result
 }
 
+// Intersection returns a new machine list with all entries that are contained in both lists.
+func (l MachineList) Intersection(other MachineList) MachineList {
+	var result MachineList
+	for _, m := range l {
+		if other.Contains(m) {
+			result = append(result, m)
+		}
+	}
+	return result
+}
+
 // ExceptAgents returns a new machine list with all entries from this list
 // that do not have an agent.
 func (l MachineList) ExceptAgents() MachineList {

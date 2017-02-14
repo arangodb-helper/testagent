@@ -53,6 +53,7 @@ type arangodb struct {
 	dbserverPort               int
 	dbserverContainerID        string
 	lastDBServerReadyStatus    int32
+	destroyCallback            func(*arangodb)
 }
 
 // ID returns a unique identifier for this machine
@@ -250,6 +251,9 @@ func (m *arangodb) Destroy() error {
 		return maskAny(err)
 	}
 
+	// Remove machine from list
+	m.destroyCallback(m)
+
 	return nil
 }
 
@@ -356,16 +360,30 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 		)
 	}
 	return &arangodb{
-		dockerHost:    dockerHost,
-		createOptions: opts,
-		log:           c.log,
-		index:         index,
-		createdAt:     time.Now(),
-		state:         cluster.MachineStateNew,
-		arangodbPort:  arangodbPort,
-		nwBlockerPort: arangodbPort + 4,
-		volumeID:      volName,
+		dockerHost:      dockerHost,
+		createOptions:   opts,
+		log:             c.log,
+		index:           index,
+		createdAt:       time.Now(),
+		state:           cluster.MachineStateNew,
+		arangodbPort:    arangodbPort,
+		nwBlockerPort:   arangodbPort + 4,
+		volumeID:        volName,
+		destroyCallback: c.destroyCallback,
 	}, nil
+}
+
+func (c *arangodbCluster) destroyCallback(m *arangodb) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	newList := []*arangodb{}
+	for _, x := range c.machines {
+		if m != x {
+			newList = append(newList, x)
+		}
+	}
+	c.machines = newList
 }
 
 // pullImage pulls a docker image on the docker host.
