@@ -204,7 +204,7 @@ func (t *simpleTest) testLoop() {
 
 	t.existingDocs = make(map[string]UserDocument)
 	t.actions = 0
-	if err := t.createCollection(collUser, 3, 2); err != nil {
+	if err := t.createCollection(collUser, 9, 2); err != nil {
 		t.log.Errorf("Failed to create collection (%v). Giving up", err)
 		return
 	}
