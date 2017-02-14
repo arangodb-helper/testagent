@@ -1,11 +1,32 @@
 {{template "base/head" .}}
 
 {{with $t:= .Test}}
+<a href="/" class="ui basic mini right floated button">Back</a>
 <h1>{{$t.Name}}</h1>
-<div>
-    <p>Failures: {{$t.Failures}}</p>
-    {{range $m := $t.Messages}}<p>{{$m}}</p>{{end}}
-</div>
+<table class="ui compact celled striped table">
+    <tr>
+        <td>Failures: {{$t.Failures}}</td>
+    </tr>
+    {{range $m := $t.Messages}}<tr><td>{{$m}}</tr></td>{{end}}
+</table>
+
+<table class="ui compact celled striped table counters">
+    <thead>
+    <tr>
+        <th>Counter</th>
+        <th>Succeeded</th>
+        <th>Failed</th>
+    </tr>
+    </thead>
+{{ range $c := $t.Counters }}
+    <tr class="{{ cssTestOK $c.Failed }}">
+        <td>{{$c.Name}}</td>
+        <td>{{$c.Succeeded}}</td>
+        <td>{{$c.Failed}}</td>
+    </tr>
+{{ end }}
+</table>
+
 {{end}}
 
 {{template "base/footer" .}}
