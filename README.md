@@ -32,6 +32,8 @@ It should also be possible to:
 The test agent will allow for multiple test scripts to be developed & run.
 The test operations covered in those scripts will include (among others):
 
+- [ ] Create collections 
+- [ ] Drop collections
 - [x] Import documents 
 - [x] Create documents
 - [x] Read existing documents 
@@ -50,7 +52,7 @@ The test operations covered in those scripts will include (among others):
 - [x] Replace non-existing documents 
 - [x] Query documents (AQL)
 - [x] Query documents with long running query (AQL SLEEP)
-- [ ] Modify documents with query (AQL)
+- [x] Modify documents with query (AQL)
 - [ ] Modify documents with long running query (AQL SLEEP)
 - [ ] Backup entire databases
 - [x] Rebalance shards
