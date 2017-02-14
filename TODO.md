@@ -1,4 +1,2 @@
-- Increase #shards 
 - Create collections during test 
 - If revision fails, update it internally?
-- Better cleanup of containers & volumes 

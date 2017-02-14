@@ -15,9 +15,9 @@ The test-agent will introduce the following kinds of chaos.
 - [x] Kill a server, one of each type at a time 
 - [x] Entire machine (with agent, dbserver & coordinator) is restarted 
 - [ ] Entire machine (with agent, dbserver & coordinator) is replaced (currently impossible)
-- [ ] Entire machine (with dbserver & coordinator) is lost and replaced by another one 
-- [ ] Entire machine (with dbserver & coordinator) is added 
-- [ ] Entire machine (with dbserver & coordinator) is removed
+- [x] Entire machine (with dbserver & coordinator) is lost and replaced by another one 
+- [x] Entire machine (with dbserver & coordinator) is added 
+- [x] Entire machine (with dbserver & coordinator) is removed
 - [x] Network traffic between servers is blocked (iptables REJECT)
 - [x] Network traffic between servers is ignored (iptables DROP)
 - [ ] Split brain
@@ -53,6 +53,7 @@ The test operations covered in those scripts will include (among others):
 - [ ] Modify documents with query (AQL)
 - [ ] Modify documents with long running query (AQL SLEEP)
 - [ ] Backup entire databases
+- [ ] Redistribute shards
 
 ## Usage 
 
