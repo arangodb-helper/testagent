@@ -62,4 +62,11 @@ type TestStatus struct {
 	Failures int
 	Actions  int
 	Messages []string
+	Counters []Counter
+}
+
+type Counter struct {
+	Name      string
+	Succeeded int
+	Failed    int
 }

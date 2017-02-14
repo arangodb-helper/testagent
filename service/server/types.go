@@ -29,6 +29,7 @@ type Test struct {
 	Failures int
 	Actions  int
 	Messages []string
+	Counters []test.Counter
 }
 
 type Chaos struct {
@@ -95,6 +96,7 @@ func testFromTestScript(ct test.TestScript) Test {
 		Failures: status.Failures,
 		Actions:  status.Actions,
 		Messages: status.Messages,
+		Counters: status.Counters,
 	}
 }
 

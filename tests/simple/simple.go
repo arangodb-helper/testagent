@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"github.com/arangodb/testAgent/service/cluster"
@@ -15,12 +16,17 @@ import (
 	logging "github.com/op/go-logging"
 )
 
+type SimpleConfig struct {
+	MaxDocuments int
+}
+
 const (
 	collUser             = "simple_users"
 	initialDocumentCount = 999
 )
 
 type simpleTest struct {
+	SimpleConfig
 	logPath                             string
 	reportDir                           string
 	log                                 *logging.Logger
@@ -51,6 +57,7 @@ type simpleTest struct {
 	queryNextBatchNewCoordinatorCounter counter
 	queryLongRunningCounter             counter
 	rebalanceShardsCounter              counter
+	queryUpdateCounter                  counter
 }
 
 type counter struct {
@@ -59,8 +66,9 @@ type counter struct {
 }
 
 // NewSimpleTest creates a simple test
-func NewSimpleTest(log *logging.Logger, reportDir string) test.TestScript {
+func NewSimpleTest(log *logging.Logger, reportDir string, config SimpleConfig) test.TestScript {
 	return &simpleTest{
+		SimpleConfig: config,
 		reportDir:    reportDir,
 		log:          log,
 		existingDocs: make(map[string]UserDocument),
@@ -97,52 +105,41 @@ func (t *simpleTest) Stop() error {
 
 // Status returns the current status of the test
 func (t *simpleTest) Status() test.TestStatus {
+	cc := func(name string, c counter) test.Counter {
+		return test.Counter{
+			Name:      name,
+			Succeeded: c.succeeded,
+			Failed:    c.failed,
+		}
+	}
+
 	return test.TestStatus{
 		Failures: t.failures,
 		Actions:  t.actions,
 		Messages: []string{
 			fmt.Sprintf("Current #documents: %d", len(t.existingDocs)),
-			"Succeeded:",
-			fmt.Sprintf("#documents created: %d", t.createCounter.succeeded),
-			fmt.Sprintf("#existing documents read: %d", t.readExistingCounter.succeeded),
-			fmt.Sprintf("#existing documents updated: %d", t.updateExistingCounter.succeeded),
-			fmt.Sprintf("#existing documents replaced: %d", t.replaceExistingCounter.succeeded),
-			fmt.Sprintf("#existing documents removed: %d", t.deleteExistingCounter.succeeded),
-			fmt.Sprintf("#existing documents wrong revision read: %d", t.readExistingWrongRevisionCounter.succeeded),
-			fmt.Sprintf("#existing documents wrong revision updated: %d", t.updateExistingWrongRevisionCounter.succeeded),
-			fmt.Sprintf("#existing documents wrong revision replaced: %d", t.replaceExistingWrongRevisionCounter.succeeded),
-			fmt.Sprintf("#existing documents wrong revision removed: %d", t.deleteExistingWrongRevisionCounter.succeeded),
-			fmt.Sprintf("#non-existing documents read: %d", t.readNonExistingCounter.succeeded),
-			fmt.Sprintf("#non-existing documents updated: %d", t.updateNonExistingCounter.succeeded),
-			fmt.Sprintf("#non-existing documents replaced: %d", t.replaceNonExistingCounter.succeeded),
-			fmt.Sprintf("#non-existing documents removed: %d", t.deleteNonExistingCounter.succeeded),
-			fmt.Sprintf("#import operations: %d", t.importCounter.succeeded),
-			fmt.Sprintf("#create AQL cursor operations: %d", t.queryCreateCursorCounter.succeeded),
-			fmt.Sprintf("#fetch next AQL cursor batch operations: %d", t.queryNextBatchCounter.succeeded),
-			fmt.Sprintf("#fetch next AQL cursor batch after coordinator change operations: %d", t.queryNextBatchNewCoordinatorCounter.succeeded),
-			fmt.Sprintf("#long running AQL query operations: %d", t.queryLongRunningCounter.succeeded),
-			fmt.Sprintf("#rebalance shards operations: %d", t.rebalanceShardsCounter.succeeded),
-			"",
-			"Failed:",
-			fmt.Sprintf("#documents created: %d", t.createCounter.failed),
-			fmt.Sprintf("#existing documents read: %d", t.readExistingCounter.failed),
-			fmt.Sprintf("#existing documents updated: %d", t.updateExistingCounter.failed),
-			fmt.Sprintf("#existing documents replaced: %d", t.replaceExistingCounter.failed),
-			fmt.Sprintf("#existing documents removed: %d", t.deleteExistingCounter.failed),
-			fmt.Sprintf("#existing documents wrong revision read: %d", t.readExistingWrongRevisionCounter.failed),
-			fmt.Sprintf("#existing documents wrong revision updated: %d", t.updateExistingWrongRevisionCounter.failed),
-			fmt.Sprintf("#existing documents wrong revision replaced: %d", t.replaceExistingWrongRevisionCounter.failed),
-			fmt.Sprintf("#existing documents wrong revision removed: %d", t.deleteExistingWrongRevisionCounter.failed),
-			fmt.Sprintf("#non-existing documents read: %d", t.readNonExistingCounter.failed),
-			fmt.Sprintf("#non-existing documents updated: %d", t.updateNonExistingCounter.failed),
-			fmt.Sprintf("#non-existing documents replaced: %d", t.replaceNonExistingCounter.failed),
-			fmt.Sprintf("#non-existing documents removed: %d", t.deleteNonExistingCounter.failed),
-			fmt.Sprintf("#import operations: %d", t.importCounter.failed),
-			fmt.Sprintf("#create AQL cursor operations: %d", t.queryCreateCursorCounter.failed),
-			fmt.Sprintf("#fetch next AQL cursor batch operations: %d", t.queryNextBatchCounter.failed),
-			fmt.Sprintf("#fetch next AQL cursor batch after coordinator change operations: %d", t.queryNextBatchNewCoordinatorCounter.failed),
-			fmt.Sprintf("#long running AQL query operations: %d", t.queryLongRunningCounter.failed),
-			fmt.Sprintf("#rebalance shards operations: %d", t.rebalanceShardsCounter.failed),
+		},
+		Counters: []test.Counter{
+			cc("#documents created", t.createCounter),
+			cc("#existing documents read", t.readExistingCounter),
+			cc("#existing documents updated", t.updateExistingCounter),
+			cc("#existing documents replaced", t.replaceExistingCounter),
+			cc("#existing documents removed", t.deleteExistingCounter),
+			cc("#existing documents wrong revision read", t.readExistingWrongRevisionCounter),
+			cc("#existing documents wrong revision updated", t.updateExistingWrongRevisionCounter),
+			cc("#existing documents wrong revision replaced", t.replaceExistingWrongRevisionCounter),
+			cc("#existing documents wrong revision removed", t.deleteExistingWrongRevisionCounter),
+			cc("#non-existing documents read", t.readNonExistingCounter),
+			cc("#non-existing documents updated", t.updateNonExistingCounter),
+			cc("#non-existing documents replaced", t.replaceNonExistingCounter),
+			cc("#non-existing documents removed", t.deleteNonExistingCounter),
+			cc("#import operations", t.importCounter),
+			cc("#create AQL cursor operations", t.queryCreateCursorCounter),
+			cc("#fetch next AQL cursor batch operations", t.queryNextBatchCounter),
+			cc("#fetch next AQL cursor batch after coordinator change operations", t.queryNextBatchNewCoordinatorCounter),
+			cc("#long running AQL query operations", t.queryLongRunningCounter),
+			cc("#rebalance shards operations", t.rebalanceShardsCounter),
+			cc("#update AQL query operations", t.queryUpdateCounter),
 		},
 	}
 }
@@ -288,35 +285,43 @@ func (t *simpleTest) testLoop() {
 		return "", false // This should never be reached when len(t.existingDocs) > 1
 	}
 
-	state := 0
+	var plan []int
+	planIndex := 0
 	for {
 		// Should we stop
 		if t.shouldStop() {
 			return
 		}
 		t.actions++
+		if plan == nil || planIndex >= len(plan) {
+			plan = createTestPlan(17) // Update when more tests are added
+			planIndex = 0
+		}
 
-		switch state {
+		switch plan[planIndex] {
 		case 0:
 			// Create a random document
-			userDoc := UserDocument{
-				Key:   createNewKey(true),
-				Value: rand.Int(),
-				Name:  fmt.Sprintf("User %d", time.Now().Nanosecond()),
-				Odd:   time.Now().Nanosecond()%2 == 1,
-			}
-			if rev, err := t.createDocument(collUser, userDoc, userDoc.Key); err != nil {
-				t.log.Errorf("Failed to create document: %#v", err)
-			} else {
-				userDoc.rev = rev
-				t.existingDocs[userDoc.Key] = userDoc
+			if len(t.existingDocs) < t.MaxDocuments {
+				userDoc := UserDocument{
+					Key:   createNewKey(true),
+					Value: rand.Int(),
+					Name:  fmt.Sprintf("User %d", time.Now().Nanosecond()),
+					Odd:   time.Now().Nanosecond()%2 == 1,
+				}
+				if rev, err := t.createDocument(collUser, userDoc, userDoc.Key); err != nil {
+					t.log.Errorf("Failed to create document: %#v", err)
+				} else {
+					userDoc.rev = rev
+					t.existingDocs[userDoc.Key] = userDoc
 
-				// Now try to read it, it must exist
-				if err := t.readExistingDocument(collUser, userDoc.Key, rev, false); err != nil {
-					t.log.Errorf("Failed to read just-created document '%s': %#v", userDoc.Key, err)
+					// Now try to read it, it must exist
+					t.client.SetCoordinator("")
+					if err := t.readExistingDocument(collUser, userDoc.Key, rev, false); err != nil {
+						t.log.Errorf("Failed to read just-created document '%s': %#v", userDoc.Key, err)
+					}
 				}
 			}
-			state++
+			planIndex++
 
 		case 1:
 			// Read a random existing document
@@ -326,7 +331,7 @@ func (t *simpleTest) testLoop() {
 					t.log.Errorf("Failed to read existing document '%s': %#v", randomKey, err)
 				}
 			}
-			state++
+			planIndex++
 
 		case 2:
 			// Read a random existing document but with wrong revision
@@ -338,7 +343,7 @@ func (t *simpleTest) testLoop() {
 					}
 				}
 			}
-			state++
+			planIndex++
 
 		case 3:
 			// Read a random non-existing document
@@ -346,7 +351,7 @@ func (t *simpleTest) testLoop() {
 			if err := t.readNonExistingDocument(collUser, randomKey); err != nil {
 				t.log.Errorf("Failed to read non-existing document '%s': %#v", randomKey, err)
 			}
-			state++
+			planIndex++
 
 		case 4:
 			// Remove a random existing document
@@ -359,12 +364,13 @@ func (t *simpleTest) testLoop() {
 					removeExistingKey(randomKey)
 
 					// Now try to read it, it should not exist
+					t.client.SetCoordinator("")
 					if err := t.readNonExistingDocument(collUser, randomKey); err != nil {
 						t.log.Errorf("Failed to read just-removed document '%s': %#v", randomKey, err)
 					}
 				}
 			}
-			state++
+			planIndex++
 
 		case 5:
 			// Remove a random existing document but with wrong revision
@@ -375,13 +381,14 @@ func (t *simpleTest) testLoop() {
 						t.log.Errorf("Failed to remove existing document '%s' wrong revision: %#v", randomKey, err)
 					} else {
 						// Remove failed (as expected), key should still exist
+						t.client.SetCoordinator("")
 						if err := t.readExistingDocument(collUser, randomKey, correctRev, false); err != nil {
 							t.log.Errorf("Failed to read not-just-removed document '%s': %#v", randomKey, err)
 						}
 					}
 				}
 			}
-			state++
+			planIndex++
 
 		case 6:
 			// Remove a random non-existing document
@@ -389,7 +396,7 @@ func (t *simpleTest) testLoop() {
 			if err := t.removeNonExistingDocument(collUser, randomKey); err != nil {
 				t.log.Errorf("Failed to remove non-existing document '%s': %#v", randomKey, err)
 			}
-			state++
+			planIndex++
 
 		case 7:
 			// Update a random existing document
@@ -399,12 +406,13 @@ func (t *simpleTest) testLoop() {
 					t.log.Errorf("Failed to update existing document '%s': %#v", randomKey, err)
 				} else {
 					// Updated succeeded, now try to read it, it should exist and be updated
+					t.client.SetCoordinator("")
 					if err := t.readExistingDocument(collUser, randomKey, newRev, false); err != nil {
 						t.log.Errorf("Failed to read just-updated document '%s': %#v", randomKey, err)
 					}
 				}
 			}
-			state++
+			planIndex++
 
 		case 8:
 			// Update a random existing document but with wrong revision
@@ -416,13 +424,14 @@ func (t *simpleTest) testLoop() {
 					} else {
 						// Updated failed (as expected).
 						// It must still be readable.
+						t.client.SetCoordinator("")
 						if err := t.readExistingDocument(collUser, randomKey, correctRev, false); err != nil {
 							t.log.Errorf("Failed to read not-just-updated document '%s': %#v", randomKey, err)
 						}
 					}
 				}
 			}
-			state++
+			planIndex++
 
 		case 9:
 			// Update a random non-existing document
@@ -430,7 +439,7 @@ func (t *simpleTest) testLoop() {
 			if err := t.updateNonExistingDocument(collUser, randomKey); err != nil {
 				t.log.Errorf("Failed to update non-existing document '%s': %#v", randomKey, err)
 			}
-			state++
+			planIndex++
 
 		case 10:
 			// Replace a random existing document
@@ -440,12 +449,13 @@ func (t *simpleTest) testLoop() {
 					t.log.Errorf("Failed to replace existing document '%s': %#v", randomKey, err)
 				} else {
 					// Replace succeeded, now try to read it, it should exist and be replaced
+					t.client.SetCoordinator("")
 					if err := t.readExistingDocument(collUser, randomKey, newRev, false); err != nil {
 						t.log.Errorf("Failed to read just-replaced document '%s': %#v", randomKey, err)
 					}
 				}
 			}
-			state++
+			planIndex++
 
 		case 11:
 			// Replace a random existing document but with wrong revision
@@ -457,13 +467,14 @@ func (t *simpleTest) testLoop() {
 					} else {
 						// Replace failed (as expected).
 						// It must still be readable.
+						t.client.SetCoordinator("")
 						if err := t.readExistingDocument(collUser, randomKey, correctRev, false); err != nil {
 							t.log.Errorf("Failed to read not-just-replaced document '%s': %#v", randomKey, err)
 						}
 					}
 				}
 			}
-			state++
+			planIndex++
 
 		case 12:
 			// Replace a random non-existing document
@@ -471,35 +482,57 @@ func (t *simpleTest) testLoop() {
 			if err := t.replaceNonExistingDocument(collUser, randomKey); err != nil {
 				t.log.Errorf("Failed to replace non-existing document '%s': %#v", randomKey, err)
 			}
-			state++
+			planIndex++
 
 		case 13:
 			// Query documents
 			if err := t.queryDocuments(collUser); err != nil {
 				t.log.Errorf("Failed to query documents: %#v", err)
 			}
-			state++
+			planIndex++
 
 		case 14:
 			// Query documents (long running)
 			if err := t.queryDocumentsLongRunning(collUser); err != nil {
 				t.log.Errorf("Failed to query (long running) documents: %#v", err)
 			}
-			state++
+			planIndex++
 
 		case 15:
 			// Rebalance shards
 			if err := t.rebalanceShards(); err != nil {
 				t.log.Errorf("Failed to rebalance shards: %#v", err)
 			}
-			state++
+			planIndex++
 
-		default:
-			state = 0
+		case 16:
+			// AQL update query
+			if len(t.existingDocs) > 0 {
+				randomKey, _ := selectRandomKey()
+				if newRev, err := t.queryUpdateDocuments(collUser, randomKey); err != nil {
+					t.log.Errorf("Failed to update document using AQL query: %#v", err)
+				} else {
+					// Updated succeeded, now try to read it (anywhere), it should exist and be updated
+					t.client.SetCoordinator("")
+					if err := t.readExistingDocument(collUser, randomKey, newRev, false); err != nil {
+						t.log.Errorf("Failed to read just-updated document '%s': %#v", randomKey, err)
+					}
+				}
+			}
+			planIndex++
 		}
-
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Second * 2)
 	}
+}
+
+// createTestPlan creates an int-array of 'steps' long with all values from 0..steps-1 in random order.
+func createTestPlan(steps int) []int {
+	plan := make([]int, steps)
+	for i := 0; i < steps; i++ {
+		plan[i] = i
+	}
+	util.Shuffle(sort.IntSlice(plan))
+	return plan
 }
 
 // createRandomIfMatchHeader creates a request header with one of the following (randomly chosen):

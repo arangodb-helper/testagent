@@ -36,6 +36,7 @@ var (
 		port int
 		service.ServiceConfig
 		arangodb.ArangodbConfig
+		simple.SimpleConfig
 		logLevel string
 	}
 	maskAny = errors.WithStack
@@ -56,6 +57,7 @@ func init() {
 	f.StringVar(&appFlags.ReportDir, "report-dir", getEnvVar("REPORT_DIR", "."), "Directory in which failure reports will be created")
 	f.BoolVar(&appFlags.Privileged, "privileged", false, "If set, run all containers with `--privileged`")
 	f.IntVar(&appFlags.ChaosConfig.MaxMachines, "max-machines", 10, "Upper limit to the number of machines in a cluster")
+	f.IntVar(&appFlags.SimpleConfig.MaxDocuments, "simple-max-documents", 20000, "Upper limit to the number of documents created in simple test")
 }
 
 // handleSignal listens for termination signals and stops this process onup termination.
@@ -117,7 +119,7 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 
 	// Create tests
 	tests := []test.TestScript{
-		simple.NewSimpleTest(log, appFlags.ReportDir),
+		simple.NewSimpleTest(log, appFlags.ReportDir, appFlags.SimpleConfig),
 	}
 
 	// Create service
