@@ -10,7 +10,7 @@ import (
 // queryUpdateDocuments runs an AQL update query.
 // The operation is expected to succeed.
 func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, error) {
-	operationTimeout, retryTimeout := time.Minute/3, time.Minute
+	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
 
 	t.log.Infof("Creating update AQL query for collection '%s'...", c.name)
 	newName := fmt.Sprintf("AQLUpdate name %s", time.Now())
@@ -47,7 +47,7 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 // queryUpdateDocumentsLongRunning runs a long running AQL update query.
 // The operation is expected to succeed.
 func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) (string, error) {
-	operationTimeout, retryTimeout := time.Minute/3, time.Minute
+	operationTimeout, retryTimeout := t.OperationTimeout*2, t.RetryTimeout*2
 
 	t.log.Infof("Creating long running update AQL query for collection '%s'...", c.name)
 	newName := fmt.Sprintf("AQLLongRunningUpdate name %s", time.Now())

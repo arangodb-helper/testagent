@@ -3,7 +3,6 @@ package simple
 import (
 	"fmt"
 	"net/url"
-	"time"
 
 	"github.com/arangodb/testAgent/service/test"
 )
@@ -11,7 +10,7 @@ import (
 // createDocument creates a new document.
 // The operation is expected to succeed.
 func (t *simpleTest) createDocument(collectionName string, document interface{}, key string) (string, error) {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
+	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	t.log.Infof("Creating document '%s' in '%s'...", key, collectionName)

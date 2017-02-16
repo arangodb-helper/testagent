@@ -19,8 +19,10 @@ import (
 )
 
 type SimpleConfig struct {
-	MaxDocuments   int
-	MaxCollections int
+	MaxDocuments     int
+	MaxCollections   int
+	OperationTimeout time.Duration
+	RetryTimeout     time.Duration
 }
 
 const (

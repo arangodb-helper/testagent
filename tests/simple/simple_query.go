@@ -27,7 +27,7 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 		return nil
 	}
 
-	operationTimeout, retryTimeout := time.Minute/3, time.Minute
+	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
 
 	t.log.Infof("Creating AQL query cursor for '%s'...", c.name)
 	queryReq := QueryRequest{
@@ -132,7 +132,7 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 		return nil
 	}
 
-	operationTimeout, retryTimeout := time.Minute/2, time.Minute*2
+	operationTimeout, retryTimeout := t.OperationTimeout*2, t.RetryTimeout*2
 
 	t.log.Infof("Creating long running AQL query for '%s'...", c.name)
 	queryReq := QueryRequest{
@@ -163,7 +163,7 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 // getUptime queries the uptime of the given coordinator.
 func (t *simpleTest) getUptime(coordinatorURL string) (time.Duration, error) {
 	t.log.Infof("Checking uptime of '%s'", coordinatorURL)
-	operationTimeout, retryTimeout := time.Minute/2, time.Minute*2
+	operationTimeout, retryTimeout := t.OperationTimeout*2, t.RetryTimeout*2
 	var statsResp struct {
 		Server struct {
 			Uptime float64 `json:"uptime"`

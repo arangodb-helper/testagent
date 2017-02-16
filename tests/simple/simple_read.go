@@ -2,7 +2,6 @@ package simple
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/arangodb/testAgent/service/test"
 )
@@ -10,7 +9,7 @@ import (
 // readExistingDocument reads an existing document with an optional explicit revision.
 // The operation is expected to succeed.
 func (t *simpleTest) readExistingDocument(c *collection, key, rev string, updateRevision bool) error {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
+	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
 	var result UserDocument
 	hdr, ifMatchStatus := createRandomIfMatchHeader(nil, rev)
 	t.log.Infof("Reading existing document '%s' (%s) from '%s'...", key, ifMatchStatus, c.name)
@@ -40,7 +39,7 @@ func (t *simpleTest) readExistingDocument(c *collection, key, rev string, update
 // readExistingDocumentWrongRevision reads an existing document with an explicit wrong revision.
 // The operation is expected to fail.
 func (t *simpleTest) readExistingDocumentWrongRevision(collectionName string, key, rev string, updateRevision bool) error {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
+	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
 	var result UserDocument
 	hdr := ifMatchHeader(nil, rev)
 	t.log.Infof("Reading existing document '%s' wrong revision from '%s'...", key, collectionName)
@@ -58,7 +57,7 @@ func (t *simpleTest) readExistingDocumentWrongRevision(collectionName string, ke
 // readNonExistingDocument reads a non-existing document.
 // The operation is expected to fail.
 func (t *simpleTest) readNonExistingDocument(collectionName string, key string) error {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
+	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
 	var result UserDocument
 	t.log.Infof("Reading non-existing document '%s' from '%s'...", key, collectionName)
 	if _, err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), nil, nil, &result, []int{404}, []int{200, 201, 202, 400, 307}, operationTimeout, retryTimeout); err != nil {

@@ -3,7 +3,6 @@ package simple
 import (
 	"fmt"
 	"net/url"
-	"time"
 
 	"github.com/arangodb/testAgent/service/test"
 )
@@ -11,7 +10,7 @@ import (
 // removeExistingDocument removes an existing document with an optional explicit revision.
 // The operation is expected to succeed.
 func (t *simpleTest) removeExistingDocument(collectionName string, key, rev string) error {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
+	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	hdr, ifMatchStatus := createRandomIfMatchHeader(nil, rev)
@@ -30,7 +29,7 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 // removeExistingDocumentWrongRevision removes an existing document with an explicit wrong revision.
 // The operation is expected to fail.
 func (t *simpleTest) removeExistingDocumentWrongRevision(collectionName string, key, rev string) error {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
+	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	hdr := ifMatchHeader(nil, rev)
@@ -49,7 +48,7 @@ func (t *simpleTest) removeExistingDocumentWrongRevision(collectionName string, 
 // removeNonExistingDocument removes a non-existing document.
 // The operation is expected to fail.
 func (t *simpleTest) removeNonExistingDocument(collectionName string, key string) error {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
+	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	t.log.Infof("Removing non-existing document '%s' from '%s'...", key, collectionName)

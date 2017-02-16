@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	service "github.com/arangodb/testAgent/service"
 	arangodb "github.com/arangodb/testAgent/service/cluster/arangodb"
@@ -20,7 +21,9 @@ import (
 // Configuration data with defaults:
 
 const (
-	projectName = "testAgent"
+	projectName             = "testAgent"
+	defaultOperationTimeout = time.Second * 45 // Should be 15s
+	defaultRetryTimeout     = time.Minute * 4  // Should be 1m
 )
 
 var (
@@ -59,6 +62,8 @@ func init() {
 	f.IntVar(&appFlags.ChaosConfig.MaxMachines, "max-machines", 10, "Upper limit to the number of machines in a cluster")
 	f.IntVar(&appFlags.SimpleConfig.MaxDocuments, "simple-max-documents", 20000, "Upper limit to the number of documents created in simple test")
 	f.IntVar(&appFlags.SimpleConfig.MaxCollections, "simple-max-collections", 10, "Upper limit to the number of collections created in simple test")
+	f.DurationVar(&appFlags.SimpleConfig.OperationTimeout, "simple-operation-timeout", defaultOperationTimeout, "Timeout per database operation")
+	f.DurationVar(&appFlags.SimpleConfig.RetryTimeout, "simple-retry-timeout", defaultRetryTimeout, "How long are tests retried before giving up")
 }
 
 // handleSignal listens for termination signals and stops this process onup termination.

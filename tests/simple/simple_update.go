@@ -11,7 +11,7 @@ import (
 // updateExistingDocument updates an existing document with an optional explicit revision.
 // The operation is expected to succeed.
 func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (string, error) {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
+	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated name %s", time.Now())
@@ -40,7 +40,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 // updateExistingDocumentWrongRevision updates an existing document with an explicit wrong revision.
 // The operation is expected to fail.
 func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, key, rev string) error {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
+	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated name %s", time.Now())
@@ -64,7 +64,7 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 // updateNonExistingDocument updates a non-existing document.
 // The operation is expected to fail.
 func (t *simpleTest) updateNonExistingDocument(collectionName string, key string) error {
-	operationTimeout, retryTimeout := time.Minute/4, time.Minute
+	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated non-existing name %s", time.Now())

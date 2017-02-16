@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"net/url"
-	"time"
 
 	"github.com/arangodb/testAgent/service/test"
 )
@@ -33,7 +32,7 @@ func (t *simpleTest) createImportDocument() ([]byte, []UserDocument) {
 // importDocuments imports a bulk set of documents.
 // The operation is expected to succeed.
 func (t *simpleTest) importDocuments(c *collection) error {
-	operationTimeout, retryTimeout := time.Minute, time.Minute*3
+	operationTimeout, retryTimeout := t.OperationTimeout*4, t.RetryTimeout*4
 	q := url.Values{}
 	q.Set("collection", c.name)
 	q.Set("waitForSync", "true")
