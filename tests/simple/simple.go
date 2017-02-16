@@ -276,7 +276,7 @@ func (t *simpleTest) testLoop() {
 						Name:  fmt.Sprintf("User %d", time.Now().Nanosecond()),
 						Odd:   time.Now().Nanosecond()%2 == 1,
 					}
-					if rev, err := t.createDocument(c.name, userDoc, userDoc.Key); err != nil {
+					if rev, err := t.createDocument(c, userDoc, userDoc.Key); err != nil {
 						t.log.Errorf("Failed to create document: %#v", err)
 					} else {
 						userDoc.rev = rev
@@ -284,7 +284,7 @@ func (t *simpleTest) testLoop() {
 
 						// Now try to read it, it must exist
 						t.client.SetCoordinator("")
-						if err := t.readExistingDocument(c, userDoc.Key, rev, false); err != nil {
+						if _, err := t.readExistingDocument(c, userDoc.Key, rev, false, false); err != nil {
 							t.log.Errorf("Failed to read just-created document '%s': %#v", userDoc.Key, err)
 						}
 					}
@@ -298,7 +298,7 @@ func (t *simpleTest) testLoop() {
 				c := t.selectRandomCollection()
 				if len(c.existingDocs) > 0 {
 					randomKey, rev := c.selectRandomKey()
-					if err := t.readExistingDocument(c, randomKey, rev, false); err != nil {
+					if _, err := t.readExistingDocument(c, randomKey, rev, false, false); err != nil {
 						t.log.Errorf("Failed to read existing document '%s': %#v", randomKey, err)
 					}
 				}
@@ -365,7 +365,7 @@ func (t *simpleTest) testLoop() {
 						} else {
 							// Remove failed (as expected), key should still exist
 							t.client.SetCoordinator("")
-							if err := t.readExistingDocument(c, randomKey, correctRev, false); err != nil {
+							if _, err := t.readExistingDocument(c, randomKey, correctRev, false, false); err != nil {
 								t.log.Errorf("Failed to read not-just-removed document '%s': %#v", randomKey, err)
 							}
 						}
@@ -396,7 +396,7 @@ func (t *simpleTest) testLoop() {
 					} else {
 						// Updated succeeded, now try to read it, it should exist and be updated
 						t.client.SetCoordinator("")
-						if err := t.readExistingDocument(c, randomKey, newRev, false); err != nil {
+						if _, err := t.readExistingDocument(c, randomKey, newRev, false, false); err != nil {
 							t.log.Errorf("Failed to read just-updated document '%s': %#v", randomKey, err)
 						}
 					}
@@ -417,7 +417,7 @@ func (t *simpleTest) testLoop() {
 							// Updated failed (as expected).
 							// It must still be readable.
 							t.client.SetCoordinator("")
-							if err := t.readExistingDocument(c, randomKey, correctRev, false); err != nil {
+							if _, err := t.readExistingDocument(c, randomKey, correctRev, false, false); err != nil {
 								t.log.Errorf("Failed to read not-just-updated document '%s': %#v", randomKey, err)
 							}
 						}
@@ -448,7 +448,7 @@ func (t *simpleTest) testLoop() {
 					} else {
 						// Replace succeeded, now try to read it, it should exist and be replaced
 						t.client.SetCoordinator("")
-						if err := t.readExistingDocument(c, randomKey, newRev, false); err != nil {
+						if _, err := t.readExistingDocument(c, randomKey, newRev, false, false); err != nil {
 							t.log.Errorf("Failed to read just-replaced document '%s': %#v", randomKey, err)
 						}
 					}
@@ -469,7 +469,7 @@ func (t *simpleTest) testLoop() {
 							// Replace failed (as expected).
 							// It must still be readable.
 							t.client.SetCoordinator("")
-							if err := t.readExistingDocument(c, randomKey, correctRev, false); err != nil {
+							if _, err := t.readExistingDocument(c, randomKey, correctRev, false, false); err != nil {
 								t.log.Errorf("Failed to read not-just-replaced document '%s': %#v", randomKey, err)
 							}
 						}
@@ -527,7 +527,7 @@ func (t *simpleTest) testLoop() {
 					} else {
 						// Updated succeeded, now try to read it (anywhere), it should exist and be updated
 						t.client.SetCoordinator("")
-						if err := t.readExistingDocument(c, randomKey, newRev, false); err != nil {
+						if _, err := t.readExistingDocument(c, randomKey, newRev, false, false); err != nil {
 							t.log.Errorf("Failed to read just-updated document '%s': %#v", randomKey, err)
 						}
 					}
@@ -546,7 +546,7 @@ func (t *simpleTest) testLoop() {
 					} else {
 						// Updated succeeded, now try to read it (anywhere), it should exist and be updated
 						t.client.SetCoordinator("")
-						if err := t.readExistingDocument(c, randomKey, newRev, false); err != nil {
+						if _, err := t.readExistingDocument(c, randomKey, newRev, false, false); err != nil {
 							t.log.Errorf("Failed to read just-updated document '%s': %#v", randomKey, err)
 						}
 					}
@@ -630,7 +630,7 @@ func (t *simpleTest) createAndInitCollection() error {
 		name:         t.createNewCollectionName(),
 		existingDocs: make(map[string]UserDocument),
 	}
-	if err := t.createCollection(c.name, 9, 2); err != nil {
+	if err := t.createCollection(c, 9, 2); err != nil {
 		t.log.Errorf("Failed to create collection: %v", err)
 		t.reportFailure(test.NewFailure("Creating collection '%s' failed: %v", c.name, err))
 		return maskAny(err)
@@ -650,7 +650,7 @@ func (t *simpleTest) createAndInitCollection() error {
 		if t.shouldStop() {
 			return nil
 		}
-		if err := t.readExistingDocument(c, k, "", true); err != nil {
+		if _, err := t.readExistingDocument(c, k, "", true, false); err != nil {
 			t.log.Errorf("Failed to read existing document '%s': %#v", k, err)
 		}
 		t.actions++
@@ -667,7 +667,7 @@ func (t *simpleTest) createAndInitCollection() error {
 			Name:  fmt.Sprintf("User %d", i),
 			Odd:   i%2 == 1,
 		}
-		if rev, err := t.createDocument(c.name, userDoc, userDoc.Key); err != nil {
+		if rev, err := t.createDocument(c, userDoc, userDoc.Key); err != nil {
 			t.log.Errorf("Failed to create document: %#v", err)
 		} else {
 			userDoc.rev = rev

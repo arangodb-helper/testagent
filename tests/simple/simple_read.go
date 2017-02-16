@@ -8,7 +8,7 @@ import (
 
 // readExistingDocument reads an existing document with an optional explicit revision.
 // The operation is expected to succeed.
-func (t *simpleTest) readExistingDocument(c *collection, key, rev string, updateRevision bool) error {
+func (t *simpleTest) readExistingDocument(c *collection, key, rev string, updateRevision, skipExpectedValueCheck bool) (string, error) {
 	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
 	var result UserDocument
 	hdr, ifMatchStatus := createRandomIfMatchHeader(nil, rev)
@@ -17,15 +17,17 @@ func (t *simpleTest) readExistingDocument(c *collection, key, rev string, update
 		// This is a failure
 		t.readExistingCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to read existing document '%s' (%s) in collection '%s': %v", key, ifMatchStatus, c.name, err))
-		return maskAny(err)
+		return "", maskAny(err)
 	}
 	// Compare document against expected document
-	expected := c.existingDocs[key]
-	if result.Value != expected.Value || result.Name != expected.Name || result.Odd != expected.Odd {
-		// This is a failure
-		t.readExistingCounter.failed++
-		t.reportFailure(test.NewFailure("Read existing document '%s' (%s) returned different values '%s': got %q expected %q", key, ifMatchStatus, c.name, result, expected))
-		return maskAny(fmt.Errorf("Read returned invalid values"))
+	if !skipExpectedValueCheck {
+		expected := c.existingDocs[key]
+		if result.Value != expected.Value || result.Name != expected.Name || result.Odd != expected.Odd {
+			// This is a failure
+			t.readExistingCounter.failed++
+			t.reportFailure(test.NewFailure("Read existing document '%s' (%s) returned different values '%s': got %q expected %q", key, ifMatchStatus, c.name, result, expected))
+			return "", maskAny(fmt.Errorf("Read returned invalid values"))
+		}
 	}
 	if updateRevision {
 		// Store read document so we have the last revision
@@ -33,7 +35,7 @@ func (t *simpleTest) readExistingDocument(c *collection, key, rev string, update
 	}
 	t.readExistingCounter.succeeded++
 	t.log.Infof("Reading existing document '%s' (%s) from '%s' succeeded", key, ifMatchStatus, c.name)
-	return nil
+	return result.rev, nil
 }
 
 // readExistingDocumentWrongRevision reads an existing document with an explicit wrong revision.
