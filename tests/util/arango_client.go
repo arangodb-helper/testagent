@@ -26,6 +26,7 @@ func NewArangoClient(log *logging.Logger, cluster cluster.Cluster) *ArangoClient
 
 const (
 	contentTypeJson = "application/json"
+	startTSFormat   = "2006-01-02 15:04:05"
 )
 
 type ArangoClient struct {
@@ -153,7 +154,7 @@ func (c *ArangoClient) requestWithRetry(method, urlPath string, query url.Values
 		client := createClient(operationTimeout)
 		url, lastCoordinatorURL, err := c.createURL(urlPath, query)
 		if err != nil {
-			return maskAny(errors.Wrapf(err, "Failed creating URL for path '%s' (attempt %d, after %s, error %v)", urlPath, attempt, time.Since(start), err))
+			return maskAny(errors.Wrapf(err, "Failed creating URL for path '%s' (attempt %d, started at %s, after %s, error %v)", urlPath, attempt, start.Format(startTSFormat), time.Since(start), err))
 		}
 		aresp.CoordinatorURL = lastCoordinatorURL.String()
 		var rd io.Reader
@@ -162,7 +163,7 @@ func (c *ArangoClient) requestWithRetry(method, urlPath string, query url.Values
 		}
 		req, err := http.NewRequest(method, url, rd)
 		if err != nil {
-			return maskAny(errors.Wrapf(err, "Failed creating %s request for path '%s' (attempt %d, after %s, error %v)", method, urlPath, attempt, time.Since(start), err))
+			return maskAny(errors.Wrapf(err, "Failed creating %s request for path '%s' (attempt %d, started at %s, after %s, error %v)", method, urlPath, attempt, start.Format(startTSFormat), time.Since(start), err))
 		}
 		if inputData != nil {
 			req.Header.Set("Content-Type", contentType)
@@ -173,7 +174,7 @@ func (c *ArangoClient) requestWithRetry(method, urlPath string, query url.Values
 		resp, err := client.Do(req)
 		if err != nil {
 			c.lastCoordinatorURL = nil // Change coordinator
-			return maskAny(errors.Wrapf(err, "Failed performing %s request to %s (attempt %d, after %s, error %v)", method, url, attempt, time.Since(start), err))
+			return maskAny(errors.Wrapf(err, "Failed performing %s request to %s (attempt %d, started at %s, after %s, error %v)", method, url, attempt, start.Format(startTSFormat), time.Since(start), err))
 		}
 		// Process response
 		if err := c.handleResponse(resp, method, url, result, &aresp, successStatusCodes, failureStatusCodes, attempt, start); err != nil {
@@ -196,7 +197,7 @@ func (c *ArangoClient) handleResponse(resp *http.Response, method, url string, r
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return maskAny(errors.Wrapf(err, "Failed reading response data from %s request to %s (attempt %d, after %s, error %v)", method, url, attempt, time.Since(start), err))
+		return maskAny(errors.Wrapf(err, "Failed reading response data from %s request to %s (attempt %d, started at %s, after %s, error %v)", method, url, attempt, start.Format(startTSFormat), time.Since(start), err))
 	}
 
 	// Check for failure status
@@ -205,9 +206,9 @@ func (c *ArangoClient) handleResponse(resp *http.Response, method, url string, r
 			var aerr ArangoError
 			headers := formatHeaders(resp)
 			if tryDecodeBody(body, &aerr); err == nil {
-				return maskAny(errors.Wrapf(retry.FailureError, "Received status %d, from %s request to %s, which is a failure (attempt %d, after %s, error %s, headers\n%s\n)", resp.StatusCode, method, url, attempt, time.Since(start), aerr.Error(), headers))
+				return maskAny(errors.Wrapf(retry.FailureError, "Received status %d, from %s request to %s, which is a failure (attempt %d, started at %s, after %s, error %s, headers\n%s\n)", resp.StatusCode, method, url, attempt, start.Format(startTSFormat), time.Since(start), aerr.Error(), headers))
 			}
-			return maskAny(errors.Wrapf(retry.FailureError, "Received status %d, from %s request to %s, which is a failure (attempt %d, after %s, headers\n%s\n\nbody\n%s\n)", resp.StatusCode, method, url, attempt, time.Since(start), headers, string(body)))
+			return maskAny(errors.Wrapf(retry.FailureError, "Received status %d, from %s request to %s, which is a failure (attempt %d, started at %s, after %s, headers\n%s\n\nbody\n%s\n)", resp.StatusCode, method, url, attempt, start.Format(startTSFormat), time.Since(start), headers, string(body)))
 		}
 	}
 
@@ -220,7 +221,7 @@ func (c *ArangoClient) handleResponse(resp *http.Response, method, url string, r
 			// Found a success status
 			if isSuccessStatusCode(code) && result != nil {
 				if err := json.Unmarshal(body, result); err != nil {
-					return maskAny(errors.Wrapf(err, "Failed decoding response data from %s request to %s (attempt %d, after %s, error %v)", method, url, attempt, time.Since(start), err))
+					return maskAny(errors.Wrapf(err, "Failed decoding response data from %s request to %s (attempt %d, started at %s, after %s, error %v)", method, url, attempt, start.Format(startTSFormat), time.Since(start), err))
 				}
 			}
 			// Return success
@@ -231,7 +232,7 @@ func (c *ArangoClient) handleResponse(resp *http.Response, method, url string, r
 	// Unexpected status code
 	c.lastCoordinatorURL = nil // Change coordinator
 	headers := formatHeaders(resp)
-	return maskAny(fmt.Errorf("Unexpected status %d from %s request to %s (attempt %d, after %s, headers\n%s\n\nbody\n%s\n)", resp.StatusCode, method, url, attempt, time.Since(start), headers, string(body)))
+	return maskAny(fmt.Errorf("Unexpected status %d from %s request to %s (attempt %d, started at %s, after %s, headers\n%s\n\nbody\n%s\n)", resp.StatusCode, method, url, attempt, start.Format(startTSFormat), time.Since(start), headers, string(body)))
 }
 
 func tryDecodeBody(body []byte, result interface{}) error {
