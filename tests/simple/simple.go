@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/arangodb/testAgent/service/cluster"
@@ -40,11 +41,13 @@ type simpleTest struct {
 	actions                             int
 	collections                         map[string]*collection
 	collectionsMutex                    sync.Mutex
+	lastCollectionIndex                 int32
 	readExistingCounter                 counter
 	readExistingWrongRevisionCounter    counter
 	readNonExistingCounter              counter
 	createCounter                       counter
 	createCollectionCounter             counter
+	removeExistingCollectionCounter     counter
 	updateExistingCounter               counter
 	updateExistingWrongRevisionCounter  counter
 	updateNonExistingCounter            counter
@@ -126,6 +129,7 @@ func (t *simpleTest) Status() test.TestStatus {
 		Actions:  t.actions,
 		Counters: []test.Counter{
 			cc("#collections created", t.createCollectionCounter),
+			cc("#collections removed", t.removeExistingCollectionCounter),
 			cc("#documents created", t.createCounter),
 			cc("#existing documents read", t.readExistingCounter),
 			cc("#existing documents updated", t.updateExistingCounter),
@@ -233,19 +237,31 @@ func (t *simpleTest) testLoop() {
 		}
 		t.actions++
 		if plan == nil || planIndex >= len(plan) {
-			plan = createTestPlan(18) // Update when more tests are added
+			plan = createTestPlan(19) // Update when more tests are added
 			planIndex = 0
 		}
 
 		switch plan[planIndex] {
 		case 0:
 			// Create collection with initial data
-			if err := t.createAndInitCollection(); err != nil {
-				t.log.Errorf("Failed to create&init collection: %v", err)
+			if len(t.collections) < t.MaxCollections && rand.Intn(100)%2 == 0 {
+				if err := t.createAndInitCollection(); err != nil {
+					t.log.Errorf("Failed to create&init collection: %v", err)
+				}
 			}
 			planIndex++
 
 		case 1:
+			// Remove an existing collection
+			if len(t.collections) > 1 && rand.Intn(100)%2 == 0 {
+				c := t.selectRandomCollection()
+				if err := t.removeExistingCollection(c); err != nil {
+					t.log.Errorf("Failed to remove existing collection: %#v", err)
+				}
+			}
+			planIndex++
+
+		case 2:
 			// Create a random document
 			if len(t.collections) > 0 {
 				c := t.selectRandomCollection()
@@ -272,7 +288,7 @@ func (t *simpleTest) testLoop() {
 			}
 			planIndex++
 
-		case 2:
+		case 3:
 			// Read a random existing document
 			if len(t.collections) > 0 {
 				c := t.selectRandomCollection()
@@ -285,7 +301,7 @@ func (t *simpleTest) testLoop() {
 			}
 			planIndex++
 
-		case 3:
+		case 4:
 			// Read a random existing document but with wrong revision
 			if len(t.collections) > 0 {
 				c := t.selectRandomCollection()
@@ -300,7 +316,7 @@ func (t *simpleTest) testLoop() {
 			}
 			planIndex++
 
-		case 4:
+		case 5:
 			// Read a random non-existing document
 			if len(t.collections) > 0 {
 				c := t.selectRandomCollection()
@@ -311,7 +327,7 @@ func (t *simpleTest) testLoop() {
 			}
 			planIndex++
 
-		case 5:
+		case 6:
 			// Remove a random existing document
 			if len(t.collections) > 0 {
 				c := t.selectRandomCollection()
@@ -333,7 +349,7 @@ func (t *simpleTest) testLoop() {
 			}
 			planIndex++
 
-		case 6:
+		case 7:
 			// Remove a random existing document but with wrong revision
 			if len(t.collections) > 0 {
 				c := t.selectRandomCollection()
@@ -354,7 +370,7 @@ func (t *simpleTest) testLoop() {
 			}
 			planIndex++
 
-		case 7:
+		case 8:
 			// Remove a random non-existing document
 			if len(t.collections) > 0 {
 				c := t.selectRandomCollection()
@@ -365,7 +381,7 @@ func (t *simpleTest) testLoop() {
 			}
 			planIndex++
 
-		case 8:
+		case 9:
 			// Update a random existing document
 			if len(t.collections) > 0 {
 				c := t.selectRandomCollection()
@@ -384,7 +400,7 @@ func (t *simpleTest) testLoop() {
 			}
 			planIndex++
 
-		case 9:
+		case 10:
 			// Update a random existing document but with wrong revision
 			if len(t.collections) > 0 {
 				c := t.selectRandomCollection()
@@ -406,7 +422,7 @@ func (t *simpleTest) testLoop() {
 			}
 			planIndex++
 
-		case 10:
+		case 11:
 			// Update a random non-existing document
 			if len(t.collections) > 0 {
 				c := t.selectRandomCollection()
@@ -417,7 +433,7 @@ func (t *simpleTest) testLoop() {
 			}
 			planIndex++
 
-		case 11:
+		case 12:
 			// Replace a random existing document
 			if len(t.collections) > 0 {
 				c := t.selectRandomCollection()
@@ -436,7 +452,7 @@ func (t *simpleTest) testLoop() {
 			}
 			planIndex++
 
-		case 12:
+		case 13:
 			// Replace a random existing document but with wrong revision
 			if len(t.collections) > 0 {
 				c := t.selectRandomCollection()
@@ -458,7 +474,7 @@ func (t *simpleTest) testLoop() {
 			}
 			planIndex++
 
-		case 13:
+		case 14:
 			// Replace a random non-existing document
 			if len(t.collections) > 0 {
 				c := t.selectRandomCollection()
@@ -469,7 +485,7 @@ func (t *simpleTest) testLoop() {
 			}
 			planIndex++
 
-		case 14:
+		case 15:
 			// Query documents
 			if len(t.collections) > 0 {
 				c := t.selectRandomCollection()
@@ -479,7 +495,7 @@ func (t *simpleTest) testLoop() {
 			}
 			planIndex++
 
-		case 15:
+		case 16:
 			// Query documents (long running)
 			if len(t.collections) > 0 {
 				c := t.selectRandomCollection()
@@ -489,14 +505,14 @@ func (t *simpleTest) testLoop() {
 			}
 			planIndex++
 
-		case 16:
+		case 17:
 			// Rebalance shards
 			if err := t.rebalanceShards(); err != nil {
 				t.log.Errorf("Failed to rebalance shards: %#v", err)
 			}
 			planIndex++
 
-		case 17:
+		case 18:
 			// AQL update query
 			if len(t.collections) > 0 {
 				c := t.selectRandomCollection()
@@ -559,14 +575,8 @@ func ifMatchHeader(hdr map[string]string, rev string) map[string]string {
 
 // createNewCollectionName returns a new (unique) collection name
 func (t *simpleTest) createNewCollectionName() string {
-	i := 1
-	for {
-		name := fmt.Sprintf("simple_user_%d", i)
-		if _, found := t.collections[name]; !found {
-			return name
-		}
-		i++
-	}
+	index := atomic.AddInt32(&t.lastCollectionIndex, 1)
+	return fmt.Sprintf("simple_user_%d", index)
 }
 
 func (t *simpleTest) selectRandomCollection() *collection {
@@ -580,6 +590,18 @@ func (t *simpleTest) selectRandomCollection() *collection {
 	return nil // This should never be reached when len(t.collections) > 0
 }
 
+func (t *simpleTest) registerCollection(c *collection) {
+	t.collectionsMutex.Lock()
+	defer t.collectionsMutex.Unlock()
+	t.collections[c.name] = c
+}
+
+func (t *simpleTest) unregisterCollection(c *collection) {
+	t.collectionsMutex.Lock()
+	defer t.collectionsMutex.Unlock()
+	delete(t.collections, c.name)
+}
+
 func (t *simpleTest) createAndInitCollection() error {
 	c := &collection{
 		name:         t.createNewCollectionName(),
@@ -590,9 +612,7 @@ func (t *simpleTest) createAndInitCollection() error {
 		t.reportFailure(test.NewFailure("Creating collection '%s' failed: %v", c.name, err))
 		return maskAny(err)
 	}
-	t.collectionsMutex.Lock()
-	t.collections[c.name] = c
-	t.collectionsMutex.Unlock()
+	t.registerCollection(c)
 	t.createCollectionCounter.succeeded++
 	t.actions++
 

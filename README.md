@@ -32,8 +32,8 @@ It should also be possible to:
 The test agent will allow for multiple test scripts to be developed & run.
 The test operations covered in those scripts will include (among others):
 
-- [ ] Create collections 
-- [ ] Drop collections
+- [x] Create collections 
+- [x] Drop collections
 - [x] Import documents 
 - [x] Create documents
 - [x] Read existing documents 
