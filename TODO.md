@@ -1,2 +1,2 @@
-- Create collections during test 
 - If revision fails, update it internally?
+- Export; "Note: this API is currently not supported on cluster coordinators."

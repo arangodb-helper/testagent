@@ -64,6 +64,7 @@ type simpleTest struct {
 	queryLongRunningCounter             counter
 	rebalanceShardsCounter              counter
 	queryUpdateCounter                  counter
+	queryUpdateLongRunningCounter       counter
 }
 
 type counter struct {
@@ -150,6 +151,7 @@ func (t *simpleTest) Status() test.TestStatus {
 			cc("#long running AQL query operations", t.queryLongRunningCounter),
 			cc("#rebalance shards operations", t.rebalanceShardsCounter),
 			cc("#update AQL query operations", t.queryUpdateCounter),
+			cc("#long running update AQL query operations", t.queryUpdateLongRunningCounter),
 		},
 	}
 
@@ -237,7 +239,7 @@ func (t *simpleTest) testLoop() {
 		}
 		t.actions++
 		if plan == nil || planIndex >= len(plan) {
-			plan = createTestPlan(19) // Update when more tests are added
+			plan = createTestPlan(20) // Update when more tests are added
 			planIndex = 0
 		}
 
@@ -520,6 +522,25 @@ func (t *simpleTest) testLoop() {
 					randomKey, _ := c.selectRandomKey()
 					if newRev, err := t.queryUpdateDocuments(c, randomKey); err != nil {
 						t.log.Errorf("Failed to update document using AQL query: %#v", err)
+					} else {
+						// Updated succeeded, now try to read it (anywhere), it should exist and be updated
+						t.client.SetCoordinator("")
+						if err := t.readExistingDocument(c, randomKey, newRev, false); err != nil {
+							t.log.Errorf("Failed to read just-updated document '%s': %#v", randomKey, err)
+						}
+					}
+				}
+			}
+			planIndex++
+
+		case 19:
+			// Long running AQL update query
+			if len(t.collections) > 0 {
+				c := t.selectRandomCollection()
+				if len(c.existingDocs) > 0 {
+					randomKey, _ := c.selectRandomKey()
+					if newRev, err := t.queryUpdateDocumentsLongRunning(c, randomKey); err != nil {
+						t.log.Errorf("Failed to update document using long running AQL query: %#v", err)
 					} else {
 						// Updated succeeded, now try to read it (anywhere), it should exist and be updated
 						t.client.SetCoordinator("")

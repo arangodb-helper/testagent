@@ -53,7 +53,7 @@ The test operations covered in those scripts will include (among others):
 - [x] Query documents (AQL)
 - [x] Query documents with long running query (AQL SLEEP)
 - [x] Modify documents with query (AQL)
-- [ ] Modify documents with long running query (AQL SLEEP)
+- [x] Modify documents with long running query (AQL SLEEP)
 - [ ] Backup entire databases
 - [x] Rebalance shards
 
