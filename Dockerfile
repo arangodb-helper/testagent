@@ -8,7 +8,7 @@ EXPOSE 4200
 ENV RUNNING_IN_DOCKER=true
 
 # Image containing arangodb starter 
-ENV ARANGODB_IMAGE=arangodb/arangodb-starter:0.3.2
+ENV ARANGODB_IMAGE=arangodb/arangodb-starter:0.3.5
 
 # Database image 
 #ENV ARANGO_IMAGE=arangodb/arangodb:3.1.10
