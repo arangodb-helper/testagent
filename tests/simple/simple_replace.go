@@ -35,8 +35,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 			// Expected revision did NOT match.
 			// This may happen when a coordinator succeeds in the first attempt but we've already timed out.
 			// Check document against what we expect after the replace.
-			expected := c.existingDocs[key]
-			expected.Name = newName
+			expected := newDoc
 			if match, rev, err := t.isDocumentEqualTo(c, key, expected); err != nil {
 				// Failed to read document. This is a failure.
 				t.replaceExistingCounter.failed++
