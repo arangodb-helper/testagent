@@ -11,7 +11,7 @@ import (
 func (t *simpleTest) readExistingDocument(c *collection, key, rev string, updateRevision, skipExpectedValueCheck bool) (string, error) {
 	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
 	var result UserDocument
-	hdr, ifMatchStatus := createRandomIfMatchHeader(nil, rev)
+	hdr, ifMatchStatus, _ := createRandomIfMatchHeader(nil, rev)
 	t.log.Infof("Reading existing document '%s' (%s) from '%s'...", key, ifMatchStatus, c.name)
 	if _, err := t.client.Get(fmt.Sprintf("/_api/document/%s/%s", c.name, key), nil, hdr, &result, []int{200, 201, 202}, []int{400, 404, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure

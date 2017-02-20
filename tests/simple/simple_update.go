@@ -15,18 +15,45 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated name %s", time.Now())
-	hdr, ifMatchStatus := createRandomIfMatchHeader(nil, rev)
+	hdr, ifMatchStatus, explicitRev := createRandomIfMatchHeader(nil, rev)
 	t.log.Infof("Updating existing document '%s' (%s) in '%s' (name -> '%s')...", key, ifMatchStatus, c.name, newName)
 	delta := map[string]interface{}{
 		"name": newName,
 	}
 	doc := c.existingDocs[key]
-	update, err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", c.name, key), q, hdr, delta, "", nil, []int{200, 201, 202}, []int{400, 404, 412, 307}, operationTimeout, retryTimeout)
+	update, err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", c.name, key), q, hdr, delta, "", nil, []int{200, 201, 202, 412}, []int{400, 404, 307}, operationTimeout, retryTimeout)
 	if err != nil {
 		// This is a failure
 		t.updateExistingCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to update existing document '%s' (%s) in collection '%s': %v", key, ifMatchStatus, c.name, err))
 		return "", maskAny(err)
+	} else if update.StatusCode == 412 {
+		if explicitRev {
+			// Expected revision did NOT match.
+			// This may happen when a coordinator succeeds in the first attempt but we've already timed out.
+			// Check document against what we expect after the update.
+			expected := c.existingDocs[key]
+			expected.Name = newName
+			if match, rev, err := t.isDocumentEqualTo(c, key, expected); err != nil {
+				// Failed to read document. This is a failure.
+				t.updateExistingCounter.failed++
+				t.reportFailure(test.NewFailure("Failed to read existing document '%s' (%s) in collection '%s' that should have been updated: %v", key, ifMatchStatus, c.name, err))
+				return "", maskAny(err)
+			} else if !match {
+				// The document does not match what we expect after the update. This is a failure.
+				t.updateExistingCounter.failed++
+				t.reportFailure(test.NewFailure("Failed to update existing document '%s' (%s) in collection '%s': got 412 but has not been updated", key, ifMatchStatus, c.name))
+				return "", maskAny(fmt.Errorf("Failed to update existing document '%s' (%s) in collection '%s': got 412 but has not been updated", key, ifMatchStatus, c.name))
+			} else {
+				// Match found, document has been updated after all
+				update.Rev = rev
+			}
+		} else {
+			// We got a 412 without asking for an explicit revision. This is a failure.
+			t.updateExistingCounter.failed++
+			t.reportFailure(test.NewFailure("Failed to update existing document '%s' (%s) in collection '%s': got 412 but did not set If-Match", key, ifMatchStatus, c.name))
+			return "", maskAny(fmt.Errorf("Failed to update existing document '%s' (%s) in collection '%s': got 412 but did not set If-Match", key, ifMatchStatus, c.name))
+		}
 	}
 	// Update internal doc
 	doc.Name = newName
