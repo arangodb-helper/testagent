@@ -77,8 +77,8 @@ func (c *chaosMonkey) restartCoordinator(ctx context.Context, action *chaosActio
 		action.skipped++
 		return false
 	}
-	if len(readyMachines) == 0 {
-		c.log.Infof("There are no ready coordinators in the cluster, so I cannot restart one now")
+	if len(readyMachines) <= 1 {
+		c.log.Infof("There are too few (%d) ready coordinators in the cluster, so I cannot restart one now", len(readyMachines))
 		action.skipped++
 		return false
 	}
