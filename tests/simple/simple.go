@@ -217,6 +217,13 @@ type UserDocument struct {
 	Odd   bool   `json:"odd"`
 }
 
+// Equals returns true when the value fields of `d` and `other` are the equal.
+func (d UserDocument) Equals(other UserDocument) bool {
+	return d.Value == other.Value &&
+		d.Name == other.Name &&
+		d.Odd == other.Odd
+}
+
 func (t *simpleTest) reportFailure(f test.Failure) {
 	t.failures++
 	t.listener.ReportFailure(f)
@@ -571,16 +578,17 @@ func createTestPlan(steps int) []int {
 // createRandomIfMatchHeader creates a request header with one of the following (randomly chosen):
 // 1: with an `If-Match` entry for the given revision.
 // 2: without an `If-Match` entry for the given revision.
-func createRandomIfMatchHeader(hdr map[string]string, rev string) (map[string]string, string) {
+// The bool response is true when an `If-Match` has been added, false otherwise.
+func createRandomIfMatchHeader(hdr map[string]string, rev string) (map[string]string, string, bool) {
 	if rev == "" {
-		return hdr, "without If-Match"
+		return hdr, "without If-Match", false
 	}
 	switch rand.Intn(2) {
 	case 0:
 		hdr = ifMatchHeader(hdr, rev)
-		return hdr, "with If-Match"
+		return hdr, "with If-Match", true
 	default:
-		return hdr, "without If-Match"
+		return hdr, "without If-Match", false
 	}
 }
 
