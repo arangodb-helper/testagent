@@ -12,6 +12,7 @@ func (c *chaosMonkey) addMachine(ctx context.Context, action *chaosAction) bool 
 	}
 	if len(machines) >= c.MaxMachines {
 		c.log.Infof("Cannot have more than %d machines")
+		return false
 	}
 
 	// Add a machine
