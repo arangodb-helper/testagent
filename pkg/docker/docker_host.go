@@ -10,9 +10,10 @@ import (
 )
 
 type DockerHost struct {
-	Client   *dc.Client
-	IP       string
-	Endpoint string
+	Client    *dc.Client
+	IP        string
+	Endpoint  string
+	Interface string
 }
 
 var (
@@ -21,7 +22,7 @@ var (
 
 // NewDockerHosts creates DockerHosts for each of the given endpoints.
 // When an endpoint is a unix socket, the given localHostIP is assumed to be its host IP.
-func NewDockerHosts(endpoints []string, localHostIP string) ([]*DockerHost, error) {
+func NewDockerHosts(endpoints []string, localHostIP, dockerIntf string) ([]*DockerHost, error) {
 	var dockerHosts []*DockerHost
 	for _, endpoint := range endpoints {
 		hostIP, err := getHostAddressForEndpoint(endpoint, localHostIP)
@@ -30,7 +31,7 @@ func NewDockerHosts(endpoints []string, localHostIP string) ([]*DockerHost, erro
 		}
 
 		// Create docker host
-		dockerHost, err := newDockerHost(endpoint, hostIP)
+		dockerHost, err := newDockerHost(endpoint, hostIP, dockerIntf)
 		if err != nil {
 			return nil, maskAny(err)
 		}
@@ -39,15 +40,16 @@ func NewDockerHosts(endpoints []string, localHostIP string) ([]*DockerHost, erro
 	return dockerHosts, nil
 }
 
-func newDockerHost(endpoint, hostIP string) (*DockerHost, error) {
+func newDockerHost(endpoint, hostIP, intf string) (*DockerHost, error) {
 	client, err := dc.NewClient(endpoint)
 	if err != nil {
 		return nil, maskAny(err)
 	}
 	return &DockerHost{
-		Client:   client,
-		IP:       hostIP,
-		Endpoint: endpoint,
+		Client:    client,
+		IP:        hostIP,
+		Endpoint:  endpoint,
+		Interface: intf,
 	}, nil
 }
 

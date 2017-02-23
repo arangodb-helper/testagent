@@ -8,6 +8,9 @@ import (
 
 // dropAgentTraffic randomly picks an agent and silently drops all network traffic to it it.
 func (c *chaosMonkey) dropAgentTraffic(ctx context.Context, action *chaosAction) bool {
+	if c.DisableNetworkChaos {
+		return false
+	}
 	agentMachines, _, err := c.checkAgencyReadyStatus()
 	if err != nil {
 		c.log.Infof("Not all agents are ready (%s), so I cannot drop network traffic to one now", err.Error())
@@ -50,6 +53,9 @@ func (c *chaosMonkey) dropAgentTraffic(ctx context.Context, action *chaosAction)
 
 // dropDBServerTraffic randomly picks an dbserver and silently drops all network traffic to it it.
 func (c *chaosMonkey) dropDBServerTraffic(ctx context.Context, action *chaosAction) bool {
+	if c.DisableNetworkChaos {
+		return false
+	}
 	readyMachines, notReadyServers, err := c.checkDBServerReadyStatus()
 	if err != nil {
 		c.log.Infof("Failed to check dbserver ready status (%s), so I cannot drop network traffic to one now", err.Error())
@@ -97,6 +103,9 @@ func (c *chaosMonkey) dropDBServerTraffic(ctx context.Context, action *chaosActi
 
 // dropCoordinatorTraffic randomly picks an coordinator and silently drops all network traffic to it it.
 func (c *chaosMonkey) dropCoordinatorTraffic(ctx context.Context, action *chaosAction) bool {
+	if c.DisableNetworkChaos {
+		return false
+	}
 	readyMachines, _, err := c.checkCoordinatorReadyStatus()
 	if err != nil {
 		c.log.Infof("Failed to check coordinator ready status (%s), so I cannot drop network traffic to one now", err.Error())

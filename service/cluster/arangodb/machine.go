@@ -46,12 +46,15 @@ type arangodb struct {
 	hasAgent                   bool
 	agentPort                  int
 	agentContainerID           string
+	agentContainerIP           string
 	lastAgentReadyStatus       int32
 	coordinatorPort            int
 	coordinatorContainerID     string
+	coordinatorContainerIP     string
 	lastCoordinatorReadyStatus int32
 	dbserverPort               int
 	dbserverContainerID        string
+	dbserverContainerIP        string
 	lastDBServerReadyStatus    int32
 	destroyCallback            func(*arangodb)
 }
@@ -532,6 +535,7 @@ type ServerProcess struct {
 	Port        int    `json:"port"`                   // Port needed to reach the server
 	ProcessID   int    `json:"pid,omitempty"`          // PID of the process (0 when running in docker)
 	ContainerID string `json:"container-id,omitempty"` // ID of docker container running the server
+	ContainerIP string `json:"container-ip,omitempty"` // IP address of docker container running the server
 }
 
 // updateServerInfo connects to arangodb to query the port numbers & container info
@@ -558,13 +562,16 @@ func (m *arangodb) updateServerInfo() error {
 			case "agent":
 				m.agentPort = s.Port
 				m.agentContainerID = s.ContainerID
+				m.agentContainerIP = s.ContainerIP
 				hasAgent = true
 			case "coordinator":
 				m.coordinatorPort = s.Port
 				m.coordinatorContainerID = s.ContainerID
+				m.coordinatorContainerIP = s.ContainerIP
 			case "dbserver":
 				m.dbserverPort = s.Port
 				m.dbserverContainerID = s.ContainerID
+				m.dbserverContainerIP = s.ContainerIP
 			}
 		}
 		m.hasAgent = hasAgent

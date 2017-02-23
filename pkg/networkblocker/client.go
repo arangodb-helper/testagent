@@ -78,6 +78,66 @@ func (c *client) AcceptTCP(port int) error {
 	return nil
 }
 
+// RejectAllFrom actively denies all traffic coming from the given IP address on the given interface
+func (c *client) RejectAllFrom(ip, intf string) error {
+	q := url.Values{}
+	if ip != "" {
+		q.Set("ip", ip)
+	}
+	if intf != "" {
+		q.Set("intf", intf)
+	}
+	url := c.createURL("/api/v1/reject/from", q)
+	resp, err := c.client.Post(url, contentTypeJSON, nil)
+	if err != nil {
+		return maskAny(err)
+	}
+	if err := c.handleResponse(resp, "POST", url, nil); err != nil {
+		return maskAny(err)
+	}
+	return nil
+}
+
+// DropAllFrom silently denies all traffic coming from the given IP address on the given interface
+func (c *client) DropAllFrom(ip, intf string) error {
+	q := url.Values{}
+	if ip != "" {
+		q.Set("ip", ip)
+	}
+	if intf != "" {
+		q.Set("intf", intf)
+	}
+	url := c.createURL("/api/v1/drop/from", q)
+	resp, err := c.client.Post(url, contentTypeJSON, nil)
+	if err != nil {
+		return maskAny(err)
+	}
+	if err := c.handleResponse(resp, "POST", url, nil); err != nil {
+		return maskAny(err)
+	}
+	return nil
+}
+
+// AcceptAllFrom allow all traffic coming from the given IP address on the given interface
+func (c *client) AcceptAllFrom(ip, intf string) error {
+	q := url.Values{}
+	if ip != "" {
+		q.Set("ip", ip)
+	}
+	if intf != "" {
+		q.Set("intf", intf)
+	}
+	url := c.createURL("/api/v1/accept/from", q)
+	resp, err := c.client.Post(url, contentTypeJSON, nil)
+	if err != nil {
+		return maskAny(err)
+	}
+	if err := c.handleResponse(resp, "POST", url, nil); err != nil {
+		return maskAny(err)
+	}
+	return nil
+}
+
 // Rules returns a list of all rules injected by this service.
 func (c *client) Rules() ([]string, error) {
 	url := c.createURL("/api/v1/rules", nil)

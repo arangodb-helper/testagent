@@ -34,7 +34,8 @@ type ChaosMonkey interface {
 }
 
 type ChaosMonkeyConfig struct {
-	MaxMachines int // Maximum number of machines to allow in a cluster.
+	MaxMachines         int  // Maximum number of machines to allow in a cluster.
+	DisableNetworkChaos bool // If set to true, no network chaos is ever introduced
 }
 
 // NewChaosMonkey creates a new chaos monkey for the given cluster

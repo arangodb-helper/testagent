@@ -8,6 +8,9 @@ import (
 
 // rejectAgentTraffic randomly picks an agent and actively rejects all network traffic to it it.
 func (c *chaosMonkey) rejectAgentTraffic(ctx context.Context, action *chaosAction) bool {
+	if c.DisableNetworkChaos {
+		return false
+	}
 	agentMachines, _, err := c.checkAgencyReadyStatus()
 	if err != nil {
 		c.log.Infof("Not all agents are ready (%s), so I cannot reject network traffic to one now", err.Error())
@@ -50,6 +53,9 @@ func (c *chaosMonkey) rejectAgentTraffic(ctx context.Context, action *chaosActio
 
 // rejectDBServerTraffic randomly picks an dbserver and actively rejects all network traffic to it it.
 func (c *chaosMonkey) rejectDBServerTraffic(ctx context.Context, action *chaosAction) bool {
+	if c.DisableNetworkChaos {
+		return false
+	}
 	readyMachines, notReadyServers, err := c.checkDBServerReadyStatus()
 	if err != nil {
 		c.log.Infof("Failed to check dbserver ready status (%s), so I cannot reject network traffic to one now", err.Error())
@@ -97,6 +103,9 @@ func (c *chaosMonkey) rejectDBServerTraffic(ctx context.Context, action *chaosAc
 
 // rejectCoordinatorTraffic randomly picks an coordinator and actively rejects all network traffic to it it.
 func (c *chaosMonkey) rejectCoordinatorTraffic(ctx context.Context, action *chaosAction) bool {
+	if c.DisableNetworkChaos {
+		return false
+	}
 	readyMachines, _, err := c.checkCoordinatorReadyStatus()
 	if err != nil {
 		c.log.Infof("Failed to check coordinator ready status (%s), so I cannot reject network traffic to one now", err.Error())

@@ -53,4 +53,5 @@ type ServerProcess struct {
 	Port        int    `json:"port"`                   // Port needed to reach the server
 	ProcessID   int    `json:"pid,omitempty"`          // PID of the process (0 when running in docker)
 	ContainerID string `json:"container-id,omitempty"` // ID of docker container running the server
+	ContainerIP string `json:"container-ip,omitempty"` // IP address of docker container running the server
 }

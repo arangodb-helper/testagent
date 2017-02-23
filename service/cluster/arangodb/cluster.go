@@ -27,6 +27,7 @@ type ArangodbConfig struct {
 	DockerHostIP        string   // IP of docker host
 	DockerEndpoints     []string // Endpoint used to reach the docker daemon(s)
 	DockerNetHost       bool     // If set, run containers with `--net=host`
+	DockerInterface     string   // Network Interface used to connect docker container to
 	Verbose             bool     // Turn on debug logging
 	Privileged          bool     // Start containers with `--privileged`
 }
@@ -74,7 +75,7 @@ func NewArangodbClusterBuilder(log *logging.Logger, config ArangodbConfig) (clus
 // This function returns when the cluster is operational (or an error occurs)
 func (cb *arangodbClusterBuilder) Create(agencySize int) (cluster.Cluster, error) {
 	// Create docker hosts
-	dockerHosts, err := docker.NewDockerHosts(cb.DockerEndpoints, cb.DockerHostIP)
+	dockerHosts, err := docker.NewDockerHosts(cb.DockerEndpoints, cb.DockerHostIP, cb.DockerInterface)
 	if err != nil {
 		return nil, maskAny(err)
 	}
