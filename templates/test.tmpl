@@ -1,8 +1,24 @@
 {{template "base/head" .}}
 
+<div class="test">
 {{with $t:= .Test}}
 <a href="/" class="ui basic mini right floated button">Back</a>
 <h1>{{$t.Name}}</h1>
+<p class="state">
+    State: 
+{{if $t.Active}}
+    {{if $t.Pausing}}
+        pausing...
+    {{else}}
+        running
+        <a href="/test/{{$t.Name}}/pause" class="ui mini right floated button">Pause</a>
+    {{end}}
+{{else}}
+    paused
+    <a href="/test/{{$t.Name}}/resume" class="ui mini right floated button">Resume</a>
+{{end}}
+</p>
+
 <table class="ui compact celled striped table">
     <tr>
         <td>Failures: {{$t.Failures}}</td>
@@ -28,5 +44,6 @@
 </table>
 
 {{end}}
+</div>
 
 {{template "base/footer" .}}

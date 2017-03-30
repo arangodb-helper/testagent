@@ -9,6 +9,40 @@ import (
 	macaron "gopkg.in/macaron.v1"
 )
 
+func testPausePage(ctx *macaron.Context, log *logging.Logger, service Service) {
+	testName := ctx.Params("name")
+
+	ctests := service.Tests()
+	for _, ct := range ctests {
+		if ct.Name() == testName {
+			if err := ct.Pause(); err != nil {
+				showError(ctx, fmt.Errorf("Failed to stop test '%s': %#v", testName, err))
+			} else {
+				ctx.Redirect("/", http.StatusFound)
+				return
+			}
+		}
+	}
+	showError(ctx, fmt.Errorf("Test '%s' not found", testName))
+}
+
+func testResumePage(ctx *macaron.Context, log *logging.Logger, service Service) {
+	testName := ctx.Params("name")
+
+	ctests := service.Tests()
+	for _, ct := range ctests {
+		if ct.Name() == testName {
+			if err := ct.Resume(); err != nil {
+				showError(ctx, fmt.Errorf("Failed to stop test '%s': %#v", testName, err))
+			} else {
+				ctx.Redirect("/", http.StatusFound)
+				return
+			}
+		}
+	}
+	showError(ctx, fmt.Errorf("Test '%s' not found", testName))
+}
+
 func testPage(ctx *macaron.Context, log *logging.Logger, service Service) {
 	testName := ctx.Params("name")
 

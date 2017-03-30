@@ -68,11 +68,12 @@
 
 <h2>Tests</h2>
 
-<table class="ui celled striped table">
+<table class="test ui celled striped table">
     <thead>
     <tr>
         <th>Name</th>
-        <th>State</th>
+        <th>Status</th>
+        <th>Results</th>
         <th>Actions</th>
     </tr>
     </thead>
@@ -83,6 +84,23 @@
             <a href="test/{{$t.Name}}/logs">
                 <i class="file text outline icon"></i>
             </a>
+        </td>
+        <td class="state">
+            {{if $t.Active}}
+                {{if $t.Pausing}}
+                    Pausing...
+                {{else}}
+                    Running
+                    <a href="/test/{{$t.Name}}/pause" class="ui tiny image label">
+                        <i class="pause icon"></i>
+                    </a>
+                {{end}}
+            {{else}}
+                Paused
+                <a href="/test/{{$t.Name}}/resume" class="ui tiny image label">
+                    <i class="play icon"></i>
+                </a>
+            {{end}}
         </td>
         <td>{{$t.Failures}} failures</td>
         <td>{{$t.Actions}}</td>

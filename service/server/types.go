@@ -26,6 +26,8 @@ type Machine struct {
 
 type Test struct {
 	Name     string
+	Active   bool
+	Pausing  bool
 	Failures int
 	Actions  int
 	Messages []string
@@ -93,6 +95,8 @@ func testFromTestScript(ct test.TestScript) Test {
 	status := ct.Status()
 	return Test{
 		Name:     ct.Name(),
+		Active:   status.Active,
+		Pausing:  status.Pausing,
 		Failures: status.Failures,
 		Actions:  status.Actions,
 		Messages: status.Messages,

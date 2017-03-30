@@ -27,6 +27,12 @@ type TestScript interface {
 	// Stop any running test. This should not return until tests are actually stopped.
 	Stop() error
 
+	// Interrupt the tests, but be prepared to continue.
+	Pause() error
+
+	// Resume running the tests, where Pause interrupted it.
+	Resume() error
+
 	// CollectLogs copies all logging info to the given writer.
 	CollectLogs(io.Writer) error
 }
@@ -59,6 +65,8 @@ func NewFailure(message string, args ...interface{}) Failure {
 }
 
 type TestStatus struct {
+	Active   bool
+	Pausing  bool
 	Failures int
 	Actions  int
 	Messages []string

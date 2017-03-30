@@ -31,6 +31,7 @@ const (
 
 type simpleTest struct {
 	SimpleConfig
+	activeMutex                         sync.Mutex
 	logPath                             string
 	reportDir                           string
 	log                                 *logging.Logger
@@ -38,6 +39,8 @@ type simpleTest struct {
 	listener                            test.TestListener
 	stop                                chan struct{}
 	active                              bool
+	pauseRequested                      bool
+	paused                              bool
 	client                              *util.ArangoClient
 	failures                            int
 	actions                             int
@@ -97,6 +100,13 @@ func (t *simpleTest) Name() string {
 // Start triggers the test script to start.
 // It should spwan actions in a go routine.
 func (t *simpleTest) Start(cluster cluster.Cluster, listener test.TestListener) error {
+	t.activeMutex.Lock()
+	defer t.activeMutex.Unlock()
+
+	if t.active {
+		// No restart unless needed
+		return nil
+	}
 	if err := t.setupLogger(cluster); err != nil {
 		return maskAny(err)
 	}
@@ -105,15 +115,36 @@ func (t *simpleTest) Start(cluster cluster.Cluster, listener test.TestListener) 
 	t.listener = listener
 	t.client = util.NewArangoClient(t.log, cluster)
 
+	t.active = true
 	go t.testLoop()
 	return nil
 }
 
 // Stop any running test. This should not return until tests are actually stopped.
 func (t *simpleTest) Stop() error {
+	t.activeMutex.Lock()
+	defer t.activeMutex.Unlock()
+
+	if !t.active {
+		// No active, nothing to stop
+		return nil
+	}
+
 	stop := make(chan struct{})
 	t.stop = stop
 	<-stop
+	return nil
+}
+
+// Interrupt the tests, but be prepared to continue.
+func (t *simpleTest) Pause() error {
+	t.pauseRequested = true
+	return nil
+}
+
+// Resume running the tests, where Pause interrupted it.
+func (t *simpleTest) Resume() error {
+	t.pauseRequested = false
 	return nil
 }
 
@@ -128,6 +159,8 @@ func (t *simpleTest) Status() test.TestStatus {
 	}
 
 	status := test.TestStatus{
+		Active:   t.active && !t.paused,
+		Pausing:  t.pauseRequested,
 		Failures: t.failures,
 		Actions:  t.actions,
 		Counters: []test.Counter{
@@ -246,6 +279,12 @@ func (t *simpleTest) testLoop() {
 		if t.shouldStop() {
 			return
 		}
+		if t.pauseRequested {
+			t.paused = true
+			time.Sleep(time.Second * 2)
+			continue
+		}
+		t.paused = false
 		t.actions++
 		if plan == nil || planIndex >= len(plan) {
 			plan = createTestPlan(20) // Update when more tests are added
@@ -666,7 +705,7 @@ func (t *simpleTest) createAndInitCollection() error {
 
 	// Create sample users
 	for i := 0; i < initialDocumentCount; i++ {
-		if t.shouldStop() {
+		if t.shouldStop() || t.pauseRequested {
 			return nil
 		}
 		userDoc := UserDocument{

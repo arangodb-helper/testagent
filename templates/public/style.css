@@ -6,3 +6,5 @@
 
 .counters .testok { color: green; background-color: inherit }
 .counters .testfailures { color: red; background-color: inherit }
+
+.test .state .ui.label>.icon { margin: 0 0.75em 0 0.75em;}

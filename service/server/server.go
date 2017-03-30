@@ -70,6 +70,8 @@ func StartHTTPServer(log *logging.Logger, port int, reportDir string, service Se
 
 	m.Get("/", indexPage)
 	m.Get("/test/:name", testPage)
+	m.Get("/test/:name/pause", testPausePage)
+	m.Get("/test/:name/resume", testResumePage)
 	m.Get("/test/:name/logs", testLogs)
 	m.Get("/logs/:machine/:mode", logsPage)
 	m.Get("/chaos", chaosPage)
