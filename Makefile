@@ -15,7 +15,7 @@ REPODIR := $(ORGDIR)/$(REPONAME)
 REPOPATH := $(ORGPATH)/$(REPONAME)
 
 GOPATH := $(GOBUILDDIR)
-GOVERSION := 1.7.4-alpine
+GOVERSION := 1.8.3-alpine
 
 ifndef GOOS
 	GOOS := linux
