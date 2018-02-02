@@ -1,7 +1,29 @@
+//
+// DISCLAIMER
+//
+// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Copyright holder is ArangoDB GmbH, Cologne, Germany
+//
+// Author Ewout Prangsma
+//
+
 package arangostarter
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -9,127 +31,146 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/arangodb/testAgent/pkg/retry"
 	"github.com/pkg/errors"
+
+	"github.com/arangodb/testAgent/pkg/retry"
 )
 
-func NewArangoStarterClient(ip string, port int) (API, error) {
-	endpoint, err := url.Parse(fmt.Sprintf("http://%s:%d", ip, port))
-	if err != nil {
-		return nil, maskAny(err)
-	}
+// NewArangoStarterClient creates a new client implementation.
+func NewArangoStarterClient(endpoint url.URL) (API, error) {
+	endpoint.Path = ""
 	return &client{
-		endpoint: *endpoint,
-		client:   &http.Client{Timeout: time.Second * 15},
+		endpoint: endpoint,
+		client:   shardHTTPClient,
 	}, nil
 }
+
+var (
+	shardHTTPClient = DefaultHTTPClient()
+)
 
 type client struct {
 	endpoint url.URL
 	client   *http.Client
 }
 
-type HelloRequest struct {
-	SlaveID      string // Unique ID of the slave
-	SlaveAddress string // Address used to reach the slave (if empty, this will be derived from the request)
-	SlavePort    int    // Port used to reach the slave
-	DataDir      string // Directory used for data by this slave
-}
-
-type VersionResponse struct {
-	Version string `json:"version"`
-	Build   string `json:"build"`
-}
-
 const (
 	contentTypeJSON = "application/json"
 )
 
-// PrepareSlave prepare the launch of an arangodb slave.
-// Given an ID, host, port & dataDir will it reserve a peer slot and return a stable port offset.
-func (c *client) PrepareSlave(id, hostIP string, port int, dataDir string) (Peer, error) {
-	helloReq := HelloRequest{
-		SlaveID:      id,
-		SlaveAddress: hostIP,
-		SlavePort:    port,
-		DataDir:      dataDir,
-	}
-	input, err := json.Marshal(helloReq)
+// ID requests the starters ID.
+func (c *client) ID(ctx context.Context) (IDInfo, error) {
+	url := c.createURL("/id", nil)
+
+	var result IDInfo
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return Peer{}, maskAny(err)
+		return IDInfo{}, maskAny(err)
 	}
-	url := c.createURL("/hello", nil)
-
-	var result Peer
-	op := func() error {
-		resp, err := c.client.Post(url, contentTypeJSON, bytes.NewReader(input))
-		if err != nil {
-			return maskAny(err)
-		}
-		var peers Peers
-		if err := c.handleResponse(resp, "POST", url, &peers); err != nil {
-			return maskAny(err)
-		}
-
-		p, ok := peers.PeerByID(id)
-		if !ok {
-			return maskAny(fmt.Errorf("Master did not include peer '%s'", id))
-		}
-		result = p
-		return nil
+	if ctx != nil {
+		req = req.WithContext(ctx)
 	}
-
-	if err := retry.Retry(op, time.Minute*2); err != nil {
-		return Peer{}, maskAny(err)
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return IDInfo{}, maskAny(err)
+	}
+	if err := c.handleResponse(resp, "GET", url, &result); err != nil {
+		return IDInfo{}, maskAny(err)
 	}
 
 	return result, nil
 }
 
-// GetProcesses loads information of all the server processes launched by a specific arangodb.
-func (c *client) GetProcesses() (ProcessListResponse, error) {
+// Version requests the starter version.
+func (c *client) Version(ctx context.Context) (VersionInfo, error) {
+	url := c.createURL("/version", nil)
+
+	var result VersionInfo
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return VersionInfo{}, maskAny(err)
+	}
+	if ctx != nil {
+		req = req.WithContext(ctx)
+	}
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return VersionInfo{}, maskAny(err)
+	}
+	if err := c.handleResponse(resp, "GET", url, &result); err != nil {
+		return VersionInfo{}, maskAny(err)
+	}
+
+	return result, nil
+}
+
+// Processes loads information of all the server processes launched by a specific arangodb.
+func (c *client) Processes(ctx context.Context) (ProcessList, error) {
 	url := c.createURL("/process", nil)
 
-	var result ProcessListResponse
-	op := func() error {
-		resp, err := c.client.Get(url)
-		if err != nil {
-			return maskAny(err)
-		}
-		if err := c.handleResponse(resp, "GET", url, &result); err != nil {
-			return maskAny(err)
-		}
-		return nil
+	var result ProcessList
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return ProcessList{}, maskAny(err)
 	}
-
-	if err := retry.Retry(op, time.Minute*2); err != nil {
-		return ProcessListResponse{}, maskAny(err)
+	if ctx != nil {
+		req = req.WithContext(ctx)
+	}
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return ProcessList{}, maskAny(err)
+	}
+	if err := c.handleResponse(resp, "GET", url, &result); err != nil {
+		return ProcessList{}, maskAny(err)
 	}
 
 	return result, nil
 }
 
-// Shutdown will shutdown a specific arangodb (and all its started servers).
-// With goodbye set, it will remove the peer slot for this arangodb instance.
-func (c *client) Shutdown(goodbye bool) error {
+// Endpoints loads the URL's needed to reach all starters, agents & coordinators in the cluster.
+func (c *client) Endpoints(ctx context.Context) (EndpointList, error) {
+	url := c.createURL("/endpoints", nil)
+
+	var result EndpointList
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return EndpointList{}, maskAny(err)
+	}
+	if ctx != nil {
+		req = req.WithContext(ctx)
+	}
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return EndpointList{}, maskAny(err)
+	}
+	if err := c.handleResponse(resp, "GET", url, &result); err != nil {
+		return EndpointList{}, maskAny(err)
+	}
+
+	return result, nil
+}
+
+// Shutdown will shutdown a starter (and all its started servers).
+// With goodbye set, it will remove the peer slot for the starter.
+func (c *client) Shutdown(ctx context.Context, goodbye bool) error {
 	q := url.Values{}
 	if goodbye {
 		q.Set("mode", "goodbye")
 	}
 	url := c.createURL("/shutdown", q)
 
-	op := func() error {
-		resp, err := c.client.Post(url, "", nil)
-		if err != nil {
-			return maskAny(err)
-		}
-		if err := c.handleResponse(resp, "POST", url, nil); err != nil {
-			return maskAny(err)
-		}
-		return nil
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return maskAny(err)
 	}
-
-	if err := retry.Retry(op, time.Minute*2); err != nil {
+	if ctx != nil {
+		req = req.WithContext(ctx)
+	}
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return maskAny(err)
+	}
+	if err := c.handleResponse(resp, "POST", url, nil); err != nil {
 		return maskAny(err)
 	}
 
@@ -137,10 +178,10 @@ func (c *client) Shutdown(goodbye bool) error {
 }
 
 // WaitUntilGone will block until the specific arangodb instance can no longer be reached.
-func (c *client) WaitUntilGone() error {
+func (c *client) WaitUntilGone(ctx context.Context) error {
 	url := c.createURL("/version", nil)
 
-	var result VersionResponse
+	var result VersionInfo
 	op := func() error {
 		resp, err := c.client.Get(url)
 		if err != nil {
@@ -163,6 +204,7 @@ func (c *client) WaitUntilGone() error {
 	return nil
 }
 
+// handleResponse checks the given response status and decodes any JSON result.
 func (c *client) handleResponse(resp *http.Response, method, url string, result interface{}) error {
 	// Read response body into memory
 	defer resp.Body.Close()
@@ -188,6 +230,7 @@ func (c *client) handleResponse(resp *http.Response, method, url string, result 
 	return nil
 }
 
+// createURL creates a full URL for a request with given local path & query.
 func (c *client) createURL(urlPath string, query url.Values) string {
 	u := c.endpoint
 	u.Path = urlPath
