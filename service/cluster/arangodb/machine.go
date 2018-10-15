@@ -1,6 +1,7 @@
 package arangodb
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -30,6 +31,7 @@ const (
 )
 
 type arangodb struct {
+	machineID                  string
 	dockerHost                 *docker.DockerHost
 	log                        *logging.Logger
 	createOptions              dc.CreateContainerOptions
@@ -289,158 +291,164 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 		// Master
 		arangodbPort = c.MasterPort
 	} else {
-		// Ask master to prepare slave
-		client, err := c.masterArangodbClient()
-		if err != nil {
-			return nil, maskAny(err)
-		}
-		peer, err := client.PrepareSlave(machineID, dockerHost.IP, c.MasterPort, "/tmp/"+machineID)
-		if err != nil {
-			return nil, maskAny(err)
-		}
-		arangodbPort = peer.Port + peer.PortOffset
+		// Allocate a port
+		arangodbPort = c.ports.Allocate(machineID)
 	}
 
 	args := []string{
-		fmt.Sprintf("--id=%s", machineID),
-		fmt.Sprintf("--starter.port=%d", c.MasterPort),
+		fmt.Sprintf("--starter.id=%s", machineID),
+		fmt.Sprintf("--starter.port=%d", arangodbPort),
 		fmt.Sprintf("--docker.container=%s", name),
 		fmt.Sprintf("--docker.endpoint=%s", dockerHost.Endpoint),
 		fmt.Sprintf("--starter.address=%s", dockerHost.IP),
-		fmt.Sprintf("--server.storage-engine=%s", "rocksdb"),
-		}
-		if c.Verbose {
-			args = append(args, "--verbose")
-		}
-		if c.DockerNetHost {
-			args = append(args, "--docker.net-mode=host")
-		}
-		if c.Privileged {
-			args = append(args, "--docker.privileged")
-		}
-		if c.ArangodbConfig.ArangoImage != "" {
-			args = append(args,
-				fmt.Sprintf("--docker=%s", c.ArangodbConfig.ArangoImage),
-			)
-		}
-		if index > 0 {
-			args = append(args,
-				fmt.Sprintf("--join=%s:%d", c.dockerHosts[0].IP, c.MasterPort),
-			)
-		}
-		opts := dc.CreateContainerOptions{
-			Name: name,
-			Config: &dc.Config{
-				Image: c.ArangodbConfig.ArangodbImage,
-				Cmd:   args,
-				Tty:   true,
-				ExposedPorts: map[dc.Port]struct{}{
-					dc.Port(fmt.Sprintf("%d/tcp", c.MasterPort)): struct{}{},
-				},
+	}
+	if c.Verbose {
+		args = append(args, "--verbose")
+	}
+	if c.DockerNetHost {
+		args = append(args, "--docker.net-host")
+	}
+	if c.Privileged {
+		args = append(args, "--docker.privileged")
+	}
+	if c.ArangodbConfig.ArangoImage != "" {
+		args = append(args,
+			fmt.Sprintf("--docker.image=%s", c.ArangodbConfig.ArangoImage),
+		)
+	}
+	if index > 0 {
+		args = append(args,
+			fmt.Sprintf("--starter.join=%s:%d", c.dockerHosts[0].IP, c.MasterPort),
+		)
+	}
+	opts := dc.CreateContainerOptions{
+		Name: name,
+		Config: &dc.Config{
+			Image: c.ArangodbConfig.ArangodbImage,
+			Cmd:   args,
+			Tty:   true,
+			ExposedPorts: map[dc.Port]struct{}{
+				dc.Port(fmt.Sprintf("%d/tcp", arangodbPort)): struct{}{},
 			},
-			HostConfig: &dc.HostConfig{
-				Binds: []string{
-					fmt.Sprintf("%s:%s", volName, "/data"),
-				},
-				PortBindings: map[dc.Port][]dc.PortBinding{
-					dc.Port(fmt.Sprintf("%d/tcp", c.MasterPort)): []dc.PortBinding{
-						dc.PortBinding{
-							HostIP:   "0.0.0.0",
-							HostPort: strconv.Itoa(arangodbPort),
-						},
+		},
+		HostConfig: &dc.HostConfig{
+			Binds: []string{
+				fmt.Sprintf("%s:%s", volName, "/data"),
+			},
+			PortBindings: map[dc.Port][]dc.PortBinding{
+				dc.Port(fmt.Sprintf("%d/tcp", arangodbPort)): []dc.PortBinding{
+					dc.PortBinding{
+						HostIP:   "0.0.0.0",
+						HostPort: strconv.Itoa(arangodbPort),
 					},
 				},
-				PublishAllPorts: false,
-				Privileged:      c.Privileged,
 			},
-		}
-		if c.DockerNetHost {
-			opts.HostConfig.NetworkMode = "host"
-		}
-		if strings.HasPrefix(dockerHost.Endpoint, "unix://") {
-			path := strings.TrimPrefix(dockerHost.Endpoint, "unix://")
-			opts.HostConfig.Binds = append(opts.HostConfig.Binds,
-				fmt.Sprintf("%s:%s", path, path),
-			)
-		}
-		return &arangodb{
-			dockerHost:      dockerHost,
-			createOptions:   opts,
-			log:             c.log,
-			index:           index,
-			createdAt:       time.Now(),
-			state:           cluster.MachineStateNew,
-			arangodbPort:    arangodbPort,
-			nwBlockerPort:   arangodbPort + 4,
-			volumeID:        volName,
-			destroyCallback: c.destroyCallback,
-		}, nil
+			PublishAllPorts: false,
+			Privileged:      c.Privileged,
+		},
 	}
-
-	func (c *arangodbCluster) destroyCallback(m *arangodb) {
-		c.mutex.Lock()
-		defer c.mutex.Unlock()
-
-		newList := []*arangodb{}
-		for _, x := range c.machines {
-			if m != x {
-				newList = append(newList, x)
-			}
-		}
-		c.machines = newList
+	if c.DockerNetHost {
+		opts.HostConfig.NetworkMode = "host"
 	}
+	if strings.HasPrefix(dockerHost.Endpoint, "unix://") {
+		path := strings.TrimPrefix(dockerHost.Endpoint, "unix://")
+		opts.HostConfig.Binds = append(opts.HostConfig.Binds,
+			fmt.Sprintf("%s:%s", path, path),
+		)
+	}
+	return &arangodb{
+		machineID:       machineID,
+		dockerHost:      dockerHost,
+		createOptions:   opts,
+		log:             c.log,
+		index:           index,
+		createdAt:       time.Now(),
+		state:           cluster.MachineStateNew,
+		arangodbPort:    arangodbPort,
+		nwBlockerPort:   arangodbPort + 4,
+		volumeID:        volName,
+		destroyCallback: c.destroyCallback,
+	}, nil
+}
 
-	// pullImage pulls a docker image on the docker host.
-	func (m *arangodb) pullImageIfNeeded(image string) error {
-		if _, err := m.dockerHost.Client.InspectImage(image); err == nil {
-			// Image already available, do nothing
-			return nil
+func (c *arangodbCluster) destroyCallback(m *arangodb) {
+	// Release port
+	c.ports.Release(m.machineID)
+
+	// Remove machine from list
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	newList := []*arangodb{}
+	for _, x := range c.machines {
+		if m != x {
+			newList = append(newList, x)
 		}
-		repo, tag := dc.ParseRepositoryTag(image)
-		m.log.Infof("Pulling %s:%s", repo, tag)
-		if err := m.dockerHost.Client.PullImage(dc.PullImageOptions{
-			Repository: repo,
-			Tag:        tag,
-		}, dc.AuthConfiguration{}); err != nil {
-			return maskAny(err)
-		}
+	}
+	c.machines = newList
+}
+
+// StarterEndpoint returns an URL to the starter (this machine)
+func (m *arangodb) StarterEndpoint() url.URL {
+	return url.URL{
+		Scheme: "http",
+		Host:   net.JoinHostPort(m.dockerHost.IP, strconv.Itoa(m.arangodbPort)),
+	}
+}
+
+// pullImage pulls a docker image on the docker host.
+func (m *arangodb) pullImageIfNeeded(image string) error {
+	if _, err := m.dockerHost.Client.InspectImage(image); err == nil {
+		// Image already available, do nothing
 		return nil
 	}
+	repo, tag := dc.ParseRepositoryTag(image)
+	m.log.Infof("Pulling %s:%s", repo, tag)
+	if err := m.dockerHost.Client.PullImage(dc.PullImageOptions{
+		Repository: repo,
+		Tag:        tag,
+	}, dc.AuthConfiguration{}); err != nil {
+		return maskAny(err)
+	}
+	return nil
+}
 
-	// start the machine
-	func (m *arangodb) start() error {
-		m.startedAt = time.Now()
-		m.log.Debugf("Creating arangodb container %s", m.createOptions.Name)
-		cont, err := m.dockerHost.Client.CreateContainer(m.createOptions)
-		if err != nil {
-			return maskAny(err)
-		}
-		m.containerID = cont.ID
-		m.log.Debugf("Starting arangodb container %s (%s)", m.createOptions.Name, cont.ID)
-		if err := m.dockerHost.Client.StartContainer(cont.ID, m.createOptions.HostConfig); err != nil {
-			return maskAny(err)
-		}
-		m.log.Debugf("Started arangodb container %s (%s)", m.createOptions.Name, cont.ID)
-		m.state = cluster.MachineStateStarted
-		return nil
+// start the machine
+func (m *arangodb) start() error {
+	m.startedAt = time.Now()
+	m.log.Debugf("Creating arangodb container %s", m.createOptions.Name)
+	cont, err := m.dockerHost.Client.CreateContainer(m.createOptions)
+	if err != nil {
+		return maskAny(err)
+	}
+	m.containerID = cont.ID
+	m.log.Debugf("Starting arangodb container %s (%s)", m.createOptions.Name, cont.ID)
+	if err := m.dockerHost.Client.StartContainer(cont.ID, m.createOptions.HostConfig); err != nil {
+		return maskAny(err)
+	}
+	m.log.Debugf("Started arangodb container %s (%s)", m.createOptions.Name, cont.ID)
+	m.state = cluster.MachineStateStarted
+	return nil
+}
+
+func (m *arangodb) stop(destroy bool) error {
+	ctx := context.Background()
+
+	// Prepare arangodb client
+	client, err := arangostarter.NewArangoStarterClient(m.StarterEndpoint())
+	if err != nil {
+		return maskAny(err)
 	}
 
-	func (m *arangodb) stop(destroy bool) error {
-		// Prepare arangodb client
-		client, err := arangostarter.NewArangoStarterClient(m.dockerHost.IP, m.arangodbPort)
-		if err != nil {
-			return maskAny(err)
-		}
-
-		// Perform a graceful shutdown
+	// Perform a graceful shutdown
 	m.log.Infof("Stopping arangodb at %s:%d", m.dockerHost.IP, m.arangodbPort)
 	m.state = cluster.MachineStateShutdown
-	if err := client.Shutdown(destroy); err != nil {
+	if err := client.Shutdown(ctx, destroy); err != nil {
 		return maskAny(err)
 	}
 
 	// Wait until arangodb is really gone
-	if err := client.WaitUntilGone(); err != nil {
+	if err := client.WaitUntilGone(ctx); err != nil {
 		m.log.Errorf("Arangodb at %s:%d is not gone after a while... (error %v)", m.dockerHost.IP, m.arangodbPort, err)
 	}
 
@@ -543,13 +551,13 @@ type ServerProcess struct {
 // of all servers on the machine
 func (m *arangodb) updateServerInfo() error {
 	m.log.Debugf("Updating server info for %d on %s:%d", m.index, m.dockerHost.IP, m.arangodbPort)
-	client, err := arangostarter.NewArangoStarterClient(m.dockerHost.IP, m.arangodbPort)
+	client, err := arangostarter.NewArangoStarterClient(m.StarterEndpoint())
 	if err != nil {
 		return maskAny(err)
 	}
 
 	op := func() error {
-		plResp, err := client.GetProcesses()
+		plResp, err := client.Processes(context.Background())
 		if err != nil {
 			return maskAny(err)
 		}
