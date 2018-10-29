@@ -62,8 +62,9 @@ The test operations covered in those scripts will include (among others):
 ```
 make docker
 export IP=<your-local-IP>
-docker run -it --rm -p 4200:4200 \
+docker run -it -p 4200:4200 \
     -v /var/run/docker.sock:/var/run/docker.sock \
+    -v <local-tmp-dir>:/tmp \
     arangodb/testagent --docker-host-ip=$IP
 ```
 
@@ -74,8 +75,9 @@ these machines. E.g.
 
 ```
 export IP=<your-local-IP>
-docker run -it --rm -p 4200:4200 \
+docker run -it -p 4200:4200 \
     -v /var/run/docker.sock:/var/run/docker.sock \
+    -v <local-tmp-dir>:/tmp \
     arangodb/testagent --docker-host-ip=$IP \
     --docker-endpoint=tcp://192.168.1.1:2376 \
     --docker-endpoint=tcp://192.168.1.2:2376 \
