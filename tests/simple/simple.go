@@ -539,7 +539,16 @@ func (t *simpleTest) testLoop() {
 			// Query documents
 			if len(t.collections) > 0 {
 				c := t.selectRandomCollection()
-				if err := t.queryDocuments(c); err != nil {
+				var err error = nil
+				for i := 1;  i<=20; i++ {
+					err = t.queryDocuments(c);
+					if err == nil {
+						break
+					}
+					time.Sleep(20 * time.Second)
+				}
+
+				if err != nil {
 					t.log.Errorf("Failed to query documents: %#v", err)
 				}
 			}
@@ -549,7 +558,16 @@ func (t *simpleTest) testLoop() {
 			// Query documents (long running)
 			if len(t.collections) > 0 {
 				c := t.selectRandomCollection()
-				if err := t.queryDocumentsLongRunning(c); err != nil {
+				var err error = nil
+				for i := 1;  i<=20; i++ {
+					err = t.queryDocumentsLongRunning(c)
+					if err == nil {
+						break
+					}
+					time.Sleep(20 * time.Second)
+				}
+
+				if err != nil {
 					t.log.Errorf("Failed to query (long running) documents: %#v", err)
 				}
 			}
