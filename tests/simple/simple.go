@@ -540,12 +540,13 @@ func (t *simpleTest) testLoop() {
 			if len(t.collections) > 0 {
 				c := t.selectRandomCollection()
 				var err error = nil
-				for i := 1;  i<=20; i++ {
-					err = t.queryDocuments(c);
+				for i := 1; i <= 20; i++ {
+					err = t.queryDocuments(c)
 					if err == nil {
 						break
 					}
-					time.Sleep(20 * time.Second)
+					time.Sleep(30 * time.Second)
+					t.log.Noticef("Retry Query documents: %#v", i)
 				}
 
 				if err != nil {
@@ -559,7 +560,7 @@ func (t *simpleTest) testLoop() {
 			if len(t.collections) > 0 {
 				c := t.selectRandomCollection()
 				var err error = nil
-				for i := 1;  i<=20; i++ {
+				for i := 1; i <= 20; i++ {
 					err = t.queryDocumentsLongRunning(c)
 					if err == nil {
 						break
