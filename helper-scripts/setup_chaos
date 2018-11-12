@@ -1,0 +1,85 @@
+#!/bin/bash
+set -u
+#set -x
+
+. chaos_ips_ports
+
+name="$(hostname)"
+i="${name#CHAOS}"
+this_ip="IP${i}_int"
+
+echo "clear docker @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+container="$(docker ps -a -q)"
+if [[ -n "$container" ]]; then
+    echo "stop container"
+    docker stop $container
+    echo "delete container"
+    docker rm $container
+fi
+
+echo "docker prune"
+docker system prune
+
+
+echo "reset iptables @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+
+
+iptables -P INPUT ACCEPT
+iptables -P FORWARD ACCEPT
+iptables -P OUTPUT ACCEPT
+
+echo "flush nat"
+iptables -t nat -F
+echo "flush mangle"
+iptables -t mangle -F
+echo "flush filter"
+iptables -F
+echo "delete custom chains"
+iptables -X
+
+echo "block ipv6"
+ip6tables -P INPUT   DROP
+ip6tables -P OUTPUT  DROP
+ip6tables -P FORWARD DROP
+
+
+echo "setup iptables @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+inet_nic=ens2
+
+#filter incoming traffic
+echo "accept lo"
+iptables -A INPUT -i lo -j ACCEPT
+echo "accept docker"
+iptables -A INPUT -i docker -j ACCEPT
+
+echo "allow realted traffic / answers from server after making initial conenction"
+iptables -I INPUT -i $inet_nic -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+echo "accept ssh from outsie"
+#iptables -A INPUT -i $inet_nic -p tcp --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A INPUT -i $inet_nic -p tcp --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
+
+echo "allow web access"
+iptables -A INPUT -i $inet_nic -p tcp --dport 4200 -m state --state NEW,ESTABLISHED -j ACCEPT
+
+echo "allow communication within the cluster without restriction"
+for i in 1 2 3; do
+    ip="IP${i}_int"
+    iptables -A INPUT -i $inet_nic -p tcp \
+        -m state --state NEW,ESTABLISHED \
+        -s "${!ip}" \
+        -j ACCEPT
+done
+
+echo "drop docker traffic from others"
+iptables -A INPUT -i $inet_nic -p tcp --dport $DOCKER_PORT -j DROP
+
+#echo "drop all other incoming traffic"
+#iptables -A INPUT -i $inet_nic -j DROP
+
+echo "setup docker @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+echo "allow access to docker from other pcs in the cluster"
+sed -i "s#-H fd://#--storage-driver=overlay2 -H tcp://${!this_ip}:$DOCKER_PORT -H  fd:// #" /lib/systemd/system/docker.service
+echo "restart docker"
+systemctl daemon-reload
+systemctl restart docker.service
