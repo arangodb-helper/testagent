@@ -575,10 +575,10 @@ func (t *simpleTest) testLoop() {
 			planIndex++
 
 		case 17:
-			// Rebalance shards
-			if err := t.rebalanceShards(); err != nil {
-				t.log.Errorf("Failed to rebalance shards: %#v", err)
-			}
+			//// Rebalance shards
+			//if err := t.rebalanceShards(); err != nil {
+			//	t.log.Errorf("Failed to rebalance shards: %#v", err)
+			//}
 			planIndex++
 
 		case 18:
