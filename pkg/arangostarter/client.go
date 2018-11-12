@@ -197,7 +197,7 @@ func (c *client) WaitUntilGone(ctx context.Context) error {
 		return maskAny(fmt.Errorf("Still not gone"))
 	}
 
-	if err := retry.Retry(op, time.Minute*2); err != nil {
+	if err := retry.Retry(op, time.Minute*10); err != nil {
 		return maskAny(err)
 	}
 
