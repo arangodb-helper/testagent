@@ -4,6 +4,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"net"
+	"net/url"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -17,6 +20,7 @@ import (
 
 const (
 	serverReadyTimeout = time.Minute * 5
+	machinePortDelta   = 10 // #Ports allocated for each machine
 )
 
 type ArangodbConfig struct {
@@ -48,6 +52,7 @@ type arangodbCluster struct {
 	agencySize       int
 	machines         []*arangodb
 	lastMachineIndex int32
+	ports            portSpace
 }
 
 // NewArangodbClusterBuilder creates a new ClusterBuilder using arangodb.
@@ -96,6 +101,7 @@ func (cb *arangodbClusterBuilder) Create(agencySize int) (cluster.Cluster, error
 		id:               id,
 		lastMachineIndex: 0,
 	}
+	c.ports.Initialize(cb.ArangodbConfig.MasterPort, machinePortDelta)
 
 	// Start arangodb master
 	if _, err := c.add(); err != nil {
@@ -254,7 +260,11 @@ func (c *arangodbCluster) masterArangodbClient() (arangostarter.API, error) {
 	masterIP := master.dockerHost.IP
 	masterPort := master.arangodbPort
 
-	client, err := arangostarter.NewArangoStarterClient(masterIP, masterPort)
+	ep := url.URL{
+		Scheme: "http",
+		Host:   net.JoinHostPort(masterIP, strconv.Itoa(masterPort)),
+	}
+	client, err := arangostarter.NewArangoStarterClient(ep)
 	if err != nil {
 		return nil, maskAny(err)
 	}

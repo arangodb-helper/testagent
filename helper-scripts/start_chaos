@@ -1,0 +1,25 @@
+#!/bin/bash
+set -u
+
+. chaos_ips_ports
+
+arango="arangodb/arangodb-preview:3.4.0-rc.3"
+starter="arangodb/arangodb-starter:0.13.5"
+
+export IP1=$IP1_int
+export IP2=$IP2_int
+export IP3=$IP3_int
+
+#sudo docker run -it -p 0.0.0.0:4200:4200 \
+sudo docker run -it -p $WEB_PORT:$WEB_PORT \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /home/arangodb/testagent-reports:/reports \
+    arangodb/testagent \
+    --docker-host-ip=$IP1 \
+    --docker-endpoint=tcp://$IP1:$DOCKER_PORT \
+    --docker-endpoint=tcp://$IP2:$DOCKER_PORT \
+    --docker-endpoint=tcp://$IP3:$DOCKER_PORT \
+    --arango-image="$arango" \
+    --arangodb-image="$starter"
+    #--docker-net-host \
+

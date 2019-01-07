@@ -18,7 +18,11 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 		NumberOfShards:    numberOfShards,
 		ReplicationFactor: replicationFactor,
 	}
-	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
+	//operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
+	// For now, we increase the timeout to 5 minutes, since the cluster-internal
+	// timeout is 4 minutes:
+	operationTimeout := time.Minute * 5
+	retryTimeout := time.Minute * 5
 	t.log.Infof("Creating collection '%s' with numberOfShards=%d, replicationFactor=%d...", c.name, numberOfShards, replicationFactor)
 	if resp, err := t.client.Post("/_api/collection", nil, nil, opts, "", nil, []int{200, 409}, []int{400, 404, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure

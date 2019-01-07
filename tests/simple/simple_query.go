@@ -65,7 +65,8 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 		if err != nil {
 			// This is a failure
 			t.queryNextBatchCounter.failed++
-			t.reportFailure(test.NewFailure("Failed to read next AQL cursor batch in collection '%s': %v", c.name, err))
+			//t.reportFailure(test.NewFailure("Failed to read next AQL cursor batch in collection '%s': %v", c.name, err))
+			t.log.Errorf("Failed to read next AQL cursor batch in collection '%s': %v", c.name, err)
 			return maskAny(err)
 		}
 
