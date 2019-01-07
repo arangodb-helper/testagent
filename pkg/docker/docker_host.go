@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"time"
 
 	dc "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
@@ -37,6 +38,7 @@ func NewDockerHosts(endpoints []string, localHostIP, dockerIntf string) ([]*Dock
 			return nil, maskAny(err)
 		}
 		dockerHosts = append(dockerHosts, dockerHost)
+		time.Sleep(5 * time.Second)
 	}
 	return dockerHosts, nil
 }

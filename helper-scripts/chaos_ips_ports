@@ -1,0 +1,13 @@
+#!/bin/bash
+
+export WEB_PORT=4200
+export DOCKER_PORT=2376
+
+export IP1_ext=
+export IP1_int=10.14.231.163
+
+export IP2_ext=
+export IP2_int=10.17.14.21
+
+export IP3_ext=
+export IP3_int=10.17.39.11

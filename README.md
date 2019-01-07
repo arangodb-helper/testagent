@@ -69,8 +69,8 @@ docker run -it --rm -p 4200:4200 \
 
 Then connect your browser to http://localhost:4200 to see the test dashboard.
 
-To run 'machines' on multiple physical machine, you must provide the endpoints of docker daemons running on 
-these machines. E.g.
+To run 'machines' on multiple physical machine, you must provide the endpoints
+of docker daemons running on these machines. E.g.
 
 ```
 export IP=<your-local-IP>
@@ -81,6 +81,10 @@ docker run -it --rm -p 4200:4200 \
     --docker-endpoint=tcp://192.168.1.2:2376 \
     --docker-endpoint=tcp://192.168.1.3:2376
 ```
+
+To allow for remote access to the remote docker agents you might need to
+add the `-H tcp://0.0.0.0:2376 --storage-driver=overlay2` to the `ExecStart`
+line in your docker.service file.
 
 ### Options 
 
