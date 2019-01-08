@@ -2,7 +2,7 @@ package simple
 
 import (
 	"fmt"
-
+	"time"
 	"github.com/arangodb/testAgent/service/test"
 )
 

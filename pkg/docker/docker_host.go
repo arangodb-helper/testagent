@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"os"
 	"time"
 
 	dc "github.com/fsouza/go-dockerclient"
@@ -43,7 +44,17 @@ func NewDockerHosts(endpoints []string, localHostIP, dockerIntf string) ([]*Dock
 }
 
 func newDockerHost(endpoint, hostIP, intf string) (*DockerHost, error) {
-	client, err := dc.NewClient(endpoint)
+	path := os.Getenv("DOCKER_CERT_PATH")
+	var err error
+	var client *dc.Client
+	if len(path) > 0 {
+		ca := fmt.Sprintf("%s/ca.pem", path)
+		cert := fmt.Sprintf("%s/cert.pem", path)
+		key := fmt.Sprintf("%s/key.pem", path)
+		client, err = dc.NewTLSClient(endpoint, cert, key, ca)
+	} else {
+		client, err = dc.NewClient(endpoint)
+	}
 	if err != nil {
 		return nil, maskAny(err)
 	}
