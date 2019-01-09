@@ -9,7 +9,6 @@ import (
 
 	dc "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
-
 )
 
 type DockerHost struct {
