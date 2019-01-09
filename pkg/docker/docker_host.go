@@ -44,20 +44,17 @@ func NewDockerHosts(endpoints []string, localHostIP, dockerIntf string) ([]*Dock
 }
 
 func newDockerHost(endpoint, hostIP, intf string) (*DockerHost, error) {
-
 	os.Setenv("DOCKER_HOST", endpoint)
 	client, err := dc.NewClientFromEnv()
 	if err != nil {
 		return nil, maskAny(err)
 	}
-
 	return &DockerHost{
 		Client:    client,
 		IP:        hostIP,
 		Endpoint:  endpoint,
 		Interface: intf,
 	}, nil
-
 }
 
 // getHostAddressForEndpoint returns the IP address of the host of the docker daemon with given endpoint.
