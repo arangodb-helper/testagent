@@ -103,7 +103,6 @@ accordingly:
 
 ```
 export DOCKER_CERT_PATH=/path/to/cert
-...
 ```
 
 ### Options 
