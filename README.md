@@ -86,6 +86,23 @@ To allow for remote access to the remote docker agents you might need to
 add the `-H tcp://0.0.0.0:2376 --storage-driver=overlay2` to the `ExecStart`
 line in your docker.service file.
 
+To allow for use of TLS verified Docker service export additionally
+the relevant default Docker environment variable for enabling the
+verification.
+
+```
+export DOCKER_TLS_VERIFIED=1
+```
+
+The above assumes that the relevant `ca.cert`, `cert.pem` and
+`key.pem` reside in the default location for Docker client
+certification, `$HOME/.docker`. If you would like to store the
+certificate in a different directory, it needs to be specified:
+
+```
+export DOCKER_CERT_PATH=/path/to/cert
+```
+
 ### Options 
 
 - `--agency-size number` Set the size of the agency for the new cluster.

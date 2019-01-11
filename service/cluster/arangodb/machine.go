@@ -322,6 +322,7 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 			fmt.Sprintf("--starter.join=%s:%d", c.dockerHosts[0].IP, c.MasterPort),
 		)
 	}
+	dockerCertPath := os.Getenv("DOCKER_CERT_PATH")
 	opts := dc.CreateContainerOptions{
 		Name: name,
 		Config: &dc.Config{
@@ -336,7 +337,7 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 		HostConfig: &dc.HostConfig{
 			Binds: []string{
 				fmt.Sprintf("%s:%s", volName, "/data"),
-				fmt.Sprintf("%s:%s", os.Getenv("DOCKER_CERT_PATH"), os.Getenv("DOCKER_CERT_PATH")),
+				fmt.Sprintf("%s:%s", dockerCertPath, dockerCertPath),
 			},
 			PortBindings: map[dc.Port][]dc.PortBinding{
 				dc.Port(fmt.Sprintf("%d/tcp", arangodbPort)): []dc.PortBinding{
