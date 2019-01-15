@@ -44,17 +44,8 @@ func NewDockerHosts(endpoints []string, localHostIP, dockerIntf string) ([]*Dock
 }
 
 func newDockerHost(endpoint, hostIP, intf string) (*DockerHost, error) {
-	path := os.Getenv("DOCKER_CERT_PATH")
-	var err error
-	var client *dc.Client
-	if len(path) > 0 {
-		ca := fmt.Sprintf("%s/ca.pem", path)
-		cert := fmt.Sprintf("%s/cert.pem", path)
-		key := fmt.Sprintf("%s/key.pem", path)
-		client, err = dc.NewTLSClient(endpoint, cert, key, ca)
-	} else {
-		client, err = dc.NewClient(endpoint)
-	}
+	os.Setenv("DOCKER_HOST", endpoint)
+	client, err := dc.NewClientFromEnv()
 	if err != nil {
 		return nil, maskAny(err)
 	}

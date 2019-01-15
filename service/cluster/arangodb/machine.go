@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -321,12 +322,14 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 			fmt.Sprintf("--starter.join=%s:%d", c.dockerHosts[0].IP, c.MasterPort),
 		)
 	}
+	dockerCertPath := os.Getenv("DOCKER_CERT_PATH")
 	opts := dc.CreateContainerOptions{
 		Name: name,
 		Config: &dc.Config{
 			Image: c.ArangodbConfig.ArangodbImage,
 			Cmd:   args,
 			Tty:   true,
+			Env:   os.Environ(),
 			ExposedPorts: map[dc.Port]struct{}{
 				dc.Port(fmt.Sprintf("%d/tcp", arangodbPort)): struct{}{},
 			},
@@ -334,6 +337,7 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 		HostConfig: &dc.HostConfig{
 			Binds: []string{
 				fmt.Sprintf("%s:%s", volName, "/data"),
+				fmt.Sprintf("%s:%s", dockerCertPath, dockerCertPath),
 			},
 			PortBindings: map[dc.Port][]dc.PortBinding{
 				dc.Port(fmt.Sprintf("%d/tcp", arangodbPort)): []dc.PortBinding{
