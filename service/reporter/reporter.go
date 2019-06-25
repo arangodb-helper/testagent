@@ -2,9 +2,12 @@ package reporter
 
 import (
 	"archive/tar"
+	"compress/gzip"	
+
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -73,6 +76,8 @@ func (s *reporter) Reports() []FailureReport {
 	return append([]FailureReport{}, s.failureReports...)
 }
 
+
+
 // ReportFailure report the given failure
 func (s *reporter) ReportFailure(f test.Failure) {
 	s.log.Infof("Creating failure report for %v", f)
@@ -99,7 +104,13 @@ func (s *reporter) ReportFailure(f test.Failure) {
 			s.log.Fatalf("Failed to create report file %s: %#v", reportPath, err)
 		}
 		defer tarFile.Close()
-		tw := tar.NewWriter(tarFile)
+
+		gzw := gzip.NewWriter(tarFile);
+		defer gzw.Close()
+
+		tw := tar.NewWriter(gzw)
+		defer tw.Close()
+
 		for fileName := range fileNames {
 			if err := addToTar(s.log, tw, fileName); err != nil {
 				s.log.Fatalf("Failed to add %s: %#v", fileName, err)
@@ -107,6 +118,8 @@ func (s *reporter) ReportFailure(f test.Failure) {
 			tw.Flush()
 		}
 		tw.Close()
+		gzw.Close()
+		
 		return nil
 	})
 
@@ -118,6 +131,11 @@ func (s *reporter) ReportFailure(f test.Failure) {
 	// Collect logs
 	if err := s.collectServerLogs(folder, fileNames, machines); err != nil {
 		s.log.Fatalf("Failed to collect server logs: %#v", err)
+	}
+
+	// Collect agency dump
+	if err := s.agencyDump(folder, fileNames, machines); err != nil {
+		s.log.Errorf("Failed to create cluster state: %#v", err)
 	}
 
 	// Collect cluster state
@@ -307,6 +325,7 @@ func (s *reporter) collectServerLogs(folder string, fileNames chan string, machi
 	return nil
 }
 
+
 // collectTestLogs collects logs from all tests and adds their filenames to the given channel.
 func (s *reporter) collectTestLogs(folder string, fileNames chan string, tests []test.TestScript) error {
 	g := errgroup.Group{}
@@ -333,6 +352,56 @@ func (s *reporter) collectTestLogs(folder string, fileNames chan string, tests [
 			}
 			return nil
 		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return maskAny(err)
+	}
+
+	return nil
+}
+
+
+// create an agency dump
+func (s *reporter) agencyDump(folder string, fileNames chan string, machines []cluster.Machine) error {
+
+	g := errgroup.Group{}
+	client := &http.Client{Timeout: time.Second * 5}
+
+	for _, m := range machines {
+		m := m // Used in nested func
+		filePrefix := fileNameFixer.Replace(m.ID())
+		if m.HasAgent() {
+			g.Go(func() error {
+				// Collect agent logs
+				if fileName, err := func() (string, error) {
+					f, err := os.Create(filepath.Join(folder, fmt.Sprintf("%s-agency-dump.json", filePrefix)))
+					if err != nil {
+						return "", maskAny(err)
+					}
+					defer f.Close()
+
+					configURL := m.AgentURL()
+					configURL.Path = "/_api/agency/state"
+					r, e := client.Get(configURL.String())
+
+					if e == nil && r != nil && r.StatusCode == 200 {
+						bodyBytes,_ := ioutil.ReadAll(r.Body)
+						ioutil.WriteFile(f.Name(), bodyBytes, 0644)
+					}	else { 
+						fmt.Fprintf(f, "\nError fetching logs: %#v\n", e)
+						s.log.Errorf("Error fetching agent logs: %#v", e)
+						return "", maskAny(err)
+					}
+					return f.Name(), nil
+				}(); err != nil {
+					return maskAny(err)
+				} else {
+					fileNames <- fileName
+				}
+				return nil
+			})
+		}
 	}
 
 	if err := g.Wait(); err != nil {
