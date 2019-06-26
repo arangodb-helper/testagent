@@ -386,8 +386,7 @@ func (s *reporter) agencyDump(folder string, fileNames chan string, machines []c
 					r, e := client.Get(configURL.String())
 
 					if e == nil && r != nil && r.StatusCode == 200 {
-						bodyBytes,_ := ioutil.ReadAll(r.Body)
-						ioutil.WriteFile(f.Name(), bodyBytes, 0644)
+						io.Copy(f, r.Body)
 					}	else { 
 						fmt.Fprintf(f, "\nError fetching logs: %#v\n", e)
 						s.log.Errorf("Error fetching agent logs: %#v", e)
