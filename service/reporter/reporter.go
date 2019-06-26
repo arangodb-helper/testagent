@@ -96,7 +96,7 @@ func (s *reporter) ReportFailure(f test.Failure) {
 
 	// Collect files into tar
 	os.MkdirAll(s.reportDir, 0755)
-	reportPath := filepath.Join(s.reportDir, s.nextReportID()+".tar")
+	reportPath := filepath.Join(s.reportDir, s.nextReportID()+".tar.gz")
 	tarGroup := errgroup.Group{}
 	tarGroup.Go(func() error {
 		tarFile, err := os.Create(reportPath)
