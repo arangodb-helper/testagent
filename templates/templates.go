@@ -88,7 +88,7 @@ func baseFooterTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "base/footer.tmpl", size: 22, mode: os.FileMode(436), modTime: time.Unix(1486974991, 0)}
+	info := bindataFileInfo{name: "base/footer.tmpl", size: 22, mode: os.FileMode(420), modTime: time.Unix(1486974991, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -108,7 +108,7 @@ func baseHeadTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "base/head.tmpl", size: 290, mode: os.FileMode(436), modTime: time.Unix(1486974991, 0)}
+	info := bindataFileInfo{name: "base/head.tmpl", size: 290, mode: os.FileMode(420), modTime: time.Unix(1486974991, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -128,7 +128,7 @@ func chaosTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "chaos.tmpl", size: 1485, mode: os.FileMode(436), modTime: time.Unix(1486974991, 0)}
+	info := bindataFileInfo{name: "chaos.tmpl", size: 1485, mode: os.FileMode(420), modTime: time.Unix(1486974991, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -148,7 +148,7 @@ func indexTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "index.tmpl", size: 3985, mode: os.FileMode(436), modTime: time.Unix(1486974991, 0)}
+	info := bindataFileInfo{name: "index.tmpl", size: 3985, mode: os.FileMode(420), modTime: time.Unix(1486974991, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -168,7 +168,7 @@ func publicStyleCss() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "public/style.css", size: 369, mode: os.FileMode(436), modTime: time.Unix(1486974991, 0)}
+	info := bindataFileInfo{name: "public/style.css", size: 369, mode: os.FileMode(420), modTime: time.Unix(1486974991, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -188,7 +188,7 @@ func testTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "test.tmpl", size: 1092, mode: os.FileMode(436), modTime: time.Unix(1486974991, 0)}
+	info := bindataFileInfo{name: "test.tmpl", size: 1092, mode: os.FileMode(420), modTime: time.Unix(1486974991, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
