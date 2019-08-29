@@ -396,7 +396,9 @@ func (s *reporter) agencyDump(folder string, fileNames chan string, machines []c
 				}(); err != nil {
 					return maskAny(err)
 				} else {
-					fileNames <- fileName
+					if (fileName != "") {
+						fileNames <- fileName
+					}
 				}
 				return nil
 			})
