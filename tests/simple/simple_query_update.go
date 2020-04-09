@@ -22,7 +22,7 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 	var cursorResp CursorResponse
 	resultDocument := &UserDocument{}
 	cursorResp.Result = []interface{}{resultDocument}
-	if _, err := t.client.Post("/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{201}, []int{200, 202, 400, 404, 409, 307}, operationTimeout, retryTimeout); err != nil {
+	if _, err := t.client.Post("/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{201, 409}, []int{200, 202, 400, 404, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.queryUpdateCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to create update AQL cursor in collection '%s': %v", c.name, err))
@@ -47,7 +47,7 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 // queryUpdateDocumentsLongRunning runs a long running AQL update query.
 // The operation is expected to succeed.
 func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) (string, error) {
-	operationTimeout, retryTimeout := t.OperationTimeout*2, t.RetryTimeout*2
+	operationTimeout, retryTimeout := t.OperationTimeout*3, t.RetryTimeout*2
 
 	t.log.Infof("Creating long running update AQL query for collection '%s'...", c.name)
 	newName := fmt.Sprintf("AQLLongRunningUpdate name %s", time.Now())
@@ -59,7 +59,7 @@ func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) 
 	var cursorResp CursorResponse
 	resultDocument := &UserDocument{}
 	cursorResp.Result = []interface{}{resultDocument}
-	if _, err := t.client.Post("/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{201}, []int{200, 202, 400, 404, 409, 307}, operationTimeout, retryTimeout); err != nil {
+	if _, err := t.client.Post("/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{201, 409}, []int{200, 202, 400, 404, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.queryUpdateLongRunningCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to create long running update AQL cursor in collection '%s': %v", c.name, err))

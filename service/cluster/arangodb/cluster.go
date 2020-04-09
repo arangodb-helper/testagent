@@ -50,6 +50,7 @@ type arangodbCluster struct {
 	dockerHosts      []*docker.DockerHost
 	id               string
 	agencySize       int
+	forceOneShard    bool
 	machines         []*arangodb
 	lastMachineIndex int32
 	ports            portSpace
@@ -78,7 +79,7 @@ func NewArangodbClusterBuilder(log *logging.Logger, config ArangodbConfig) (clus
 // Create creates and starts a new cluster.
 // The number of "machines" created equals the given agency size.
 // This function returns when the cluster is operational (or an error occurs)
-func (cb *arangodbClusterBuilder) Create(agencySize int) (cluster.Cluster, error) {
+func (cb *arangodbClusterBuilder) Create(agencySize int, forceOneShard bool) (cluster.Cluster, error) {
 	// Create docker hosts
 	dockerHosts, err := docker.NewDockerHosts(cb.DockerEndpoints, cb.DockerHostIP, cb.DockerInterface)
 	if err != nil {

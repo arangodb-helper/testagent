@@ -300,8 +300,14 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 		fmt.Sprintf("--starter.id=%s", machineID),
 		fmt.Sprintf("--starter.port=%d", arangodbPort),
 		fmt.Sprintf("--docker.container=%s", name),
+		fmt.Sprintf("--log.rotate-files-to-keep=6"),
+		fmt.Sprintf("--log.rotate-interval=2h0m0s"),
 		fmt.Sprintf("--docker.endpoint=%s", dockerHost.Endpoint),
 		fmt.Sprintf("--starter.address=%s", dockerHost.IP),
+		fmt.Sprintf("--all.log.level=cluster=debug"),
+		fmt.Sprintf("--coordinators.log.level=communication=debug"),
+		fmt.Sprintf("--dbservers.log.level=maintenance=debug"),
+		fmt.Sprintf("--dbservers.log.level=requests=debug"),
 	}
 	if c.Verbose {
 		args = append(args, "--verbose")
