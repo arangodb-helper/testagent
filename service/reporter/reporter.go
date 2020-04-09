@@ -2,7 +2,7 @@ package reporter
 
 import (
 	"archive/tar"
-	"compress/gzip"	
+	"compress/gzip"
 
 	"fmt"
 	"io"
@@ -76,8 +76,6 @@ func (s *reporter) Reports() []FailureReport {
 	return append([]FailureReport{}, s.failureReports...)
 }
 
-
-
 // ReportFailure report the given failure
 func (s *reporter) ReportFailure(f test.Failure) {
 	s.log.Infof("Creating failure report for %v", f)
@@ -105,7 +103,7 @@ func (s *reporter) ReportFailure(f test.Failure) {
 		}
 		defer tarFile.Close()
 
-		gzw := gzip.NewWriter(tarFile);
+		gzw := gzip.NewWriter(tarFile)
 		defer gzw.Close()
 
 		tw := tar.NewWriter(gzw)
@@ -119,7 +117,7 @@ func (s *reporter) ReportFailure(f test.Failure) {
 		}
 		tw.Close()
 		gzw.Close()
-		
+
 		return nil
 	})
 
@@ -325,7 +323,6 @@ func (s *reporter) collectServerLogs(folder string, fileNames chan string, machi
 	return nil
 }
 
-
 // collectTestLogs collects logs from all tests and adds their filenames to the given channel.
 func (s *reporter) collectTestLogs(folder string, fileNames chan string, tests []test.TestScript) error {
 	g := errgroup.Group{}
@@ -361,7 +358,6 @@ func (s *reporter) collectTestLogs(folder string, fileNames chan string, tests [
 	return nil
 }
 
-
 // create an agency dump
 func (s *reporter) agencyDump(folder string, fileNames chan string, machines []cluster.Machine) error {
 
@@ -387,7 +383,7 @@ func (s *reporter) agencyDump(folder string, fileNames chan string, machines []c
 
 					if e == nil && r != nil && r.StatusCode == 200 {
 						io.Copy(f, r.Body)
-					}	else { 
+					} else {
 						fmt.Fprintf(f, "\nError fetching logs: %#v\n", e)
 						s.log.Errorf("Error fetching agent logs: %#v", e)
 						return "", maskAny(err)
@@ -396,7 +392,7 @@ func (s *reporter) agencyDump(folder string, fileNames chan string, machines []c
 				}(); err != nil {
 					return maskAny(err)
 				} else {
-					if (fileName != "") {
+					if fileName != "" {
 						fileNames <- fileName
 					}
 				}
