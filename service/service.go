@@ -16,6 +16,7 @@ type ServiceConfig struct {
 	ProjectVersion string
 	ProjectBuild   string
 	AgencySize     int
+	ForceOneShard  bool
 	ServerPort     int
 	ReportDir      string
 	ChaosConfig    chaos.ChaosMonkeyConfig
@@ -58,7 +59,7 @@ func (s *Service) Run(stopChan chan struct{}) error {
 
 	// Create the cluster
 	s.Logger.Infof("Creating initial cluster (size %d)", s.AgencySize)
-	c, err := s.ClusterBuilder.Create(s.AgencySize)
+	c, err := s.ClusterBuilder.Create(s.AgencySize, s.ForceOneShard)
 	if err != nil {
 		return maskAny(err)
 	}

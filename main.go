@@ -22,7 +22,7 @@ import (
 
 const (
 	projectName             = "testAgent"
-	defaultOperationTimeout = time.Second * 45 // Should be 15s
+	defaultOperationTimeout = time.Second * 60 // Should be 15s
 	defaultRetryTimeout     = time.Minute * 4  // Should be 1m
 )
 
@@ -57,6 +57,7 @@ func init() {
 	f.StringSliceVar(&appFlags.DockerEndpoints, "docker-endpoint", defaultDockerEndpoints, "Endpoints used to reach the docker daemons")
 	f.StringVar(&appFlags.DockerHostIP, "docker-host-ip", "", "IP of the docker host")
 	f.BoolVar(&appFlags.DockerNetHost, "docker-net-host", false, "If set, run all containers with `--net=host`")
+	f.BoolVar(&appFlags.ForceOneShard, "force-one-shard", false, "If set, force one shard arangodb cluster")
 	f.StringVar(&appFlags.DockerInterface, "docker-interface", "docker0", "Network interface used to connect docker containers to")
 	f.StringVar(&appFlags.ReportDir, "report-dir", getEnvVar("REPORT_DIR", "."), "Directory in which failure reports will be created")
 	f.BoolVar(&appFlags.Privileged, "privileged", false, "If set, run all containers with `--privileged`")
