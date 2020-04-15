@@ -4,10 +4,10 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/arangodb/testAgent/service/chaos"
-	"github.com/arangodb/testAgent/service/cluster"
-	"github.com/arangodb/testAgent/service/reporter"
-	"github.com/arangodb/testAgent/service/test"
+	"github.com/arangodb-helper/testagent/service/chaos"
+	"github.com/arangodb-helper/testagent/service/cluster"
+	"github.com/arangodb-helper/testagent/service/reporter"
+	"github.com/arangodb-helper/testagent/service/test"
 	humanize "github.com/dustin/go-humanize"
 )
 

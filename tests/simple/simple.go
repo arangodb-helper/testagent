@@ -12,9 +12,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/arangodb/testAgent/service/cluster"
-	"github.com/arangodb/testAgent/service/test"
-	"github.com/arangodb/testAgent/tests/util"
+	"github.com/arangodb-helper/testagent/service/cluster"
+	"github.com/arangodb-helper/testagent/service/test"
+	"github.com/arangodb-helper/testagent/tests/util"
 	logging "github.com/op/go-logging"
 )
 

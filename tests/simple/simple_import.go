@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/arangodb/testAgent/service/test"
+	"github.com/arangodb-helper/testagent/service/test"
 )
 
 // createImportDocument creates a #document based import file.

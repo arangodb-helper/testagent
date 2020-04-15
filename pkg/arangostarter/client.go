@@ -33,7 +33,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/arangodb/testAgent/pkg/retry"
+	"github.com/arangodb-helper/testagent/pkg/retry"
 )
 
 // NewArangoStarterClient creates a new client implementation.

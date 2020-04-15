@@ -3,11 +3,11 @@ package service
 import (
 	"time"
 
-	chaos "github.com/arangodb/testAgent/service/chaos"
-	cluster "github.com/arangodb/testAgent/service/cluster"
-	"github.com/arangodb/testAgent/service/reporter"
-	"github.com/arangodb/testAgent/service/server"
-	"github.com/arangodb/testAgent/service/test"
+	chaos "github.com/arangodb-helper/testagent/service/chaos"
+	cluster "github.com/arangodb-helper/testagent/service/cluster"
+	"github.com/arangodb-helper/testagent/service/reporter"
+	"github.com/arangodb-helper/testagent/service/server"
+	"github.com/arangodb-helper/testagent/service/test"
 	logging "github.com/op/go-logging"
 	"golang.org/x/sync/errgroup"
 )

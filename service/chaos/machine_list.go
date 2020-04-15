@@ -1,6 +1,6 @@
 package chaos
 
-import "github.com/arangodb/testAgent/service/cluster"
+import "github.com/arangodb-helper/testagent/service/cluster"
 
 // MachineList is a list of cluster machines
 type MachineList []cluster.Machine
