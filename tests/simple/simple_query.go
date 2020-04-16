@@ -89,7 +89,9 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 			}
 
 			// Check uptime
-			if uptime < time.Since(createReqTime) && uptime != 0 {
+			if uptime < time.Since(createReqTime) {
+				// Note that if the uptime call failed, we can get 0 for uptime, which is OK,
+				// since this probably means that the coordinator is not yet up again.
 				// Coordinator rebooted, we expect this to fail now
 				t.queryNextBatchNewCoordinatorCounter.succeeded++
 				t.log.Infof("Reading next batch AQL cursor failed with 404, expected because of coordinator rebooted in between (%s)", createResp.CoordinatorURL)
@@ -100,15 +102,6 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 			t.queryNextBatchCounter.failed++
 			t.reportFailure(test.NewFailure("Failed to read next AQL cursor batch in collection '%s' with same coordinator (%s): status 404", c.name, createResp.CoordinatorURL))
 			return maskAny(fmt.Errorf("Status code 404"))
-		} else if getResp.StatusCode == 200 {
-			// Request succeeded, check if coordinator is same as create-cursor request
-			if createResp.CoordinatorURL != getResp.CoordinatorURL {
-				// Coordinator changed, we expected a failure, but got a success. Not good.
-				t.queryNextBatchNewCoordinatorCounter.failed++
-				t.reportFailure(test.NewFailure("Reading next batch AQL cursor succeeded with 200, but expected a 404 because of coordinator change"))
-				t.log.Infof("Reading next batch AQL cursor succeeded with 200, but expected a 404 because of coordinator change")
-				return nil
-			}
 		}
 
 		// Ok reading next batch succeeded
