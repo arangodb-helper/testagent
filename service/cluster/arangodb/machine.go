@@ -457,6 +457,8 @@ func (m *arangodb) stop(destroy bool) error {
 		return maskAny(err)
 	}
 
+	m.log.Infof("Stopped arangodb successfully at %s:%dm m.dockerHost.IP, m.arangodbPort")
+
 	// Wait until arangodb is really gone
 	if err := client.WaitUntilGone(ctx); err != nil {
 		m.log.Errorf("Arangodb at %s:%d is not gone after a while... (error %v)", m.dockerHost.IP, m.arangodbPort, err)
