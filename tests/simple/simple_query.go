@@ -102,6 +102,15 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 			t.queryNextBatchCounter.failed++
 			t.reportFailure(test.NewFailure("Failed to read next AQL cursor batch in collection '%s' with same coordinator (%s): status 404", c.name, createResp.CoordinatorURL))
 			return maskAny(fmt.Errorf("Status code 404"))
+		} else if getResp.StatusCode == 200 {
+			// Request succeeded, check if coordinator is same as create-cursor request
+			if createResp.CoordinatorURL != getResp.CoordinatorURL {
+				// Coordinator changed, we expected a failure, but got a success. Not good.
+				t.queryNextBatchNewCoordinatorCounter.failed++
+				t.reportFailure(test.NewFailure("Reading next batch AQL cursor succeeded with 200, but expected a 404 because of coordinator change"))
+				t.log.Infof("Reading next batch AQL cursor succeeded with 200, but expected a 404 because of coordinator change")
+				return nil
+			}
 		}
 
 		// Ok reading next batch succeeded
