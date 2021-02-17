@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/arangodb/testAgent/service/test"
+	"github.com/arangodb-helper/testagent/service/test"
 )
 
 // updateExistingDocument updates an existing document with an optional explicit revision.

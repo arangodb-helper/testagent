@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/arangodb/testAgent/service/test"
+	"github.com/arangodb-helper/testagent/service/test"
 )
 
 // queryUpdateDocuments runs an AQL update query.

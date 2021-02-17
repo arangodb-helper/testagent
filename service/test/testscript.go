@@ -5,7 +5,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/arangodb/testAgent/service/cluster"
+	"github.com/arangodb-helper/testagent/service/cluster"
 	"github.com/pkg/errors"
 )
 

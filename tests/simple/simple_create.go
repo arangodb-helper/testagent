@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/arangodb/testAgent/service/test"
+	"github.com/arangodb-helper/testagent/service/test"
 )
 
 // createDocument creates a new document.

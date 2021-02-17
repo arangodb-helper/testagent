@@ -14,11 +14,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/arangodb/testAgent/pkg/arangostarter"
-	"github.com/arangodb/testAgent/pkg/docker"
-	"github.com/arangodb/testAgent/pkg/networkblocker"
-	"github.com/arangodb/testAgent/pkg/retry"
-	"github.com/arangodb/testAgent/service/cluster"
+	"github.com/arangodb-helper/testagent/pkg/arangostarter"
+	"github.com/arangodb-helper/testagent/pkg/docker"
+	"github.com/arangodb-helper/testagent/pkg/networkblocker"
+	"github.com/arangodb-helper/testagent/pkg/retry"
+	"github.com/arangodb-helper/testagent/service/cluster"
 	dc "github.com/fsouza/go-dockerclient"
 	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
@@ -456,6 +456,8 @@ func (m *arangodb) stop(destroy bool) error {
 	if err := client.Shutdown(ctx, destroy); err != nil {
 		return maskAny(err)
 	}
+
+	m.log.Infof("Stopped arangodb successfully at %s:%dm m.dockerHost.IP, m.arangodbPort")
 
 	// Wait until arangodb is really gone
 	if err := client.WaitUntilGone(ctx); err != nil {

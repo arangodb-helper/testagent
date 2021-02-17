@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/arangodb/testAgent/service/test"
+	"github.com/arangodb-helper/testagent/service/test"
 )
 
 type QueryRequest struct {
@@ -89,7 +89,9 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 			}
 
 			// Check uptime
-			if uptime < time.Since(createReqTime) && uptime != 0 {
+			if uptime < time.Since(createReqTime) {
+				// Note that if the uptime call failed, we can get 0 for uptime, which is OK,
+				// since this probably means that the coordinator is not yet up again.
 				// Coordinator rebooted, we expect this to fail now
 				t.queryNextBatchNewCoordinatorCounter.succeeded++
 				t.log.Infof("Reading next batch AQL cursor failed with 404, expected because of coordinator rebooted in between (%s)", createResp.CoordinatorURL)

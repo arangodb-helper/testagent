@@ -4,18 +4,14 @@ ROOTDIR := $(shell cd $(SCRIPTDIR) && pwd)
 VERSION:= $(shell cat $(ROOTDIR)/VERSION)
 COMMIT := $(shell git rev-parse --short HEAD)
 
-GOBUILDDIR := $(SCRIPTDIR)/.gobuild
 SRCDIR := $(SCRIPTDIR)
 BINDIR := $(ROOTDIR)/bin
 
-ORGPATH := github.com/arangodb
-ORGDIR := $(GOBUILDDIR)/src/$(ORGPATH)
+ORGPATH := github.com/arangodb-helper
 REPONAME := $(PROJECT)
-REPODIR := $(ORGDIR)/$(REPONAME)
 REPOPATH := $(ORGPATH)/$(REPONAME)
 
-GOPATH := $(GOBUILDDIR)
-GOVERSION := 1.9.3-alpine
+GOVERSION := 1.13.6-alpine3.10
 
 ifndef GOOS
 	GOOS := linux
@@ -36,47 +32,25 @@ TEMPLATES := $(shell find $(SRCDIR)/templates -name '*.tmpl')
 
 .PHONY: all clean deps docker build build-local
 
-all: build
+all: docker
 
 clean:
-	rm -Rf $(BIN) $(GOBUILDDIR)
+	rm -Rf $(BIN)
 
-local:
-	@${MAKE} -B GOOS=$(shell go env GOHOSTOS) GOARCH=$(shell go env GOHOSTARCH) build-local
+templates/templates.go: $(TEMPLATES)
+	go build -o bin/go-bindata github.com/jteeuwen/go-bindata/go-bindata
+	bin/go-bindata -pkg templates -prefix templates -modtime 1486974991 -ignore templates.go -o templates/templates.go templates/...
 
-build: $(BIN)
-
-build-local: build 
-	@ln -sf $(BIN) $(ROOTDIR)/testAgent
-
-deps:
-	@${MAKE} -B -s $(GOBUILDDIR)
-
-$(GOBUILDDIR):
-	@mkdir -p $(ORGDIR)
-	@rm -f $(REPODIR) && ln -s ../../../.. $(REPODIR)
-	@rm -f $(GOBUILDDIR)/src/github.com/jteeuwen && ln -s ../../../vendor/github.com/jteeuwen $(GOBUILDDIR)/src/github.com/jteeuwen
-	@rm -f $(GOBUILDDIR)/src/github.com/coreos && ln -s ../../../vendor/github.com/coreos $(GOBUILDDIR)/src/github.com/coreos
-
-templates/templates.go: $(GOBUILDDIR) $(TEMPLATES)
-	GOPATH=$(GOBUILDDIR) go build -o $(GOBUILDDIR)/bin/go-bindata github.com/jteeuwen/go-bindata/go-bindata
-	$(GOBUILDDIR)/bin/go-bindata -pkg templates -prefix templates -modtime 1486974991 -ignore templates.go -o templates/templates.go templates/...
-
-$(BIN): $(GOBUILDDIR) $(SOURCES) templates/templates.go
-	@mkdir -p $(BINDIR)
-	docker run \
-		--rm \
-		-v $(SRCDIR):/usr/code \
-		-e GOPATH=/usr/code/.gobuild \
-		-e GOOS=$(GOOS) \
-		-e GOARCH=$(GOARCH) \
-		-e CGO_ENABLED=0 \
-		-w /usr/code/ \
-		golang:$(GOVERSION) \
-		go build -a -installsuffix netgo -tags netgo -ldflags "-X main.projectVersion=$(VERSION) -X main.projectBuild=$(COMMIT)" -o /usr/code/bin/$(BINNAME) $(REPOPATH)
-
-docker: build
-	docker build -t arangodb/testagent .
+docker: $(SOURCES) templates/templates.go
+	docker build \
+		--build-arg GOVERSION=$(GOVERSION) \
+		--build-arg GOOS="$(GOOS)" \
+		--build-arg GOARCH="$(GOARCH)" \
+		--build-arg BINNAME="$(BINNAME)" \
+		--build-arg GOTAGS="$(GOTAGS)" \
+		--build-arg VERSION="$(VERSION)" \
+		--build-arg COMMIT="$(COMMIT)" \
+		-f Dockerfile -t arangodb/testagent .
 
 docker-push: docker
 ifneq ($(DOCKERNAMESPACE), arangodb)
@@ -91,11 +65,11 @@ docker-push-version: docker
 	docker tag arangodb/testagent arangodb/testagent:$(VERSION)
 	docker push arangodb/testagent:$(VERSION)
 
-release-patch: $(GOBUILDDIR)
-	GOPATH=$(GOBUILDDIR) go run ./tools/release.go -type=patch 
+release-patch:
+	go run ./tools/release.go -type=patch 
 
-release-minor: $(GOBUILDDIR)
-	GOPATH=$(GOBUILDDIR) go run ./tools/release.go -type=minor
+release-minor:
+	go run ./tools/release.go -type=minor
 
-release-major: $(GOBUILDDIR)
-	GOPATH=$(GOBUILDDIR) go run ./tools/release.go -type=major 
+release-major:
+	go run ./tools/release.go -type=major 

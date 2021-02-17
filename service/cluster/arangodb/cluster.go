@@ -11,9 +11,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/arangodb/testAgent/pkg/arangostarter"
-	"github.com/arangodb/testAgent/pkg/docker"
-	"github.com/arangodb/testAgent/service/cluster"
+	"github.com/arangodb-helper/testagent/pkg/arangostarter"
+	"github.com/arangodb-helper/testagent/pkg/docker"
+	"github.com/arangodb-helper/testagent/service/cluster"
 	logging "github.com/op/go-logging"
 	"golang.org/x/sync/errgroup"
 )

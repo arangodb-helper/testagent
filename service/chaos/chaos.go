@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	cluster "github.com/arangodb/testAgent/service/cluster"
+	cluster "github.com/arangodb-helper/testagent/service/cluster"
 	logging "github.com/op/go-logging"
 )
 
