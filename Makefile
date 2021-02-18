@@ -11,7 +11,7 @@ ORGPATH := github.com/arangodb-helper
 REPONAME := $(PROJECT)
 REPOPATH := $(ORGPATH)/$(REPONAME)
 
-GOVERSION := 1.13.6-alpine3.10
+GOVERSION := 1.15-alpine
 
 ifndef GOOS
 	GOOS := linux
