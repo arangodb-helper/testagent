@@ -95,7 +95,7 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 			t.queryNextBatchCounter.failed++
 			t.reportFailure(test.NewFailure("Failed to read next AQL cursor batch in collection '%s' with same coordinator (%s): status 404", c.name, createResp.CoordinatorURL))
 			return maskAny(fmt.Errorf("Status code 404"))
-		} 
+		}
 
 		// Ok reading next batch succeeded
 		t.queryNextBatchCounter.succeeded++
