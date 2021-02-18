@@ -80,13 +80,6 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 
 		// Check status code
 		if getResp.StatusCode == 404 {
-			// Request failed, check if coordinator is different
-			if createResp.CoordinatorURL != getResp.CoordinatorURL {
-				// Coordinator changed, we expect this to fail now
-				t.queryNextBatchNewCoordinatorCounter.succeeded++
-				t.log.Infof("Reading next batch AQL cursor failed with 404, expected because of coordinator change (%s -> %s)", createResp.CoordinatorURL, getResp.CoordinatorURL)
-				return nil
-			}
 
 			// Check uptime
 			if uptime < time.Since(createReqTime) {
