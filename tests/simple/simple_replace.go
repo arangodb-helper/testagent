@@ -9,8 +9,24 @@ import (
 	"github.com/arangodb-helper/testagent/service/test"
 )
 
+// 20x, if document was replaced
+// 404, if document did not exist
+// 412, if if-match was given and document already there
+// timeout, in which case the document might or might not exist
+//   connection refused with coordinator ==> simply try again with another
+//   connection error ("broken pipe") with coordinator, to be treated like 
+//   a timeout
+// 503, cluster internal mishap, all bets off
+// Testagent:
+//   If first request gives correct result: OK
+//   if wrong result: ERROR  (include 503 in this case)
+//   if connection refused to coordinator: simply retry other
+//   if either timeout (or broken pipe with coordinator):
+// retry 5x and and ERROR then
+
 // replaceExistingDocument replaces an existing document with an optional explicit revision.
 // The operation is expected to succeed.
+
 func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (string, error) {
 	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
 	q := url.Values{}
