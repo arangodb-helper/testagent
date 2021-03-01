@@ -24,14 +24,16 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 		Value: rand.Int(),
 		Odd:   rand.Int()%2 == 0,
 	}
-	update, err := t.client.Put(fmt.Sprintf("/_api/document/%s/%s", c.name, key), q, hdr, newDoc, "", nil, []int{200, 201, 202, 412}, []int{400, 404, 307}, operationTimeout, retryTimeout)
+	update, err := t.client.Put(fmt.Sprintf("/_api/document/%s/%s", c.name, key), q, hdr, newDoc, "", nil, []int{200, 201, 202, 412}, []int{400, 404}, operationTimeout, retryTimeout)
 	if err != nil {
 		// This is a failure
+		t.lastRequestErr = true
 		t.replaceExistingCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to replace existing document '%s' (%s) in collection '%s': %v", key, ifMatchStatus, c.name, err))
 		return "", maskAny(err)
 	} else if update.StatusCode == 412 {
-		if explicitRev {
+		if explicitRev  || t.lastRequestErr {
+			t.lastRequestErr = false
 			// Expected revision did NOT match.
 			// This may happen when a coordinator succeeds in the first attempt but we've already timed out.
 			// Check document against what we expect after the replace.
@@ -52,6 +54,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 			}
 		} else {
 			// We got a 412 without asking for an explicit revision. This is a failure.
+			t.lastRequestErr = false
 			t.replaceExistingCounter.failed++
 			t.reportFailure(test.NewFailure("Failed to replace existing document '%s' (%s) in collection '%s': got 412 but did not set If-Match", key, ifMatchStatus, c.name))
 			return "", maskAny(fmt.Errorf("Failed to replace existing document '%s' (%s) in collection '%s': got 412 but did not set If-Match", key, ifMatchStatus, c.name))

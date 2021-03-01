@@ -18,10 +18,12 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 	resp, err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, []int{200, 201, 202, 404}, []int{400, 412, 307}, operationTimeout, retryTimeout)
 	if err != nil {
 		// This is a failure
+		t.lastRequestErr = true
 		t.deleteExistingCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to delete existing document '%s' (%s) in collection '%s': %v", key, ifMatchStatus, collectionName, err))
 		return maskAny(err)
 	} else if resp.StatusCode == 404 {
+		t.lastRequestErr = false
 		// Document not found.
 		// This can happen if the first attempt timed out, but did actually succeed.
 		// So we accept this is there are multiple attempts.
