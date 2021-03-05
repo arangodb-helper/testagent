@@ -25,16 +25,11 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 	retryTimeout := time.Minute * 5
 	t.log.Infof("Creating collection '%s' with numberOfShards=%d, replicationFactor=%d...", c.name, numberOfShards, replicationFactor)
 	for i := 0; i < 3; i++ {
-		if resp, err := t.client.Post("/_api/collection", nil, nil, opts, "", nil, []int{200, 409}, []int{400, 404, 307}, operationTimeout, retryTimeout); err != nil {
+		if resp, err := t.client.Post("/_api/collection", nil, nil, opts, "", nil, []int{200, 409, 500}, []int{400, 404, 307}, operationTimeout, retryTimeout); err != nil {
 			// This is a failure
 			t.reportFailure(test.NewFailure("Failed to create collection '%s': %v", c.name, err))
 			return maskAny(err)
-		} else if resp.StatusCode == 500 {
-			if i == 2 {
-				t.reportFailure(test.NewFailure("Failed to create collection thrice '%s': %v", c.name, err))
-				return maskAny(err)
-			}
-		}	else if resp.StatusCode == 409 {
+		} else if resp.StatusCode == 409 {
 			// Duplicate name, check if that is correct
 			if exists, checkErr := t.collectionExists(c); checkErr != nil {
 				t.log.Errorf("Failed to check if collection exists: %v", checkErr)
