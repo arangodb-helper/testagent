@@ -15,7 +15,7 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 	q.Set("waitForSync", "true")
 	hdr, ifMatchStatus, _ := createRandomIfMatchHeader(nil, rev)
 	t.log.Infof("Removing existing document '%s' (%s) from '%s'...", key, ifMatchStatus, collectionName)
-	resp, err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, []int{200, 201, 202, 404}, []int{400, 412, 307}, operationTimeout, retryTimeout)
+	resp, err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, []int{200, 201, 202, 404}, []int{400, 412, 307}, operationTimeout, 1)
 	if err != nil {
 		// This is a failure
 		t.lastRequestErr = true

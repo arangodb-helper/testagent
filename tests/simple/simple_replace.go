@@ -40,7 +40,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 		Value: rand.Int(),
 		Odd:   rand.Int()%2 == 0,
 	}
-	update, err := t.client.Put(fmt.Sprintf("/_api/document/%s/%s", c.name, key), q, hdr, newDoc, "", nil, []int{200, 201, 202, 412}, []int{400, 404}, operationTimeout, retryTimeout)
+	update, err := t.client.Put(fmt.Sprintf("/_api/document/%s/%s", c.name, key), q, hdr, newDoc, "", nil, []int{200, 201, 202, 412}, []int{400, 404}, operationTimeout, 1)
 	if err != nil {
 		// This is a failure
 		t.lastRequestErr = true

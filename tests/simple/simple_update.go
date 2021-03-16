@@ -48,7 +48,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 	}
 	doc := c.existingDocs[key]
 	update, err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", c.name, key), q,
-		hdr, delta, "", nil, []int{200, 201, 202, 412}, []int{400, 404, 307}, operationTimeout, retryTimeout)
+		hdr, delta, "", nil, []int{200, 201, 202, 412}, []int{400, 404, 307}, operationTimeout, 1)
 	if err != nil {
 		// This is a failure
 		t.lastRequestErr = true
