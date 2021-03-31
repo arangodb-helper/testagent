@@ -145,7 +145,7 @@ func (c *ArangoClient) requestWithRetry(
 	method, urlPath string, query url.Values, header map[string]string, input interface{},
 	contentType string, result interface{},	successStatusCodes, failureStatusCodes []int,
 	operationTimeout time.Duration, retries int) ([]ArangoResponse, []error) {
-	
+
 	aresps := make([]ArangoResponse, 0, retries)
 	errors := make([]error, 0, retries)
 
@@ -157,9 +157,9 @@ func (c *ArangoClient) requestWithRetry(
 	}
 
 	var i int
-	
+
 	op := func() (ArangoResponse, error) {
-		var arangoResp ArangoResponse 
+		var arangoResp ArangoResponse
 		arangoResp.Attempts++
 		start := time.Now()
 		client := createClient(operationTimeout)
@@ -187,7 +187,12 @@ func (c *ArangoClient) requestWithRetry(
 			if e, ok := err.(net.Error); ok && e.Timeout() {
 				arangoResp.StatusCode = 0
 			} else {
-				arangoResp.StatusCode = 1
+				if strings.Contains(err.Error(), "refused") {
+					arangoResp.StatusCode = 1
+				} else if strings.Contains(err.Error(), "canceled") ||
+									strings.Contains(err.Error(), "context deadline exceeded") {
+					arangoResp.StatusCode = 0
+				}
 			}
 			c.lastCoordinatorURL = nil // Change coordinator
 			return arangoResp, fmt.Errorf("Failed performing %s request to %s (attempt %d, started at %s, after %s, error %v)", method, url, i, start.Format(startTSFormat), time.Since(start), err)
@@ -198,7 +203,7 @@ func (c *ArangoClient) requestWithRetry(
 		}
 		return arangoResp, nil
 	}
-	
+
 	for i = 0; i < retries; i++ {
 		aresp, err := op()
 		aresps = append(aresps, aresp)
@@ -207,7 +212,7 @@ func (c *ArangoClient) requestWithRetry(
 			break;
 		}
 	}
-	
+
 	return aresps, errors;
 }
 
