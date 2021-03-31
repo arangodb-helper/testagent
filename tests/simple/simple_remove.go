@@ -85,6 +85,7 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 	}
 
 	// Overall timeout :(
+	t.deleteExistingCounter.failed++
 	t.reportFailure(
 		test.NewFailure("Timed out while trying to remove(%i) document %s in %s.", i, key, collectionName))
 	return maskAny(fmt.Errorf("Timed out while trying to remove(%i) document %s in %s.", i, key, collectionName))
@@ -136,6 +137,7 @@ func (t *simpleTest) removeExistingDocumentWrongRevision(collectionName string, 
 		backoff += backoff
 	}
 
+	t.deleteExistingWrongRevisionCounter.failed++	
 	t.log.Errorf(
 		"Timed out (%i) while removing existing document '%s' wrong revision from '%s'.", i, key, collectionName)
 	return maskAny(fmt.Errorf("Timed out"))
@@ -184,7 +186,8 @@ func (t *simpleTest) removeNonExistingDocument(collectionName string, key string
 		time.Sleep(backoff)
 		backoff += backoff
 	}
-
+	
+	t.deleteNonExistingCounter.failed++
 	t.log.Errorf(
 		"Timed out (%i) while Removing non-existing document '%s' from '%s' ", i, key, collectionName)
 	return maskAny(fmt.Errorf("Timed out"))

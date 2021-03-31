@@ -138,6 +138,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 	}
 
 	// Overall timeout :(
+	t.updateExistingCounter.failed++		
 	t.reportFailure(
 		test.NewFailure("Timed out while trying to update(%i) document %s in %s.", i, key, c.name))
 	return "", maskAny(fmt.Errorf("Timed out while trying to update(%i) document %s in %s.", i, key, c.name))
@@ -196,6 +197,7 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 		backoff += backoff
 	}
 
+	t.updateExistingWrongRevisionCounter.failed++
 	t.reportFailure(
 		test.NewFailure(
 			"Timed out while updating (%i) existing document '%s' wrong revision in collection '%s'",
@@ -255,6 +257,7 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 		backoff += backoff
 	}
 
+	t.updateNonExistingCounter.failed++
 	t.reportFailure(
 		test.NewFailure(
 			"Timeout while updating (%i) non-existing document '%s' in collection '%s'", i, key, collectionName))

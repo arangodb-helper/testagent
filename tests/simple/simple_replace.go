@@ -127,8 +127,8 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 	}
 
 	// Overall timeout :(
-	t.reportFailure(
-		test.NewFailure("Timed out while trying to update(%i) document %s in %s.", i, key, c.name))
+	t.replaceExistingCounter.failed++
+	t.reportFailure(test.NewFailure("Timed out while trying to update(%i) document %s in %s.", i, key, c.name))
 	return "", maskAny(fmt.Errorf("Timed out while trying to update(%i) document %s in %s.", i, key, c.name))
 
 }
@@ -136,34 +136,75 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 // replaceExistingDocumentWrongRevision replaces an existing document with an explicit wrong revision.
 // The operation is expected to fail.
 func (t *simpleTest) replaceExistingDocumentWrongRevision(collectionName string, key, rev string) error {
+
 	operationTimeout := t.OperationTimeout
+	testTimeout := time.Now().Add(operationTimeout * 4)
+
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated name %s", time.Now())
 	hdr := ifMatchHeader(nil, rev)
-	t.log.Infof("Replacing existing document '%s' wrong revision in '%s' (name -> '%s')...", key, collectionName, newName)
+	t.log.Infof(
+		"Replacing existing document '%s' wrong revision in '%s' (name -> '%s')...", key, collectionName, newName)
 	newDoc := UserDocument{
 		Key:   key,
 		Name:  fmt.Sprintf("Replaced named %s", key),
 		Value: rand.Int(),
 		Odd:   rand.Int()%2 == 0,
 	}
-	_, err := t.client.Put(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, newDoc, "", nil, []int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
-	if err[0] != nil {
-		// This is a failure
-		t.replaceExistingWrongRevisionCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to replace existing document '%s' wrong revision in collection '%s': %v", key, collectionName, err[0]))
-		return maskAny(err[0])
+
+	backoff := time.Millisecond * 250
+	i := 0
+
+	for {
+
+		i++
+		if time.Now().After(testTimeout) {
+			break;
+		}
+
+		resp, err := t.client.Put(
+			fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, newDoc, "", nil,
+			[]int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
+
+		if err[0] == nil {
+			if resp[0].StatusCode == 412 {
+				t.replaceExistingWrongRevisionCounter.succeeded++
+				t.log.Infof("Replacing existing document '%s' wrong revision in '%s' (name -> '%s') succeeded", key, collectionName, newName)
+				return nil
+			}
+		} else {
+			// This is a failure
+			t.replaceExistingWrongRevisionCounter.failed++
+			t.reportFailure(
+				test.NewFailure(
+					"Failed to replace existing document '%s' wrong revision in collection '%s': %v",
+					key, collectionName, err[0]))
+			return maskAny(err[0])
+		}
+
+		time.Sleep(backoff)
+		backoff += backoff
 	}
-	t.replaceExistingWrongRevisionCounter.succeeded++
-	t.log.Infof("Replacing existing document '%s' wrong revision in '%s' (name -> '%s') succeeded", key, collectionName, newName)
-	return nil
+
+	t.replaceExistingWrongRevisionCounter.failed++
+	t.reportFailure(
+		test.NewFailure(
+			"Timed out while replacing (%i) existing document '%s' wrong revision in collection '%s'",
+			i, key, collectionName))
+	return maskAny(
+		fmt.Errorf(
+			"Timed out while replacing (%i) existing document '%s' wrong revision in collection '%s'",
+			i, key, collectionName))
+
 }
 
 // replaceNonExistingDocument replaces a non-existing document.
 // The operation is expected to fail.
 func (t *simpleTest) replaceNonExistingDocument(collectionName string, key string) error {
 	operationTimeout := t.OperationTimeout
+	testTimeout := time.Now().Add(operationTimeout * 4)
+
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated non-existing name %s", time.Now())
@@ -174,13 +215,47 @@ func (t *simpleTest) replaceNonExistingDocument(collectionName string, key strin
 		Value: rand.Int(),
 		Odd:   rand.Int()%2 == 0,
 	}
-	if _, err := t.client.Put(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, nil, newDoc, "", nil, []int{404}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, 1); err[0] != nil {
+
+	backoff := time.Millisecond * 250
+	i := 0
+
+	for {
+
+		i++
+		if time.Now().After(testTimeout) {
+			break;
+		}
+
+		resp, err := t.client.Put(
+			fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, nil, newDoc, "", nil,
+			[]int{404}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, 1)
+
+		if err[0] == nil {
+			if resp[0].StatusCode == 404 {
+				t.replaceNonExistingCounter.succeeded++
+				t.log.Infof(
+					"Replacing non-existing document '%s' in '%s' (name -> '%s') succeeded", key, collectionName, newName)
+				return nil
+			}
+		} else {
 		// This is a failure
 		t.replaceNonExistingCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to replace non-existing document '%s' in collection '%s': %v", key, collectionName, err[0]))
-		return maskAny(err[0])
+			t.reportFailure(
+				test.NewFailure(
+					"Failed to replace non-existing document '%s' in collection '%s': %v", key, collectionName, err[0]))
+			return maskAny(err[0])
+		}
+
+		time.Sleep(backoff)
+		backoff += backoff
 	}
-	t.replaceNonExistingCounter.succeeded++
-	t.log.Infof("Replacing non-existing document '%s' in '%s' (name -> '%s') succeeded", key, collectionName, newName)
-	return nil
+
+	t.replaceNonExistingCounter.failed++
+	t.reportFailure(
+		test.NewFailure(
+			"Timeout while replacing (%i) non-existing document '%s' in collection '%s'", i, key, collectionName))
+	return maskAny(
+		fmt.Errorf(
+			"Timeout while replacing (%i) non-existing document '%s' in collection '%s'", i, key, collectionName))
+	
 }
