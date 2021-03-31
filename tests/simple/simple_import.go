@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/arangodb-helper/testagent/service/test"
 )
@@ -33,21 +34,52 @@ func (t *simpleTest) createImportDocument() ([]byte, []UserDocument) {
 // The operation is expected to succeed.
 func (t *simpleTest) importDocuments(c *collection) error {
 	operationTimeout := t.OperationTimeout*4
+	testTimeout := time.Now().Add(operationTimeout * 4)
+	
 	q := url.Values{}
 	q.Set("collection", c.name)
 	q.Set("waitForSync", "true")
 	importData, docs := t.createImportDocument()
-	t.log.Infof("Importing %d documents ('%s' - '%s') into '%s'...", len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name)
-	if _, err := t.client.Post("/_api/import", q, nil, importData, "application/x-www-form-urlencoded", nil, []int{200, 201, 202}, []int{400, 404, 409, 307}, operationTimeout, 1); err != nil {
-		// This is a failure
-		t.importCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to import documents in collection '%s': %v", c.name, err))
-		return maskAny(err[0])
+	t.log.Infof("Importing %d documents ('%s' - '%s') into '%s'...",
+		len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name)
+
+	backoff := time.Millisecond * 250
+	i := 0
+
+	for {
+		
+		i++
+		if time.Now().After(testTimeout) {
+			break;
+		}
+		
+		resp, err := t.client.Post("/_api/import", q, nil, importData, "application/x-www-form-urlencoded", nil,
+			[]int{0, 1, 200, 201, 202, 503}, []int{400, 404, 409, 307}, operationTimeout, 1)
+
+		if err != nil {
+			// This is a failure
+			t.importCounter.failed++
+			t.reportFailure(test.NewFailure("Failed to import documents in collection '%s': %v", c.name, err))
+			return maskAny(err[0])
+		}
+		
+		if resp[0].StatusCode >= 200 && resp[0].StatusCode <= 299 {
+			for _, d := range docs {
+				c.existingDocs[d.Key] = d
+			}
+			t.importCounter.succeeded++
+			t.log.Infof("Importing %d documents ('%s' - '%s') into '%s' succeeded", len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name)			
+			return nil
+		}
+
+		time.Sleep(backoff)
+		backoff += backoff
+		
 	}
-	for _, d := range docs {
-		c.existingDocs[d.Key] = d
-	}
-	t.importCounter.succeeded++
-	t.log.Infof("Importing %d documents ('%s' - '%s') into '%s' succeeded", len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name)
-	return nil
+
+	t.importCounter.failed++
+	t.reportFailure(test.NewFailure("Timed out while importing (%i) documents in collection '%s'", i, c.name))
+	return maskAny(fmt.Errorf("Timed out while importing (%i) documents in collection '%s'", i, c.name))
+	
+
 }
