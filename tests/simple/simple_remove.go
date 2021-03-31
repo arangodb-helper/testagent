@@ -86,8 +86,8 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 
 	// Overall timeout :(
 	t.reportFailure(
-		test.NewFailure("Timed out while trying to create(%i) document %s in %s.", i, key, collectionName))
-	return maskAny(fmt.Errorf("Timed out while trying to create(%i) document %s in %s.", i, key, collectionName))
+		test.NewFailure("Timed out while trying to remove(%i) document %s in %s.", i, key, collectionName))
+	return maskAny(fmt.Errorf("Timed out while trying to remove(%i) document %s in %s.", i, key, collectionName))
 
 }
 
@@ -114,18 +114,14 @@ func (t *simpleTest) removeExistingDocumentWrongRevision(collectionName string, 
 			break;
 		}
 
-		checkRetry := false
-		success := false
 		resp, err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr,
 			[]int{0, 412, 503},	[]int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
 
 		if err[0] == nil {
 			if resp[0].StatusCode == 412 {
-				if success {
-					t.deleteExistingWrongRevisionCounter.succeeded++
-					t.log.Infof("Removing existing document '%s' wrong revision from '%s' succeeded", key, collectionName)
-					return nil
-				}
+				t.deleteExistingWrongRevisionCounter.succeeded++
+				t.log.Infof("Removing existing document '%s' wrong revision from '%s' succeeded", key, collectionName)
+				return nil
 			}
 		} else {
 			t.deleteExistingWrongRevisionCounter.failed++
@@ -139,6 +135,10 @@ func (t *simpleTest) removeExistingDocumentWrongRevision(collectionName string, 
 		time.Sleep(backoff)
 		backoff += backoff
 	}
+
+	t.log.Errorf(
+		"Timed out (%i) while removing existing document '%s' wrong revision from '%s'.", i, key, collectionName)
+	return maskAny(fmt.Errorf("Timed out"))
 
 }
 
@@ -163,8 +163,6 @@ func (t *simpleTest) removeNonExistingDocument(collectionName string, key string
 			break;
 		}
 
-		checkRetry := false
-		success := false
 		resp, err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, nil,
 			[]int{404}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, 1)
 		
@@ -187,7 +185,8 @@ func (t *simpleTest) removeNonExistingDocument(collectionName string, key string
 		backoff += backoff
 	}
 
-	t.log.Errorf("Timed out while trying to read(%i) document %s in %s (&v).", i, key, col)
-	return nil, maskAny(fmt.Errorf("Timed out"))
+	t.log.Errorf(
+		"Timed out (%i) while Removing non-existing document '%s' from '%s' ", i, key, collectionName)
+	return maskAny(fmt.Errorf("Timed out"))
 
 }
