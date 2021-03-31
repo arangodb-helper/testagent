@@ -73,8 +73,8 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 		checkRetry := false
 		success := false
 		resp, err := t.client.Post(
-			fmt.Sprintf("/_api/document/%s", c.name), q, nil, document, "", nil, []int{0, 200, 201, 202, 409, 503},
-			[]int{400, 404, 307}, operationTimeout, 1)
+			fmt.Sprintf("/_api/document/%s", c.name), q, nil, document, "", nil,
+			[]int{0, 1, 200, 201, 202, 409, 503}, []int{400, 404, 307}, operationTimeout, 1)
 
 /*
 	POST /_api/document
@@ -109,7 +109,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 			if resp[0].StatusCode == 503 || resp[0].StatusCode == 409 || resp[0].StatusCode == 0 {
 				// 0, 503 and 409 -> check if accidentally successful
 				checkRetry = true
-			} else { // 20x
+			} else if resp[0].StatusCode != 1 {
 				success = true
 			}
 		} else { // failure
