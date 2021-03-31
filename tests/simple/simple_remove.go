@@ -115,7 +115,7 @@ func (t *simpleTest) removeExistingDocumentWrongRevision(collectionName string, 
 		}
 
 		resp, err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr,
-			[]int{0, 412, 503},	[]int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
+			[]int{0, 1, 412, 503}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
 
 		if err[0] == nil {
 			if resp[0].StatusCode == 412 {
