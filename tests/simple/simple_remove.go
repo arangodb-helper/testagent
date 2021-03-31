@@ -94,36 +94,100 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 // removeExistingDocumentWrongRevision removes an existing document with an explicit wrong revision.
 // The operation is expected to fail.
 func (t *simpleTest) removeExistingDocumentWrongRevision(collectionName string, key, rev string) error {
+
 	operationTimeout := t.OperationTimeout
+	testTimeout := time.Now().Add(operationTimeout * 4)
+
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	hdr := ifMatchHeader(nil, rev)
+
 	t.log.Infof("Removing existing document '%s' wrong revision from '%s'...", key, collectionName)
-	if _, err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, []int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, 1); err[0] != nil {
-		// This is a failure
-		t.deleteExistingWrongRevisionCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to delete existing document '%s' wrong revision in collection '%s': %v", key, collectionName, err[0]))
-		return maskAny(err[0])
+
+	backoff := time.Millisecond * 250
+	i := 0
+
+	for {
+
+		i++
+		if time.Now().After(testTimeout) {
+			break;
+		}
+
+		checkRetry := false
+		success := false
+		resp, err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr,
+			[]int{0, 412, 503},	[]int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
+
+		if err[0] == nil {
+			if resp[0].StatusCode == 412 {
+				if success {
+					t.deleteExistingWrongRevisionCounter.succeeded++
+					t.log.Infof("Removing existing document '%s' wrong revision from '%s' succeeded", key, collectionName)
+					return nil
+				}
+			}
+		} else {
+			t.deleteExistingWrongRevisionCounter.failed++
+			t.reportFailure(
+				test.NewFailure(
+					"Failed to delete existing document '%s' wrong revision in collection '%s': %v",
+					key, collectionName, err[0]))
+			return maskAny(err[0])
+		}
+
+		time.Sleep(backoff)
+		backoff += backoff
 	}
-	t.deleteExistingWrongRevisionCounter.succeeded++
-	t.log.Infof("Removing existing document '%s' wrong revision from '%s' succeeded", key, collectionName)
-	return nil
+
 }
 
 // removeNonExistingDocument removes a non-existing document.
 // The operation is expected to fail.
 func (t *simpleTest) removeNonExistingDocument(collectionName string, key string) error {
+
 	operationTimeout := t.OperationTimeout
+	testTimeout := time.Now().Add(operationTimeout * 4)
+
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	t.log.Infof("Removing non-existing document '%s' from '%s'...", key, collectionName)
-	if _, err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, nil, []int{404}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, 1); err[0] != nil {
-		// This is a failure
-		t.deleteNonExistingCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to delete non-existing document '%s' in collection '%s': %v", key, collectionName, err[0]))
-		return maskAny(err[0])
+
+	backoff := time.Millisecond * 250
+	i := 0
+
+	for {
+
+		i++
+		if time.Now().After(testTimeout) {
+			break;
+		}
+
+		checkRetry := false
+		success := false
+		resp, err := t.client.Delete(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, nil,
+			[]int{404}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, 1)
+		
+		if err[0] == nil {
+			if resp[0].StatusCode == 404 {
+				t.deleteNonExistingCounter.succeeded++
+				t.log.Infof("Removing non-existing document '%s' from '%s' succeeded", key, collectionName)
+				return nil
+			}
+		} else {
+			// This is a failure
+			t.deleteNonExistingCounter.failed++
+			t.reportFailure(
+				test.NewFailure(
+					"Failed to delete non-existing document '%s' in collection '%s': %v", key, collectionName, err[0]))
+			return maskAny(err[0])
+		}
+
+		time.Sleep(backoff)
+		backoff += backoff
 	}
-	t.deleteNonExistingCounter.succeeded++
-	t.log.Infof("Removing non-existing document '%s' from '%s' succeeded", key, collectionName)
-	return nil
+
+	t.log.Errorf("Timed out while trying to read(%i) document %s in %s (&v).", i, key, col)
+	return nil, maskAny(fmt.Errorf("Timed out"))
+
 }
