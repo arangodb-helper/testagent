@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/url"
 	"time"
@@ -183,6 +184,11 @@ func (c *ArangoClient) requestWithRetry(
 		}
 		httpResp, err := client.Do(req)
 		if err != nil {
+			if e, ok := err.(net.Error); ok && e.Timeout() {
+				arangoResp.StatusCode = 0
+			} else {
+				arangoResp.StatusCode = 1
+			}
 			c.lastCoordinatorURL = nil // Change coordinator
 			return arangoResp, fmt.Errorf("Failed performing %s request to %s (attempt %d, started at %s, after %s, error %v)", method, url, i, start.Format(startTSFormat), time.Since(start), err)
 		}
