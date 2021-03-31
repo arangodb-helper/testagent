@@ -159,7 +159,7 @@ func (c *ArangoClient) requestWithRetry(
 	
 	op := func() (ArangoResponse, error) {
 		var arangoResp ArangoResponse 
-		arangoRresp.Attempts++
+		arangoResp.Attempts++
 		start := time.Now()
 		client := createClient(operationTimeout)
 		url, lastCoordinatorURL, err := c.createURL(urlPath, query)

@@ -27,23 +27,23 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 		return nil
 	}
 
-	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
+	operationTimeout := t.OperationTimeout
 
 	t.log.Infof("Creating AQL query cursor for '%s'...", c.name)
 	queryReq := QueryRequest{
-		//		Query:     fmt.Sprintf("FOR d IN %s LIMIT 10 RETURN {d, s: SLEEP(10)}", collectionName),
+		//    Query:     fmt.Sprintf("FOR d IN %s LIMIT 10 RETURN {d, s: SLEEP(10)}", collectionName),
 		Query:     fmt.Sprintf("FOR d IN %s LIMIT 10 RETURN d", c.name),
 		BatchSize: 1,
 		Count:     false,
 	}
 	var cursorResp CursorResponse
 	createReqTime := time.Now()
-	createResp, err := t.client.Post("/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{201}, []int{200, 202, 400, 404, 409, 307}, operationTimeout, retryTimeout)
-	if err != nil {
+	createResp, err := t.client.Post("/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{201}, []int{200, 202, 400, 404, 409, 307}, operationTimeout, 1)
+	if err[0] != nil {
 		// This is a failure
 		t.queryCreateCursorCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to create AQL cursor in collection '%s': %v", c.name, err))
-		return maskAny(err)
+		t.reportFailure(test.NewFailure("Failed to create AQL cursor in collection '%s': %v", c.name, err[0]))
+		return maskAny(err[0])
 	}
 	t.queryCreateCursorCounter.succeeded++
 	t.log.Infof("Creating AQL cursor for collection '%s' succeeded", c.name)
@@ -61,25 +61,25 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 		time.Sleep(time.Second * 5)
 
 		// Fetch next results
-		getResp, err := t.client.Put("/_api/cursor/"+cursorResp.ID, nil, nil, nil, "", &cursorResp, []int{200, 404}, []int{201, 202, 400, 409, 307}, operationTimeout, retryTimeout)
-		if err != nil {
+		getResp, err := t.client.Put("/_api/cursor/"+cursorResp.ID, nil, nil, nil, "", &cursorResp, []int{200, 404}, []int{201, 202, 400, 409, 307}, operationTimeout, 1)
+		if err[0] != nil {
 			// This is a failure
 			t.queryNextBatchCounter.failed++
 			//t.reportFailure(test.NewFailure("Failed to read next AQL cursor batch in collection '%s': %v", c.name, err))
-			t.log.Errorf("Failed to read next AQL cursor batch in collection '%s': %v", c.name, err)
-			return maskAny(err)
+			t.log.Errorf("Failed to read next AQL cursor batch in collection '%s': %v", c.name, err[0])
+			return maskAny(err[0])
 		}
 
 		// Check uptime of coordinator, if too short it has been rebooted since the initial query call.
-		uptime, err := t.getUptime(createResp.CoordinatorURL)
+		uptime, oerr := t.getUptime(createResp[0].CoordinatorURL)
 		if err != nil {
-			t.log.Errorf("Failed to get uptime of server '%s': %v", createResp.CoordinatorURL, err)
+			t.log.Errorf("Failed to get uptime of server '%s': %v", createResp[0].CoordinatorURL, oerr)
 		} else {
-			t.log.Infof("Coordinator '%s' is up for %s", createResp.CoordinatorURL, uptime)
+			t.log.Infof("Coordinator '%s' is up for %s", createResp[0].CoordinatorURL, uptime)
 		}
 
 		// Check status code
-		if getResp.StatusCode == 404 {
+		if getResp[0].StatusCode == 404 {
 
 			// Check uptime
 			if uptime < time.Since(createReqTime) {
@@ -87,13 +87,13 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 				// since this probably means that the coordinator is not yet up again.
 				// Coordinator rebooted, we expect this to fail now
 				t.queryNextBatchNewCoordinatorCounter.succeeded++
-				t.log.Infof("Reading next batch AQL cursor failed with 404, expected because of coordinator rebooted in between (%s)", createResp.CoordinatorURL)
+				t.log.Infof("Reading next batch AQL cursor failed with 404, expected because of coordinator rebooted in between (%s)", createResp[0].CoordinatorURL)
 				return nil
 			}
 
 			// Coordinator remains the same, this is a failure.
 			t.queryNextBatchCounter.failed++
-			t.reportFailure(test.NewFailure("Failed to read next AQL cursor batch in collection '%s' with same coordinator (%s): status 404", c.name, createResp.CoordinatorURL))
+			t.reportFailure(test.NewFailure("Failed to read next AQL cursor batch in collection '%s' with same coordinator (%s): status 404", c.name, createResp[0].CoordinatorURL))
 			return maskAny(fmt.Errorf("Status code 404"))
 		}
 
@@ -119,7 +119,7 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 		return nil
 	}
 
-	operationTimeout, retryTimeout := t.OperationTimeout*2, t.RetryTimeout*2
+	operationTimeout := t.OperationTimeout*2
 
 	t.log.Infof("Creating long running AQL query for '%s'...", c.name)
 	queryReq := QueryRequest{
@@ -128,11 +128,11 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 		Count:     false,
 	}
 	var cursorResp CursorResponse
-	if _, err := t.client.Post("/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{201}, []int{200, 202, 400, 404, 409, 307}, operationTimeout, retryTimeout); err != nil {
+	if _, err := t.client.Post("/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{201}, []int{200, 202, 400, 404, 409, 307}, operationTimeout, 1); err[0] != nil {
 		// This is a failure
 		t.queryLongRunningCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to create long running AQL cursor in collection '%s': %v", c.name, err))
-		return maskAny(err)
+		t.reportFailure(test.NewFailure("Failed to create long running AQL cursor in collection '%s': %v", c.name, err[0]))
+		return maskAny(err[0])
 	}
 	resultCount := len(cursorResp.Result)
 	t.queryLongRunningCounter.succeeded++
@@ -150,7 +150,7 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 // getUptime queries the uptime of the given coordinator.
 func (t *simpleTest) getUptime(coordinatorURL string) (time.Duration, error) {
 	t.log.Infof("Checking uptime of '%s'", coordinatorURL)
-	operationTimeout, retryTimeout := t.OperationTimeout*2, t.RetryTimeout*2
+	operationTimeout := t.OperationTimeout*2
 	var statsResp struct {
 		Server struct {
 			Uptime float64 `json:"uptime"`
@@ -160,10 +160,10 @@ func (t *simpleTest) getUptime(coordinatorURL string) (time.Duration, error) {
 		t.log.Errorf("Failed to set coordinator URL to '%s': %v", coordinatorURL, err)
 		return 0, maskAny(err)
 	}
-	if resp, err := t.client.Get("/_admin/statistics", nil, nil, &statsResp, []int{200}, []int{201, 202, 400, 404, 409, 307}, operationTimeout, retryTimeout); err != nil {
-		return 0, maskAny(fmt.Errorf("Failed to query uptime of '%s': %v", resp.CoordinatorURL, err))
-	} else if resp.CoordinatorURL != coordinatorURL {
-		return 0, maskAny(fmt.Errorf("Failed to query uptime of '%s': got response from other coordinator '%s'", coordinatorURL, resp.CoordinatorURL))
+	if resp, err := t.client.Get("/_admin/statistics", nil, nil, &statsResp, []int{200}, []int{201, 202, 400, 404, 409, 307}, operationTimeout, 1); err[0] != nil {
+		return 0, maskAny(fmt.Errorf("Failed to query uptime of '%s': %v", resp[0].CoordinatorURL, err[0]))
+	} else if resp[0].CoordinatorURL != coordinatorURL {
+		return 0, maskAny(fmt.Errorf("Failed to query uptime of '%s': got response from other coordinator '%s'", coordinatorURL, resp[0].CoordinatorURL))
 	}
 
 	return time.Second * time.Duration(statsResp.Server.Uptime), nil

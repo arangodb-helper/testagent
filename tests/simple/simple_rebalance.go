@@ -6,13 +6,13 @@ import "github.com/arangodb-helper/testagent/service/test"
 // The operation is expected to succeed.
 func (t *simpleTest) rebalanceShards() error {
 	opts := struct{}{}
-	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
+	operationTimeout := t.OperationTimeout
 	t.log.Infof("Rebalancing shards...")
-	if _, err := t.client.Post("/_admin/cluster/rebalanceShards", nil, nil, opts, "", nil, []int{202}, []int{400, 403, 503}, operationTimeout, retryTimeout); err != nil {
+	if _, err := t.client.Post("/_admin/cluster/rebalanceShards", nil, nil, opts, "", nil, []int{202}, []int{400, 403, 503}, operationTimeout, 1); err[0] != nil {
 		// This is a failure
 		t.rebalanceShardsCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to rebalance shards: %v", err))
-		return maskAny(err)
+		return maskAny(err[0])
 	}
 	t.rebalanceShardsCounter.succeeded++
 	t.log.Infof("Rebalancing shards succeeded")

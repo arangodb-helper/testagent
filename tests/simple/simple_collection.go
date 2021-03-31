@@ -22,18 +22,18 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 	// For now, we increase the timeout to 5 minutes, since the cluster-internal
 	// timeout is 4 minutes:
 	operationTimeout := time.Minute * 5
-	retryTimeout := time.Minute * 5
+
 	t.log.Infof("Creating collection '%s' with numberOfShards=%d, replicationFactor=%d...", c.name, numberOfShards, replicationFactor)
-	if resp, err := t.client.Post("/_api/collection", nil, nil, opts, "", nil, []int{200, 409}, []int{400, 404, 307, 500}, operationTimeout, retryTimeout); err != nil {
+	if resp, err := t.client.Post("/_api/collection", nil, nil, opts, "", nil, []int{200, 409}, []int{400, 404, 307, 500}, operationTimeout, 1); err != nil {
 		// This is a failure
-		t.reportFailure(test.NewFailure("Failed to create collection '%s': %v", c.name, err))
-		return maskAny(err)
-	} else if resp.StatusCode == 409 {
+		t.reportFailure(test.NewFailure("Failed to create collection '%s': %v", c.name, err[0]))
+		return maskAny(err[0])
+	} else if resp[0].StatusCode == 409 {
 		// Duplicate name, check if that is correct
 		if exists, checkErr := t.collectionExists(c); checkErr != nil {
 			t.log.Errorf("Failed to check if collection exists: %v", checkErr)
 			t.reportFailure(test.NewFailure("Failed to create collection '%s': %v and cannot check existance: %v", c.name, err, checkErr))
-			return maskAny(err)
+			return maskAny(err[0])
 		} else if !exists {
 			// Collection has not been created, so 409 status is really wrong
 			t.reportFailure(test.NewFailure("Failed to create collection '%s': 409 reported but collection does not exist", c.name))
@@ -47,19 +47,19 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 // removeCollection remove an existing collection.
 // The operation is expected to succeed.
 func (t *simpleTest) removeExistingCollection(c *collection) error {
-	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
+	operationTimeout := t.OperationTimeout
 	t.log.Infof("Removing collection '%s'...", c.name)
-	resp, err := t.client.Delete("/_api/collection/"+c.name, nil, nil, []int{200, 404}, []int{400, 409, 307}, operationTimeout, retryTimeout)
+	resp, err := t.client.Delete("/_api/collection/"+c.name, nil, nil, []int{200, 404}, []int{400, 409, 307}, operationTimeout, 1)
 	if err != nil {
 		// This is a failure
 		t.removeExistingCollectionCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to remove collection '%s': %v", c.name, err))
-		return maskAny(err)
-	} else if resp.StatusCode == 404 {
+		return maskAny(err[0])
+	} else if resp[0].StatusCode == 404 {
 		// Collection not found.
 		// This can happen if the first attempt timed out, but did actually succeed.
 		// So we accept this is there are multiple attempts.
-		if resp.Attempts <= 1 {
+		if resp[0].Attempts <= 1 {
 			// Not enough attempts, this is a failure
 			t.removeExistingCollectionCounter.failed++
 			t.reportFailure(test.NewFailure("Failed to remove collection '%s': got 404 after only 1 attempt", c.name))
@@ -74,12 +74,12 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 
 // collectionExists tries to fetch information about the collection to see if it exists.
 func (t *simpleTest) collectionExists(c *collection) (bool, error) {
-	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
+	operationTimeout := t.OperationTimeout
 	t.log.Infof("Checking collection '%s'...", c.name)
-	if resp, err := t.client.Get("/_api/collection/"+c.name, nil, nil, nil, []int{200, 404}, []int{400, 409, 307}, operationTimeout, retryTimeout); err != nil {
+	if resp, err := t.client.Get("/_api/collection/"+c.name, nil, nil, nil, []int{200, 404}, []int{400, 409, 307}, operationTimeout, 1); err != nil {
 		// This is a failure
-		return false, maskAny(err)
-	} else if resp.StatusCode == 404 {
+		return false, maskAny(err[0])
+	} else if resp[0].StatusCode == 404 {
 		// Not found
 		return false, nil
 	} else {

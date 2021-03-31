@@ -32,17 +32,17 @@ func (t *simpleTest) createImportDocument() ([]byte, []UserDocument) {
 // importDocuments imports a bulk set of documents.
 // The operation is expected to succeed.
 func (t *simpleTest) importDocuments(c *collection) error {
-	operationTimeout, retryTimeout := t.OperationTimeout*4, t.RetryTimeout*4
+	operationTimeout := t.OperationTimeout*4
 	q := url.Values{}
 	q.Set("collection", c.name)
 	q.Set("waitForSync", "true")
 	importData, docs := t.createImportDocument()
 	t.log.Infof("Importing %d documents ('%s' - '%s') into '%s'...", len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name)
-	if _, err := t.client.Post("/_api/import", q, nil, importData, "application/x-www-form-urlencoded", nil, []int{200, 201, 202}, []int{400, 404, 409, 307}, operationTimeout, retryTimeout); err != nil {
+	if _, err := t.client.Post("/_api/import", q, nil, importData, "application/x-www-form-urlencoded", nil, []int{200, 201, 202}, []int{400, 404, 409, 307}, operationTimeout, 1); err != nil {
 		// This is a failure
 		t.importCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to import documents in collection '%s': %v", c.name, err))
-		return maskAny(err)
+		return maskAny(err[0])
 	}
 	for _, d := range docs {
 		c.existingDocs[d.Key] = d

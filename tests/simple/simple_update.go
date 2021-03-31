@@ -8,9 +8,34 @@ import (
 	"github.com/arangodb-helper/testagent/service/test"
 )
 
-// updateExistingDocument updates an existing document with an optional explicit revision.
-// The operation is expected to succeed.
+func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (string, error) {
 
+	operationTimeout := t.OperationTimeout
+	testTimeout := time.Now().Add(operationTimeout * 4)
+
+	q := url.Values{}
+	q.Set("waitForSync", "true")
+	newName := fmt.Sprintf("Updated name %s", time.Now())
+
+	hdr, ifMatchStatus, explicitRev := createRandomIfMatchHeader(nil, rev)
+	t.log.Infof("Updating existing document '%s' (%s) in '%s' (name -> '%s')...", key, ifMatchStatus, c.name, newName)
+	delta := map[string]interface{}{
+		"name": newName,
+	}
+	doc := c.existingDocs[key]
+	backoff := time.Millisecond * 250
+	i := 0
+
+	for true {
+		i++
+		if time.Now().After(testTimeout) {
+			break;
+		}
+
+		checkRetry := false
+		success := false
+		update, err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", c.name, key), q,
+			hdr, delta, "", nil, []int{0, 200, 201, 202, 412, 503}, []int{400, 404, 409, 307}, operationTimeout, 1)
 
 /**
  *  20x, if document was replaced
@@ -23,7 +48,7 @@ import (
  *    or nothing might have happened at all,
  *    or any of this might still happen in the future
  *  connection refused with coordinator ==> simply try again with another
- *  connection error ("broken pipe") with coordinator, to be treated like 
+ *  connection error ("broken pipe") with coordinator, to be treated like
  *    a timeout
  *  503, cluster internal mishap, all bets off
  *  If first request gives correct result: OK
@@ -36,68 +61,93 @@ import (
  *      treat as if op has not worked and go to retry loop
  */
 
-func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (string, error) {
-	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
-	q := url.Values{}
-	q.Set("waitForSync", "true")
-	newName := fmt.Sprintf("Updated name %s", time.Now())
-	hdr, ifMatchStatus, explicitRev := createRandomIfMatchHeader(nil, rev)
-	t.log.Infof("Updating existing document '%s' (%s) in '%s' (name -> '%s')...", key, ifMatchStatus, c.name, newName)
-	delta := map[string]interface{}{
-		"name": newName,
-	}
-	doc := c.existingDocs[key]
-	update, err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", c.name, key), q,
-		hdr, delta, "", nil, []int{200, 201, 202, 412}, []int{400, 404, 307}, operationTimeout, 1)
-	if err != nil {
-		// This is a failure
-		t.lastRequestErr = true
-		t.updateExistingCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to update existing document '%s' (%s) in collection '%s': %v", key, ifMatchStatus, c.name, err))
-		return "", maskAny(err)
-	} else if update.StatusCode == 412 {
-		if explicitRev || t.lastRequestErr {
-		t.lastRequestErr = false
-			// Expected revision did NOT match.
-			// This may happen when a coordinator succeeds in the first attempt but we've already timed out.
-			// Check document against what we expect after the update.
+		if err[0] == nil { // we have a response
+			if update[0].StatusCode == 412 {
+				if (!explicitRev && i > 1) || explicitRev {
+					checkRetry = true
+				} else {
+					// We got a 412 without asking for an explicit revision on first attempt
+					t.updateExistingCounter.failed++
+					t.reportFailure(
+						test.NewFailure(
+							"Failed to update existing document '%s' (%s) in collection '%s': got 412 but did not set If-Match",
+							key, ifMatchStatus, c.name))
+					return "", maskAny(
+						fmt.Errorf(
+							"Failed to update existing document '%s' (%s) in collection '%s': got 412 but did not set If-Match",
+							key, ifMatchStatus, c.name))
+				}
+			} else if update[0].StatusCode == 503 || update[0].StatusCode == 0 {
+				// 503 and 412 -> check if accidentally successful
+				checkRetry = true
+			} else {
+				success = true
+			}
+		}	else { // failure
+			t.updateExistingCounter.failed++
+			t.reportFailure(
+				test.NewFailure("Failed to update existing document '%s' (%s) in collection '%s': %v",
+					key, ifMatchStatus, c.name, err[0]))
+			return "", maskAny(err[0])
+		}
+
+		if checkRetry {
 			expected := c.existingDocs[key]
 			expected.Name = newName
-			if match, rev, err := t.isDocumentEqualTo(c, key, expected); err != nil {
-				// Failed to read document. This is a failure.
+			d, e := readDocument(t, c.name, key, "", 240, true)
+
+			if e == nil { // document does not exist
+				if d == expected {
+					success = true
+				} else {
+					t.updateExistingCounter.failed++
+					t.reportFailure(
+						test.NewFailure(
+							"Failed to update existing document '%s' (%s) in collection '%s': got 412 but has not been updated",
+							key, ifMatchStatus, c.name))
+					return "", maskAny(fmt.Errorf(
+						"Failed to update existing document '%s' (%s) in collection '%s': got 412 but has not been updated",
+						key, ifMatchStatus, c.name))
+				}
+			} else { // should never get here
 				t.updateExistingCounter.failed++
-				t.reportFailure(test.NewFailure("Failed to read existing document '%s' (%s) in collection '%s' that should have been updated: %v", key, ifMatchStatus, c.name, err))
-				return "", maskAny(err)
-			} else if !match {
-				// The document does not match what we expect after the update. This is a failure.
-				t.updateExistingCounter.failed++
-				t.reportFailure(test.NewFailure("Failed to update existing document '%s' (%s) in collection '%s': got 412 but has not been updated", key, ifMatchStatus, c.name))
-				return "", maskAny(fmt.Errorf("Failed to update existing document '%s' (%s) in collection '%s': got 412 but has not been updated", key, ifMatchStatus, c.name))
-			} else {
-				// Match found, document has been updated after all
-				update.Rev = rev
+				t.reportFailure(
+					test.NewFailure(
+						"Failed to read existing document '%s' (%s) in collection '%s' that should have been updated: %v",
+						key, ifMatchStatus, c.name, e))
+				return "", maskAny(e)
 			}
-		} else {
-			// We got a 412 without asking for an explicit revision. This is a failure.
-			t.lastRequestErr = false
-			t.updateExistingCounter.failed++
-			t.reportFailure(test.NewFailure("Failed to update existing document '%s' (%s) in collection '%s': got 412 but did not set If-Match", key, ifMatchStatus, c.name))
-			return "", maskAny(fmt.Errorf("Failed to update existing document '%s' (%s) in collection '%s': got 412 but did not set If-Match", key, ifMatchStatus, c.name))
 		}
+
+		if success {
+			// Update memory
+			doc.Name = newName
+			doc.rev = update[0].Rev
+			c.existingDocs[key] = doc
+			t.updateExistingCounter.succeeded++
+			t.log.Infof(
+				"Updating existing document '%s' (%s) in '%s' (name -> '%s') succeeded", key, ifMatchStatus, c.name, newName)
+			return update[0].Rev, nil
+		}
+
+		t.log.Errorf("Failure %i to update existing document '%s' (%s) in collection '%s': got %i, retrying",
+			i, key, c.name, update[0].StatusCode)
+		time.Sleep(backoff)
+		backoff += backoff
+
 	}
-	// Update internal doc
-	doc.Name = newName
-	doc.rev = update.Rev
-	c.existingDocs[key] = doc
-	t.updateExistingCounter.succeeded++
-	t.log.Infof("Updating existing document '%s' (%s) in '%s' (name -> '%s') succeeded", key, ifMatchStatus, c.name, newName)
-	return update.Rev, nil
+
+	// Overall timeout :(
+	t.reportFailure(
+		test.NewFailure("Timed out while trying to update(%i) document %s in %s.", i, key, c.name))
+	return "", maskAny(fmt.Errorf("Timed out while trying to update(%i) document %s in %s.", i, key, c.name))
+
 }
 
 // updateExistingDocumentWrongRevision updates an existing document with an explicit wrong revision.
 // The operation is expected to fail.
 func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, key, rev string) error {
-	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
+	operationTimeout := t.OperationTimeout
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated name %s", time.Now())
@@ -106,12 +156,12 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 	delta := map[string]interface{}{
 		"name": newName,
 	}
-	_, err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, delta, "", nil, []int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, retryTimeout)
-	if err != nil {
+	_, err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, delta, "", nil, []int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
+	if err[0] != nil {
 		// This is a failure
 		t.updateExistingWrongRevisionCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to update existing document '%s' wrong revision in collection '%s': %v", key, collectionName, err))
-		return maskAny(err)
+		t.reportFailure(test.NewFailure("Failed to update existing document '%s' wrong revision in collection '%s': %v", key, collectionName, err[0]))
+		return maskAny(err[0])
 	}
 	t.updateExistingWrongRevisionCounter.succeeded++
 	t.log.Infof("Updating existing document '%s' wrong revision in '%s' (name -> '%s') succeeded", key, collectionName, newName)
@@ -121,7 +171,7 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 // updateNonExistingDocument updates a non-existing document.
 // The operation is expected to fail.
 func (t *simpleTest) updateNonExistingDocument(collectionName string, key string) error {
-	operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
+	operationTimeout := t.OperationTimeout
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated non-existing name %s", time.Now())
@@ -129,11 +179,11 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 	delta := map[string]interface{}{
 		"name": newName,
 	}
-	if _, err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, nil, delta, "", nil, []int{404}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, retryTimeout); err != nil {
+	if _, err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, nil, delta, "", nil, []int{404}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, 1); err[0] != nil {
 		// This is a failure
 		t.updateNonExistingCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to update non-existing document '%s' in collection '%s': %v", key, collectionName, err))
-		return maskAny(err)
+		t.reportFailure(test.NewFailure("Failed to update non-existing document '%s' in collection '%s': %v", key, collectionName, err[0]))
+		return maskAny(err[0])
 	}
 	t.updateNonExistingCounter.succeeded++
 	t.log.Infof("Updating non-existing document '%s' in '%s' (name -> '%s') succeeded", key, collectionName, newName)
