@@ -196,7 +196,7 @@ func (c *ArangoClient) requestWithRetry(
 				}
 			}
 			c.lastCoordinatorURL = nil // Change coordinator
-			return arangoResp, fmt.Errorf("Failed performing %s request to %s (attempt %d, started at %s, after %s, error %v)", method, url, i, start.Format(startTSFormat), time.Since(start), err)
+			return arangoResp, nil
 		}
 		// Process response
 		if err := c.handleResponse(httpResp, method, url, result, &arangoResp, successStatusCodes, failureStatusCodes, start); err != nil {
