@@ -88,7 +88,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 			d, e := readDocument(t, c.name, key, "", 240, true)
 
 			if e == nil { // document does not exist
-				if d == expected {
+				if d.Equals(expected) {
 					success = true
 				} else {
 					t.replaceExistingCounter.failed++

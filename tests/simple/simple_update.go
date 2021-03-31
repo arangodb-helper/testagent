@@ -26,7 +26,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 	backoff := time.Millisecond * 250
 	i := 0
 
-	for true {
+	for  {
 		i++
 		if time.Now().After(testTimeout) {
 			break;
@@ -97,7 +97,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 			d, e := readDocument(t, c.name, key, "", 240, true)
 
 			if e == nil { // document does not exist
-				if d == expected {
+				if d.Equals(expected) {
 					success = true
 				} else {
 					t.updateExistingCounter.failed++

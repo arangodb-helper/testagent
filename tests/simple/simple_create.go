@@ -8,7 +8,7 @@ import (
 	"github.com/arangodb-helper/testagent/service/test"
 )
 
-func readDocument(t *simpleTest, col string, key string, rev string, seconds int, mustExist bool) (interface{}, error) {
+func readDocument(t *simpleTest, col string, key string, rev string, seconds int, mustExist bool) (*UserDocument, error) {
 	backoff := time.Millisecond * 100
 	i := 0
 	url := fmt.Sprintf("/_api/document/%s/%s", col, key)
@@ -21,7 +21,7 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 			break;
 		}
 		hdr := ifMatchHeader(nil, rev)
-		var result interface{}
+		var result *UserDocument
 		res, err := t.client.Get(
 			url, nil, hdr, &result, []int{200, 201, 202, 404}, []int{400, 307}, operationTimeout, 1)
 
@@ -50,7 +50,7 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 
 }
 
-func (t *simpleTest) createDocument(c *collection, document interface{}, key string) (string, error) {
+func (t *simpleTest) createDocument(c *collection, document UserDocument, key string) (string, error) {
 
 	operationTimeout := t.OperationTimeout
 	testTimeout := time.Now().Add(operationTimeout * 4)
@@ -121,7 +121,7 @@ func (t *simpleTest) createDocument(c *collection, document interface{}, key str
 		if checkRetry {
 			d, e := readDocument(t, c.name, key, "", 120, false)
 			// replace == with Equals
-			if e == nil && d == document {
+			if e == nil && d.Equals(document) {
 				success = true
 			}
 		}
