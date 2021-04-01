@@ -16,9 +16,9 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated name %s", time.Now())
+	url := fmt.Sprintf("/_api/document/%s/%s", c.name, key)
 
 	hdr, ifMatchStatus, explicitRev := createRandomIfMatchHeader(nil, rev)
-	t.log.Infof("Updating existing document '%s' (%s) in '%s' (name -> '%s')...", key, ifMatchStatus, c.name, newName)
 	delta := map[string]interface{}{
 		"name": newName,
 	}
@@ -34,8 +34,11 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 
 		checkRetry := false
 		success := false
-		update, err := t.client.Patch(fmt.Sprintf("/_api/document/%s/%s", c.name, key), q,
-			hdr, delta, "", nil, []int{0, 200, 201, 202, 412, 503}, []int{400, 404, 409, 307}, operationTimeout, 1)
+		t.log.Infof(
+			"Updating (%i) existing document '%s' (%s) in '%s' (name -> '%s')...",
+			i, key, ifMatchStatus, c.name, newName)
+		update, err := t.client.Patch(url, q,	hdr, delta, "", nil, []int{0, 200, 201, 202, 412, 503},
+			[]int{400, 404, 409, 307}, operationTimeout, 1)
 
 /**
  *  20x, if document was replaced
@@ -126,7 +129,8 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 			c.existingDocs[key] = doc
 			t.updateExistingCounter.succeeded++
 			t.log.Infof(
-				"Updating existing document '%s' (%s) in '%s' (name -> '%s') succeeded", key, ifMatchStatus, c.name, newName)
+				"Updating existing document '%s' (%s) in '%s' (name -> '%s') succeeded",
+				key, ifMatchStatus, c.name, newName)
 			return update[0].Rev, nil
 		}
 
@@ -138,7 +142,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 	}
 
 	// Overall timeout :(
-	t.updateExistingCounter.failed++		
+	t.updateExistingCounter.failed++
 	t.reportFailure(
 		test.NewFailure("Timed out while trying to update(%i) document %s in %s.", i, key, c.name))
 	return "", maskAny(fmt.Errorf("Timed out while trying to update(%i) document %s in %s.", i, key, c.name))
@@ -155,12 +159,10 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated name %s", time.Now())
 	hdr := ifMatchHeader(nil, rev)
-	t.log.Infof(
-		"Updating existing document '%s' wrong revision in '%s' (name -> '%s')...", key, collectionName, newName)
 	delta := map[string]interface{}{
 		"name": newName,
 	}
-	
+	url := fmt.Sprintf("/_api/document/%s/%s", collectionName, key)
 	backoff := time.Millisecond * 250
 	i := 0
 
@@ -171,9 +173,11 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 			break;
 		}
 
-		resp, err := t.client.Patch(
-			fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, delta, "", nil,
-			[]int{0, 1, 412, 503}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
+		t.log.Infof(
+			"Updating (%i) existing document '%s' wrong revision in '%s' (name -> '%s')...",
+			i, key, collectionName, newName)
+		resp, err := t.client.Patch(url, q, hdr, delta, "", nil, []int{0, 1, 412, 503},
+			[]int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
 
 		if err[0] == nil {
 			if resp[0].StatusCode == 412 {
@@ -205,7 +209,7 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 	return maskAny(
 		fmt.Errorf("Timed out while updating (%i) existing document '%s' wrong revision in collection '%s'",
 			i, key, collectionName))
-		
+
 }
 
 // updateNonExistingDocument updates a non-existing document.
@@ -218,24 +222,24 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated non-existing name %s", time.Now())
-	t.log.Infof("Updating non-existing document '%s' in '%s' (name -> '%s')...", key, collectionName, newName)
 	delta := map[string]interface{}{
 		"name": newName,
 	}
-
+	url := fmt.Sprintf("/_api/document/%s/%s", collectionName, key)
 	backoff := time.Millisecond * 250
 	i := 0
-	
+
 	for {
 
 		i++
 		if time.Now().After(testTimeout) {
 			break;
 		}
-		
-		resp, err := t.client.Patch(
-			fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, nil, delta, "", nil,
-			[]int{0, 1, 404, 503}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, 1)
+
+		t.log.Infof(
+			"Updating (%i) non-existing document '%s' in '%s' (name -> '%s')...", i, key, collectionName, newName)
+		resp, err := t.client.Patch(url, q, nil, delta, "", nil, []int{0, 1, 404, 503},
+			[]int{200, 201, 202, 400, 412, 307}, operationTimeout, 1)
 
 		if err[0] == nil {
 			if resp[0].StatusCode == 404 {
@@ -264,5 +268,5 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 	return maskAny(
 		fmt.Errorf(
 			"Timeout while updating (%i) non-existing document '%s' in collection '%s'", i, key, collectionName))
-	
+
 }

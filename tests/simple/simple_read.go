@@ -18,16 +18,15 @@ func (t *simpleTest) readExistingDocument(
 	i := 0
 	url := fmt.Sprintf("/_api/document/%s/%s", c.name, key)
 
-
 	var result UserDocument
 	hdr, ifMatchStatus, _ := createRandomIfMatchHeader(nil, rev)
 
 	for {
 
-		i++;
 		if time.Now().After(testTimeout) {
 			break;
 		}
+		i++;
 
 		t.log.Infof("Reading existing document '%s' (%s) from '%s'...", key, ifMatchStatus, c.name)
 		resp, err := t.client.Get(
@@ -75,7 +74,7 @@ func (t *simpleTest) readExistingDocument(
 // The operation is expected to fail.
 func (t *simpleTest) readExistingDocumentWrongRevision(
 	collectionName string, key, rev string, updateRevision bool) error {
-	
+
 	operationTimeout := t.OperationTimeout / 5
 	testTimeout := time.Now().Add(operationTimeout)
 
@@ -87,11 +86,11 @@ func (t *simpleTest) readExistingDocumentWrongRevision(
 
 	for {
 
-		i++
 		if time.Now().After(testTimeout) {
 			break
 		}
-		
+		i++
+
 		t.log.Infof("Reading (%i) existing document '%s' wrong revision from '%s'...", i, key, collectionName)
 		resp , err := t.client.Get(
 			url, nil, hdr, &result, []int{0, 1, 412, 503}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
@@ -122,7 +121,7 @@ func (t *simpleTest) readExistingDocumentWrongRevision(
 	return maskAny(fmt.Errorf(
 		"Timed out (%i) while reading existing document '%s' wrong revision in collection '%s'",
 		i, key, collectionName))
-	
+
 }
 
 // readNonExistingDocument reads a non-existing document.
@@ -143,11 +142,11 @@ func (t *simpleTest) readNonExistingDocument(collectionName string, key string) 
 			break
 		}
 		i++
-	
+
 		t.log.Infof("Reading (%i) non-existing document '%s' from '%s'...", i, key, collectionName)
 		resp, err := t.client.Get(
 			url, nil, nil, &result,[]int{0, 1, 404, 503}, []int{200, 201, 202, 400, 307}, operationTimeout, 1)
-		
+
 		if err[0] != nil {
 			// This is a failure
 			t.readNonExistingCounter.failed++
@@ -159,12 +158,12 @@ func (t *simpleTest) readNonExistingDocument(collectionName string, key string) 
 			t.log.Infof("Reading non-existing document '%s' from '%s' succeeded", key, collectionName)
 			return nil
 		}
-		
+
 		time.Sleep(backoff)
 		backoff += backoff
 
 	}
-		
+
 	t.readNonExistingCounter.failed++
 	t.reportFailure(test.NewFailure(
 		"Timed out while reading non-existing document '%s' in collection '%s'", i, key, collectionName))

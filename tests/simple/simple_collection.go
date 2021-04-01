@@ -24,8 +24,6 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 	operationTimeout := time.Minute
 	testTimeout := time.Now().Add(operationTimeout * 5)
 
-	t.log.Infof("Creating collection '%s' with numberOfShards=%d, replicationFactor=%d...", c.name, numberOfShards, replicationFactor)
-
 	backoff := time.Millisecond * 250
 	i := 0
 
@@ -40,13 +38,15 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 		success := false
 		shouldNotBeThere := false
 
+		t.log.Infof("Creating (%i) collection '%s' with numberOfShards=%d, replicationFactor=%d...",
+			i, c.name, numberOfShards, replicationFactor)
 		resp, err := t.client.Post(
 			"/_api/collection", nil, nil, opts, "", nil, []int{0, 1, 200, 409, 500, 503},
 			[]int{400, 404, 307}, operationTimeout, 1)
 
 		// 200: good
 		// 500: collection couldn't be finished. most likely, because
-		
+
 		if err[0] == nil {
 			if resp[0].StatusCode == 503 || resp[0].StatusCode == 409 || resp[0].StatusCode == 0 {
 				checkRetry = true

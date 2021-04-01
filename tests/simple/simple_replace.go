@@ -17,18 +17,18 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated name %s", time.Now())
 	hdr, ifMatchStatus, explicitRev := createRandomIfMatchHeader(nil, rev)
-	t.log.Infof("Replacing existing document '%s' (%s) in '%s' (name -> '%s')...", key, ifMatchStatus, c.name, newName)
 	newDoc := UserDocument{
 		Key:   key,
 		Name:  fmt.Sprintf("Replaced named %s", key),
 		Value: rand.Int(),
 		Odd:   rand.Int()%2 == 0,
 	}
+	url := fmt.Sprintf("/_api/document/%s/%s", c.name, key)
 
 	backoff := time.Millisecond * 250
 	i := 0
 
-	for true {
+	for {
 
 		i++
 		if time.Now().After(testTimeout) {
@@ -37,9 +37,10 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 
 		checkRetry := false
 		success := false
+		t.log.Infof("Replacing (%i) existing document '%s' (%s) in '%s' (name -> '%s')...",
+			i, key, ifMatchStatus, c.name, newName)
 		update, err := t.client.Put(
-			fmt.Sprintf("/_api/document/%s/%s", c.name, key), q, hdr, newDoc, "", nil,
-			[]int{0, 200, 201, 202, 412, 503}, []int{400, 404}, operationTimeout, 1)
+			url, q, hdr, newDoc, "", nil, []int{0, 200, 201, 202, 412, 503}, []int{400, 404}, operationTimeout, 1)
 
 /*
  * 20x, if document was replaced
@@ -116,11 +117,12 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 			c.existingDocs[key] = newDoc
 			t.replaceExistingCounter.succeeded++
 			t.log.Infof(
-				"Updating existing document '%s' (%s) in '%s' (name -> '%s') succeeded", key, ifMatchStatus, c.name, newName)
+				"Replacing existing document '%s' (%s) in '%s' (name -> '%s') succeeded",
+				key, ifMatchStatus, c.name, newName)
 			return update[0].Rev, nil
 		}
 
-		t.log.Errorf("Failure %i to update existing document '%s' (%s) in collection '%s': got %i, retrying",
+		t.log.Errorf("Failure %i to replace existing document '%s' (%s) in collection '%s': got %i, retrying",
 			i, key, c.name, update[0].StatusCode)
 		time.Sleep(backoff)
 		backoff += backoff
@@ -128,8 +130,8 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 
 	// Overall timeout :(
 	t.replaceExistingCounter.failed++
-	t.reportFailure(test.NewFailure("Timed out while trying to update(%i) document %s in %s.", i, key, c.name))
-	return "", maskAny(fmt.Errorf("Timed out while trying to update(%i) document %s in %s.", i, key, c.name))
+	t.reportFailure(test.NewFailure("Timed out (%i) while trying to replace document %s in %s.", i, key, c.name))
+	return "", maskAny(fmt.Errorf("Timed out (%i) while trying to replace document %s in %s.", i, key, c.name))
 
 }
 
@@ -144,15 +146,13 @@ func (t *simpleTest) replaceExistingDocumentWrongRevision(collectionName string,
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated name %s", time.Now())
 	hdr := ifMatchHeader(nil, rev)
-	t.log.Infof(
-		"Replacing existing document '%s' wrong revision in '%s' (name -> '%s')...", key, collectionName, newName)
 	newDoc := UserDocument{
 		Key:   key,
 		Name:  fmt.Sprintf("Replaced named %s", key),
 		Value: rand.Int(),
 		Odd:   rand.Int()%2 == 0,
 	}
-
+	url := fmt.Sprintf("/_api/document/%s/%s", collectionName, key)
 	backoff := time.Millisecond * 250
 	i := 0
 
@@ -163,9 +163,11 @@ func (t *simpleTest) replaceExistingDocumentWrongRevision(collectionName string,
 			break;
 		}
 
+		t.log.Infof(
+			"Replacing (%i) existing document '%s' wrong revision in '%s' (name -> '%s')...",
+			i, key, collectionName, newName)
 		resp, err := t.client.Put(
-			fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, hdr, newDoc, "", nil,
-			[]int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
+			url, q, hdr, newDoc, "", nil,	[]int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
 
 		if err[0] == nil {
 			if resp[0].StatusCode == 412 {
@@ -208,7 +210,6 @@ func (t *simpleTest) replaceNonExistingDocument(collectionName string, key strin
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	newName := fmt.Sprintf("Updated non-existing name %s", time.Now())
-	t.log.Infof("Replacing non-existing document '%s' in '%s' (name -> '%s')...", key, collectionName, newName)
 	newDoc := UserDocument{
 		Key:   key,
 		Name:  fmt.Sprintf("Replaced named %s", key),
@@ -226,6 +227,8 @@ func (t *simpleTest) replaceNonExistingDocument(collectionName string, key strin
 			break;
 		}
 
+		t.log.Infof("Replacing (%i) non-existing document '%s' in '%s' (name -> '%s')...",
+			i, key, collectionName, newName)
 		resp, err := t.client.Put(
 			fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, nil, newDoc, "", nil,
 			[]int{404}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, 1)
@@ -257,5 +260,5 @@ func (t *simpleTest) replaceNonExistingDocument(collectionName string, key strin
 	return maskAny(
 		fmt.Errorf(
 			"Timeout while replacing (%i) non-existing document '%s' in collection '%s'", i, key, collectionName))
-	
+
 }
