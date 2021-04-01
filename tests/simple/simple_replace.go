@@ -59,7 +59,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
  * retry 5x and and ERROR then
 */
 
-		if err == nil { // We have a response
+		if err[0] == nil { // We have a response
 			if update[0].StatusCode == 412 {
 				if (!explicitRev && i > 1) || explicitRev {
 					checkRetry = true
@@ -88,23 +88,22 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 			expected.Name = newName
 			d, e := readDocument(t, c.name, key, "", 240, true)
 
-			if e == nil { // document does not exist
+			if e == nil {
+				
 				if d.Equals(expected) {
 					success = true
 				} else {
 					t.replaceExistingCounter.failed++
-					t.reportFailure(
-						test.NewFailure(
-							"Failed to update existing document '%s' (%s) in collection '%s': got 412 but has not been updated",
-							key, ifMatchStatus, c.name))
+					t.reportFailure(test.NewFailure(
+						"Failed to update existing document '%s' (%s) in collection '%s': got 412 but has not been updated",
+						key, ifMatchStatus, c.name))
 					return "", maskAny(fmt.Errorf(
 						"Failed to update existing document '%s' (%s) in collection '%s': got 412 but has not been updated",
 						key, ifMatchStatus, c.name))
 				}
 			} else { // should never get here
 				t.replaceExistingCounter.failed++
-				t.reportFailure(
-					test.NewFailure(
+				t.reportFailure(test.NewFailure(
 						"Failed to read existing document '%s' (%s) in collection '%s' that should have been updated: %v",
 						key, ifMatchStatus, c.name, e))
 				return "", maskAny(e)
