@@ -37,7 +37,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 
 		checkRetry := false
 		success := false
-		t.log.Infof("Replacing (%i) existing document '%s' (%s) in '%s' (name -> '%s')...",
+		t.log.Infof("Replacing (%d) existing document '%s' (%s) in '%s' (name -> '%s')...",
 			i, key, ifMatchStatus, c.name, newName)
 		update, err := t.client.Put(
 			url, q, hdr, newDoc, "", nil, []int{0, 200, 201, 202, 412, 503}, []int{400, 404}, operationTimeout, 1)
@@ -130,8 +130,8 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 
 	// Overall timeout :(
 	t.replaceExistingCounter.failed++
-	t.reportFailure(test.NewFailure("Timed out (%i) while trying to replace document %s in %s.", i, key, c.name))
-	return "", maskAny(fmt.Errorf("Timed out (%i) while trying to replace document %s in %s.", i, key, c.name))
+	t.reportFailure(test.NewFailure("Timed out (%d) while trying to replace document %s in %s.", i, key, c.name))
+	return "", maskAny(fmt.Errorf("Timed out (%d) while trying to replace document %s in %s.", i, key, c.name))
 
 }
 
@@ -164,7 +164,7 @@ func (t *simpleTest) replaceExistingDocumentWrongRevision(collectionName string,
 		}
 
 		t.log.Infof(
-			"Replacing (%i) existing document '%s' wrong revision in '%s' (name -> '%s')...",
+			"Replacing (%d) existing document '%s' wrong revision in '%s' (name -> '%s')...",
 			i, key, collectionName, newName)
 		resp, err := t.client.Put(
 			url, q, hdr, newDoc, "", nil,	[]int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
@@ -192,11 +192,11 @@ func (t *simpleTest) replaceExistingDocumentWrongRevision(collectionName string,
 	t.replaceExistingWrongRevisionCounter.failed++
 	t.reportFailure(
 		test.NewFailure(
-			"Timed out while replacing (%i) existing document '%s' wrong revision in collection '%s'",
+			"Timed out while replacing (%d) existing document '%s' wrong revision in collection '%s'",
 			i, key, collectionName))
 	return maskAny(
 		fmt.Errorf(
-			"Timed out while replacing (%i) existing document '%s' wrong revision in collection '%s'",
+			"Timed out while replacing (%d) existing document '%s' wrong revision in collection '%s'",
 			i, key, collectionName))
 
 }
@@ -227,7 +227,7 @@ func (t *simpleTest) replaceNonExistingDocument(collectionName string, key strin
 			break;
 		}
 
-		t.log.Infof("Replacing (%i) non-existing document '%s' in '%s' (name -> '%s')...",
+		t.log.Infof("Replacing (%d) non-existing document '%s' in '%s' (name -> '%s')...",
 			i, key, collectionName, newName)
 		resp, err := t.client.Put(
 			fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, nil, newDoc, "", nil,
@@ -256,9 +256,9 @@ func (t *simpleTest) replaceNonExistingDocument(collectionName string, key strin
 	t.replaceNonExistingCounter.failed++
 	t.reportFailure(
 		test.NewFailure(
-			"Timeout while replacing (%i) non-existing document '%s' in collection '%s'", i, key, collectionName))
+			"Timeout while replacing (%d) non-existing document '%s' in collection '%s'", i, key, collectionName))
 	return maskAny(
 		fmt.Errorf(
-			"Timeout while replacing (%i) non-existing document '%s' in collection '%s'", i, key, collectionName))
+			"Timeout while replacing (%d) non-existing document '%s' in collection '%s'", i, key, collectionName))
 
 }

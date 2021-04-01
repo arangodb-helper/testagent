@@ -65,8 +65,8 @@ func (t *simpleTest) readExistingDocument(
 	t.readExistingCounter.failed++
 	t.reportFailure(
 		test.NewFailure(
-			"Timed out (%i) reading existing document '%s' from %s", i, key, c.name))
-	return "", maskAny(fmt.Errorf("Timed out (%i) reading existing document '%s' from %s", i, key, c.name))
+			"Timed out (%d) reading existing document '%s' from %s", i, key, c.name))
+	return "", maskAny(fmt.Errorf("Timed out (%d) reading existing document '%s' from %s", i, key, c.name))
 
 }
 
@@ -91,7 +91,7 @@ func (t *simpleTest) readExistingDocumentWrongRevision(
 		}
 		i++
 
-		t.log.Infof("Reading (%i) existing document '%s' wrong revision from '%s'...", i, key, collectionName)
+		t.log.Infof("Reading (%d) existing document '%s' wrong revision from '%s'...", i, key, collectionName)
 		resp , err := t.client.Get(
 			url, nil, hdr, &result, []int{0, 1, 412, 503}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
 
@@ -116,10 +116,10 @@ func (t *simpleTest) readExistingDocumentWrongRevision(
 
 	t.readExistingWrongRevisionCounter.failed++
 	t.reportFailure(test.NewFailure(
-		"Timed out (%i) while reading existing document '%s' wrong revision in collection '%s'",
+		"Timed out (%d) while reading existing document '%s' wrong revision in collection '%s'",
 		i, key, collectionName))
 	return maskAny(fmt.Errorf(
-		"Timed out (%i) while reading existing document '%s' wrong revision in collection '%s'",
+		"Timed out (%d) while reading existing document '%s' wrong revision in collection '%s'",
 		i, key, collectionName))
 
 }
@@ -143,7 +143,7 @@ func (t *simpleTest) readNonExistingDocument(collectionName string, key string) 
 		}
 		i++
 
-		t.log.Infof("Reading (%i) non-existing document '%s' from '%s'...", i, key, collectionName)
+		t.log.Infof("Reading (%d) non-existing document '%s' from '%s'...", i, key, collectionName)
 		resp, err := t.client.Get(
 			url, nil, nil, &result,[]int{0, 1, 404, 503}, []int{200, 201, 202, 400, 307}, operationTimeout, 1)
 

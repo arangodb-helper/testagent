@@ -56,10 +56,10 @@ func (t *simpleTest) importDocuments(c *collection) error {
 		resp, err := t.client.Post("/_api/import", q, nil, importData, "application/x-www-form-urlencoded", nil,
 			[]int{0, 1, 200, 201, 202, 503}, []int{400, 404, 409, 307}, operationTimeout, 1)
 
-		if err != nil {
+		if err[0] != nil {
 			// This is a failure
 			t.importCounter.failed++
-			t.reportFailure(test.NewFailure("Failed to import documents in collection '%s': %v", c.name, err))
+			t.reportFailure(test.NewFailure("Failed to import documents in collection '%s': %v", c.name, err[0]))
 			return maskAny(err[0])
 		}
 		
@@ -78,8 +78,8 @@ func (t *simpleTest) importDocuments(c *collection) error {
 	}
 
 	t.importCounter.failed++
-	t.reportFailure(test.NewFailure("Timed out while importing (%i) documents in collection '%s'", i, c.name))
-	return maskAny(fmt.Errorf("Timed out while importing (%i) documents in collection '%s'", i, c.name))
+	t.reportFailure(test.NewFailure("Timed out while importing (%d) documents in collection '%s'", i, c.name))
+	return maskAny(fmt.Errorf("Timed out while importing (%d) documents in collection '%s'", i, c.name))
 	
 
 }

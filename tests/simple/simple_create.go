@@ -33,7 +33,7 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 							key, col, err[0]))
 					return nil, maskAny(err[0])
 				} else {
-					t.log.Errorf("Failed to read(%i) document %s in %s (&v).", i, key, col, err)
+					t.log.Errorf("Failed to read(%d) document %s in %s (&v).", i, key, col, err)
 					return nil, nil
 				}
 			} else { // document found
@@ -45,8 +45,8 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 		backoff += backoff
 	}
 
-	t.log.Errorf("Timed out while trying to read(%i) document %s in %s (&v).", i, key, col)
-	return nil, maskAny(fmt.Errorf("Timed out while trying to read(%i) document %s in %s (&v).", i, key, col))
+	t.log.Errorf("Timed out while trying to read(%d) document %s in %s (&v).", i, key, col)
+	return nil, maskAny(fmt.Errorf("Timed out while trying to read(%d) document %s in %s (&v).", i, key, col))
 
 }
 
@@ -71,7 +71,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 		checkRetry := false
 		success := false
 
-		t.log.Infof("Creating (%i) document '%s' in '%s'...", i, key, c.name)
+		t.log.Infof("Creating (%d) document '%s' in '%s'...", i, key, c.name)
 		resp, err := t.client.Post(url, q, nil, document, "", nil,
 			[]int{0, 1, 200, 201, 202, 409, 503},	[]int{400, 404, 307}, operationTimeout, 1)
 
@@ -113,7 +113,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 			}
 		} else { // failure
 			t.reportFailure(
-				test.NewFailure("Failed to create document '%s' (%s) in collection '%s': %v", key, c.name, err[0]))
+				test.NewFailure("Failed to create document '%s' in collection '%s': %v", key, c.name, err[0]))
 			return "", maskAny(err[0])
 		}
 
@@ -131,7 +131,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 			return resp[0].Rev, nil
 		}
 
-		t.log.Errorf("Failure %i to create existing document '%s' (%s) in collection '%s': got %i",
+		t.log.Errorf("Failure (%d) to create existing document '%s' (%s) in collection '%s': got %i",
 			i, key, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
 		backoff += backoff
@@ -140,7 +140,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 
 	// Overall timeout :(
 	t.reportFailure(
-		test.NewFailure("Timed out while trying to create(%i) document %s in %s.", i, key, c.name))
-	return "", maskAny(fmt.Errorf("Timed out while trying to create(%i) document %s in %s.", i, key, c.name))
+		test.NewFailure("Timed out while trying to create(%d) document %s in %s.", i, key, c.name))
+	return "", maskAny(fmt.Errorf("Timed out while trying to create(%d) document %s in %s.", i, key, c.name))
 
 }

@@ -38,7 +38,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 		success := false
 		shouldNotBeThere := false
 
-		t.log.Infof("Creating (%i) collection '%s' with numberOfShards=%d, replicationFactor=%d...",
+		t.log.Infof("Creating (%d) collection '%s' with numberOfShards=%d, replicationFactor=%d...",
 			i, c.name, numberOfShards, replicationFactor)
 		resp, err := t.client.Post(
 			"/_api/collection", nil, nil, opts, "", nil, []int{0, 1, 200, 409, 500, 503},
@@ -98,7 +98,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 			return nil
 		}
 
-		t.log.Errorf("Failed to create (%i) collection '%s': '%s' (%s) in collection '%s': got %i",
+		t.log.Errorf("Failed to create (%d) collection '%s': '%s' (%s) in collection '%s': got %i",
 			i, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
 		backoff += backoff
@@ -107,8 +107,8 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 
 	// Overall timeout :(
 	t.reportFailure(
-		test.NewFailure("Timed out while trying to create (%i) collection %s in %s.", i, c.name))
-	return maskAny(fmt.Errorf("Timed out while trying to create (%i) collection %s in %s.", i, c.name))
+		test.NewFailure("Timed out while trying to create (%d) collection %s in %s.", i, c.name))
+	return maskAny(fmt.Errorf("Timed out while trying to create (%d) collection %s in %s.", i, c.name))
 
 }
 
@@ -130,7 +130,7 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 			break
 		}
 
-		t.log.Infof("Removing (%i) collection '%s'...", i, c.name)
+		t.log.Infof("Removing (%d) collection '%s'...", i, c.name)
 		resp, err := t.client.Delete(
 			url, nil, nil, []int{0, 1, 200, 404, 503}, []int{400, 409, 307}, operationTimeout, 1)
 
@@ -163,8 +163,8 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 	}
 
 	t.removeExistingCollectionCounter.failed++
-	t.reportFailure(test.NewFailure("Timed out (%i) while removing collection '%s'", i, c.name))
-	return maskAny(fmt.Errorf("Timed out (%i) while removing collection '%s'", i, c.name))
+	t.reportFailure(test.NewFailure("Timed out (%d) while removing collection '%s'", i, c.name))
+	return maskAny(fmt.Errorf("Timed out (%d) while removing collection '%s'", i, c.name))
 
 }
 
@@ -185,7 +185,7 @@ func (t *simpleTest) collectionExists(c *collection) (bool, error) {
 			break;
 		}
 
-		t.log.Infof("Checking (%i) collection '%s'...", i, c.name)
+		t.log.Infof("Checking (%d) collection '%s'...", i, c.name)
 		resp, err := t.client.Get(
 			url , nil, nil, nil, []int{0, 1, 200, 404, 503}, []int{400, 409, 307}, operationTimeout, 1)
 

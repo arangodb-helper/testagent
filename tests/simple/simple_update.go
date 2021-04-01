@@ -35,7 +35,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 		checkRetry := false
 		success := false
 		t.log.Infof(
-			"Updating (%i) existing document '%s' (%s) in '%s' (name -> '%s')...",
+			"Updating (%d) existing document '%s' (%s) in '%s' (name -> '%s')...",
 			i, key, ifMatchStatus, c.name, newName)
 		update, err := t.client.Patch(url, q,	hdr, delta, "", nil, []int{0, 200, 201, 202, 412, 503},
 			[]int{400, 404, 409, 307}, operationTimeout, 1)
@@ -144,8 +144,8 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 	// Overall timeout :(
 	t.updateExistingCounter.failed++
 	t.reportFailure(
-		test.NewFailure("Timed out while trying to update(%i) document %s in %s.", i, key, c.name))
-	return "", maskAny(fmt.Errorf("Timed out while trying to update(%i) document %s in %s.", i, key, c.name))
+		test.NewFailure("Timed out while trying to update(%d) document %s in %s.", i, key, c.name))
+	return "", maskAny(fmt.Errorf("Timed out while trying to update(%d) document %s in %s.", i, key, c.name))
 
 }
 
@@ -174,7 +174,7 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 		}
 
 		t.log.Infof(
-			"Updating (%i) existing document '%s' wrong revision in '%s' (name -> '%s')...",
+			"Updating (%d) existing document '%s' wrong revision in '%s' (name -> '%s')...",
 			i, key, collectionName, newName)
 		resp, err := t.client.Patch(url, q, hdr, delta, "", nil, []int{0, 1, 412, 503},
 			[]int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
@@ -204,10 +204,10 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 	t.updateExistingWrongRevisionCounter.failed++
 	t.reportFailure(
 		test.NewFailure(
-			"Timed out while updating (%i) existing document '%s' wrong revision in collection '%s'",
+			"Timed out while updating (%d) existing document '%s' wrong revision in collection '%s'",
 			i, key, collectionName))
 	return maskAny(
-		fmt.Errorf("Timed out while updating (%i) existing document '%s' wrong revision in collection '%s'",
+		fmt.Errorf("Timed out while updating (%d) existing document '%s' wrong revision in collection '%s'",
 			i, key, collectionName))
 
 }
@@ -237,7 +237,7 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 		}
 
 		t.log.Infof(
-			"Updating (%i) non-existing document '%s' in '%s' (name -> '%s')...", i, key, collectionName, newName)
+			"Updating (%d) non-existing document '%s' in '%s' (name -> '%s')...", i, key, collectionName, newName)
 		resp, err := t.client.Patch(url, q, nil, delta, "", nil, []int{0, 1, 404, 503},
 			[]int{200, 201, 202, 400, 412, 307}, operationTimeout, 1)
 
@@ -264,9 +264,9 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 	t.updateNonExistingCounter.failed++
 	t.reportFailure(
 		test.NewFailure(
-			"Timeout while updating (%i) non-existing document '%s' in collection '%s'", i, key, collectionName))
+			"Timeout while updating (%d) non-existing document '%s' in collection '%s'", i, key, collectionName))
 	return maskAny(
 		fmt.Errorf(
-			"Timeout while updating (%i) non-existing document '%s' in collection '%s'", i, key, collectionName))
+			"Timeout while updating (%d) non-existing document '%s' in collection '%s'", i, key, collectionName))
 
 }

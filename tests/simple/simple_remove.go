@@ -32,7 +32,7 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 
 		checkRetry := false
 		success := false
-		t.log.Infof("Removing existing document '%s' (%s) from '%s'...", key, ifMatchStatus, collectionName)
+		t.log.Infof("Removing (%d) existing document '%s' (%s) from '%s'...", i, key, ifMatchStatus, collectionName)
 		resp, err := t.client.Delete(
 			url, q, hdr, []int{0, 200, 201, 202, 404, 503}, []int{400, 412, 307}, operationTimeout, 1)
 
@@ -88,8 +88,8 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 	// Overall timeout :(
 	t.deleteExistingCounter.failed++
 	t.reportFailure(
-		test.NewFailure("Timed out while trying to remove(%i) document %s in %s.", i, key, collectionName))
-	return maskAny(fmt.Errorf("Timed out while trying to remove(%i) document %s in %s.", i, key, collectionName))
+		test.NewFailure("Timed out while trying to remove(%d) document %s in %s.", i, key, collectionName))
+	return maskAny(fmt.Errorf("Timed out while trying to remove(%d) document %s in %s.", i, key, collectionName))
 
 }
 
@@ -139,7 +139,7 @@ func (t *simpleTest) removeExistingDocumentWrongRevision(collectionName string, 
 
 	t.deleteExistingWrongRevisionCounter.failed++
 	t.log.Errorf(
-		"Timed out (%i) while removing existing document '%s' wrong revision from '%s'.", i, key, collectionName)
+		"Timed out (%d) while removing existing document '%s' wrong revision from '%s'.", i, key, collectionName)
 	return maskAny(fmt.Errorf("Timed out"))
 
 }
@@ -189,7 +189,7 @@ func (t *simpleTest) removeNonExistingDocument(collectionName string, key string
 
 	t.deleteNonExistingCounter.failed++
 	t.log.Errorf(
-		"Timed out (%i) while Removing non-existing document '%s' from '%s' ", i, key, collectionName)
+		"Timed out (%d) while Removing non-existing document '%s' from '%s' ", i, key, collectionName)
 	return maskAny(fmt.Errorf("Timed out"))
 
 }
