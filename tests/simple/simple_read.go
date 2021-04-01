@@ -30,7 +30,7 @@ func (t *simpleTest) readExistingDocument(
 
 		t.log.Infof("Reading (%d) existing document '%s' (%s) from '%s'...", i, key, ifMatchStatus, c.name)
 		resp, err := t.client.Get(
-			url, nil, hdr, &result, []int{0, 1, 200, 503}, []int{400, 404, 307}, operationTimeout, 1)
+			url, nil, hdr, &result, []int{0, 1, 200, 406, 503}, []int{400, 404, 307}, operationTimeout, 1)
 
 		if err[0] != nil {
 			// This is a failure
@@ -93,7 +93,8 @@ func (t *simpleTest) readExistingDocumentWrongRevision(
 
 		t.log.Infof("Reading (%d) existing document '%s' wrong revision from '%s'...", i, key, collectionName)
 		resp , err := t.client.Get(
-			url, nil, hdr, &result, []int{0, 1, 412, 503}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
+			url, nil, hdr, &result, []int{0, 1, 412, 406, 503},
+			[]int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
 
 		if err[0] != nil {
 			// This is a failure
@@ -145,7 +146,7 @@ func (t *simpleTest) readNonExistingDocument(collectionName string, key string) 
 
 		t.log.Infof("Reading (%d) non-existing document '%s' from '%s'...", i, key, collectionName)
 		resp, err := t.client.Get(
-			url, nil, nil, &result,[]int{0, 1, 404, 503}, []int{200, 201, 202, 400, 307}, operationTimeout, 1)
+			url, nil, nil, &result,[]int{0, 1, 404, 406, 503}, []int{200, 201, 202, 400, 307}, operationTimeout, 1)
 
 		if err[0] != nil {
 			// This is a failure

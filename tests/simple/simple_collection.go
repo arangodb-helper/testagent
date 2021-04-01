@@ -134,10 +134,10 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 		resp, err := t.client.Delete(
 			url, nil, nil, []int{0, 1, 200, 404, 503}, []int{400, 409, 307}, operationTimeout, 1)
 
-		if err != nil {
+		if err[0] != nil {
 			// This is a failure
 			t.removeExistingCollectionCounter.failed++
-			t.reportFailure(test.NewFailure("Failed to remove collection '%s': %v", c.name, err))
+			t.reportFailure(test.NewFailure("Failed to remove collection '%s': %v", c.name, err[0]))
 			return maskAny(err[0])
 		} else if resp[0].StatusCode == 404 {
 			// Collection not found.

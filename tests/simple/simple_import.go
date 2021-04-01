@@ -39,9 +39,6 @@ func (t *simpleTest) importDocuments(c *collection) error {
 	q := url.Values{}
 	q.Set("collection", c.name)
 	q.Set("waitForSync", "true")
-	importData, docs := t.createImportDocument()
-	t.log.Infof("Importing %d documents ('%s' - '%s') into '%s'...",
-		len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name)
 
 	backoff := time.Millisecond * 250
 	i := 0
@@ -53,6 +50,9 @@ func (t *simpleTest) importDocuments(c *collection) error {
 			break;
 		}
 		
+		importData, docs := t.createImportDocument()
+		t.log.Infof("Importing %d documents ('%s' - '%s') into '%s'...",
+			len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name)
 		resp, err := t.client.Post("/_api/import", q, nil, importData, "application/x-www-form-urlencoded", nil,
 			[]int{0, 1, 200, 201, 202, 503}, []int{400, 404, 409, 307}, operationTimeout, 1)
 

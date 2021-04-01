@@ -23,7 +23,7 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 		hdr := ifMatchHeader(nil, rev)
 		var result *UserDocument
 		res, err := t.client.Get(
-			url, nil, hdr, &result, []int{200, 201, 202, 404}, []int{400, 307}, operationTimeout, 1)
+			url, nil, hdr, &result, []int{0, 1, 200, 201, 202, 406, 404, 503}, []int{400, 307}, operationTimeout, 1)
 
 		if err[0] == nil {
 			if res[0].StatusCode == 404 { // no such document
