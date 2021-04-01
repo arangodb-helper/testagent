@@ -58,8 +58,6 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 
-	t.log.Infof("Creating document '%s' in '%s'...", key, c.name)
-
 	backoff := time.Millisecond * 250
 	i := 0
 
@@ -72,6 +70,8 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 
 		checkRetry := false
 		success := false
+
+		t.log.Infof("Creating (%i) document '%s' in '%s'...", i, key, c.name)
 		resp, err := t.client.Post(
 			fmt.Sprintf("/_api/document/%s", c.name), q, nil, document, "", nil,
 			[]int{0, 1, 200, 201, 202, 409, 503}, []int{400, 404, 307}, operationTimeout, 1)

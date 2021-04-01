@@ -35,32 +35,52 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 		if time.Now().After(testTimeout) {
 			break;
 		}
-		
+
 		checkRetry := false
 		success := false
-		
-		resp, err := t.client.Post(
-			"/_api/collection", nil, nil, opts, "", nil, []int{0, 1, 200, 409, 503},
-			[]int{400, 404, 307, 500}, operationTimeout, 1)
+		shouldNotBeThere := false
 
+		resp, err := t.client.Post(
+			"/_api/collection", nil, nil, opts, "", nil, []int{0, 1, 200, 409, 500, 503},
+			[]int{400, 404, 307}, operationTimeout, 1)
+
+		// 200: good
+		// 500: collection couldn't be finished. most likely, because
+		
 		if err[0] == nil {
 			if resp[0].StatusCode == 503 || resp[0].StatusCode == 409 || resp[0].StatusCode == 0 {
 				checkRetry = true
-			} else if resp[0].StatusCode != 1 {
+			} else if resp[0].StatusCode == 1 && resp[0].StatusCode == 500 { // connection refused or not created
+				shouldNotBeThere = true
+			} else {
 				success = true
 			}
 		} else {
 			// This is a failure
+			t.createCollectionCounter.failed++
 			t.reportFailure(test.NewFailure("Failed to create collection '%s': %v", c.name, err[0]))
 			return maskAny(err[0])
 		}
-	
+
 		if checkRetry {
 			if exists, checkErr := t.collectionExists(c); checkErr == nil { // TODO collectionExists retries
-				success = true
+				if shouldNotBeThere {
+					// Collection has been created, although it shouldn't
+					t.createCollectionCounter.failed++
+					t.reportFailure(
+						test.NewFailure(
+							"Failure while creating collection '%s': %i reported but collection exists",
+							resp[0].StatusCode, c.name))
+					return maskAny(
+						fmt.Errorf("Failure while creating collection '%s': %i reported but collection exists",
+							resp[0].StatusCode, c.name))
+				} else {
+					success = true
+				}
 			} else if !exists {
 				if resp[0].StatusCode == 409 {
 					// Collection has not been created, so 409 status is really wrong
+					t.createCollectionCounter.failed++
 					t.reportFailure(
 						test.NewFailure(
 							"Failed to create collection '%s': 409 reported but collection does not exist", c.name))
@@ -71,6 +91,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 		}
 
 		if success {
+			t.createCollectionCounter.succeeded++
 			t.log.Infof(
 				"Creating collection '%s' with numberOfShards=%d, replicationFactor=%d succeeded",
 				c.name, numberOfShards, replicationFactor)
@@ -81,7 +102,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 			i, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
 		backoff += backoff
-		
+
 	}
 
 	// Overall timeout :(
@@ -94,43 +115,71 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 // removeCollection remove an existing collection.
 // The operation is expected to succeed.
 func (t *simpleTest) removeExistingCollection(c *collection) error {
+
 	operationTimeout := t.OperationTimeout
-	t.log.Infof("Removing collection '%s'...", c.name)
-	resp, err := t.client.Delete("/_api/collection/"+c.name, nil, nil, []int{200, 404}, []int{400, 409, 307}, operationTimeout, 1)
-	if err != nil {
-		// This is a failure
-		t.removeExistingCollectionCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to remove collection '%s': %v", c.name, err))
-		return maskAny(err[0])
-	} else if resp[0].StatusCode == 404 {
-		// Collection not found.
-		// This can happen if the first attempt timed out, but did actually succeed.
-		// So we accept this is there are multiple attempts.
-		if resp[0].Attempts <= 1 {
-			// Not enough attempts, this is a failure
-			t.removeExistingCollectionCounter.failed++
-			t.reportFailure(test.NewFailure("Failed to remove collection '%s': got 404 after only 1 attempt", c.name))
-			return maskAny(fmt.Errorf("Failed to remove collection '%s': got 404 after only 1 attempt", c.name))
+	testTimeout := time.Now().Add(t.OperationTimeout * 5)
+
+	url := fmt.Sprintf("/_api/collection/%s", c.name)
+	backoff := time.Millisecond * 250
+	i := 0
+
+	for {
+
+		i++
+		if time.Now().After(testTimeout) {
+			break
 		}
+
+		t.log.Infof("Removing (%i) collection '%s'...", i, c.name)
+		resp, err := t.client.Delete(
+			url, nil, nil, []int{0, 1, 200, 404, 503}, []int{400, 409, 307}, operationTimeout, 1)
+
+		if err != nil {
+			// This is a failure
+			t.removeExistingCollectionCounter.failed++
+			t.reportFailure(test.NewFailure("Failed to remove collection '%s': %v", c.name, err))
+			return maskAny(err[0])
+		} else if resp[0].StatusCode == 404 {
+			// Collection not found.
+			// This can happen if the first attempt timed out, but did actually succeed.
+			// So we accept this is there are multiple attempts.
+			if i == 1 { // this is a failure in first run
+				// Not enough attempts, this is a failure
+				t.removeExistingCollectionCounter.failed++
+				t.reportFailure(
+					test.NewFailure("Failed to remove collection '%s': got 404 after only 1 attempt", c.name))
+				return maskAny(fmt.Errorf("Failed to remove collection '%s': got 404 after only 1 attempt", c.name))
+			}
+		} else if resp[0].StatusCode == 200 {
+			t.removeExistingCollectionCounter.succeeded++
+			t.log.Infof("Removing collection '%s' succeeded", c.name)
+			t.unregisterCollection(c)
+			return nil
+		}
+
+		time.Sleep(backoff)
+		backoff += backoff
+
 	}
-	t.removeExistingCollectionCounter.succeeded++
-	t.log.Infof("Removing collection '%s' succeeded", c.name)
-	t.unregisterCollection(c)
-	return nil
+
+	t.removeExistingCollectionCounter.failed++
+	t.reportFailure(test.NewFailure("Timed out (%i) while removing collection '%s'", i, c.name))
+	return maskAny(fmt.Errorf("Timed out (%i) while removing collection '%s'", i, c.name))
+
 }
 
 // collectionExists tries to fetch information about the collection to see if it exists.
 func (t *simpleTest) collectionExists(c *collection) (bool, error) {
 
 	operationTimeout := t.OperationTimeout / 4
-	timeout := time.Now().Add(operationTimeout * 4)
+	timeout := time.Now().Add(operationTimeout)
 
 	i := 0
 	backoff := time.Millisecond * 250
 	url := fmt.Sprintf("/_api/collection/%s", c.name)
-	
+
 	for  {
-		
+
 		i++
 		if time.Now().After(timeout) {
 			break;
@@ -150,14 +199,16 @@ func (t *simpleTest) collectionExists(c *collection) (bool, error) {
 			return true, nil
 		}
 
+		// 0, 1, 503 retry
+
 		time.Sleep(backoff)
 		backoff += backoff
-		
+
 	}
 
 	// This is a failure
 	out := fmt.Errorf("Timed out checking for collection '%s'", c.name)
 	t.log.Error(out)
 	return false, maskAny(out)
-	
+
 }
