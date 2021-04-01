@@ -112,6 +112,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 				success = true
 			}
 		} else { // failure
+			t.createCounter.failed++
 			t.reportFailure(
 				test.NewFailure("Failed to create document '%s' in collection '%s': %v", key, c.name, err[0]))
 			return "", maskAny(err[0])
@@ -127,10 +128,12 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 
 		if success {
 			//c.existingDocs[key] = doc
+			t.createCounter.succeeded++
 			t.log.Infof("Creating document '%s' in '%s' succeeded", key, c.name)
 			return resp[0].Rev, nil
 		}
 
+		t.createCounter.failed++
 		t.log.Errorf("Failure (%d) to create existing document '%s' (%s) in collection '%s': got %i",
 			i, key, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)

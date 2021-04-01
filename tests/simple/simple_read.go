@@ -17,6 +17,7 @@ func (t *simpleTest) readExistingDocument(
 
 	i := 0
 	url := fmt.Sprintf("/_api/document/%s/%s", c.name, key)
+	backoff := time.Millisecond * 100
 
 	var result UserDocument
 	hdr, ifMatchStatus, _ := createRandomIfMatchHeader(nil, rev)
@@ -60,6 +61,10 @@ func (t *simpleTest) readExistingDocument(
 				return result.rev, nil
 			}
 		}
+		
+		time.Sleep(backoff)
+		backoff += backoff
+
 	}
 
 	t.readExistingCounter.failed++

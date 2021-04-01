@@ -38,7 +38,9 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 	}
 	var cursorResp CursorResponse
 	createReqTime := time.Now()
-	createResp, err := t.client.Post("/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{201}, []int{200, 202, 400, 404, 409, 307}, operationTimeout, 1)
+	createResp, err := t.client.Post(
+		"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{201},
+		[]int{200, 202, 400, 404, 409, 307}, operationTimeout, 1)
 	if err[0] != nil {
 		// This is a failure
 		t.queryCreateCursorCounter.failed++
