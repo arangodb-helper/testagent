@@ -59,7 +59,7 @@ func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) 
 	var cursorResp CursorResponse
 	resultDocument := &UserDocument{}
 	cursorResp.Result = []interface{}{resultDocument}
-	if _, err := t.client.Post("/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{201, 409}, []int{200, 202, 400, 404, 307}, operationTimeout, 1); err != nil {
+	if _, err := t.client.Post("/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{201, 409}, []int{200, 202, 400, 404, 307}, operationTimeout, 1); err[0] != nil {
 		// This is a failure
 		t.queryUpdateLongRunningCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to create long running update AQL cursor in collection '%s': %v", c.name, err[0]))

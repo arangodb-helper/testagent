@@ -28,7 +28,7 @@ func (t *simpleTest) readExistingDocument(
 		}
 		i++;
 
-		t.log.Infof("Reading existing document '%s' (%s) from '%s'...", key, ifMatchStatus, c.name)
+		t.log.Infof("Reading (%d) existing document '%s' (%s) from '%s'...", i, key, ifMatchStatus, c.name)
 		resp, err := t.client.Get(
 			url, nil, hdr, &result, []int{0, 1, 200, 503}, []int{400, 404, 307}, operationTimeout, 1)
 
