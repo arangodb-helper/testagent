@@ -46,7 +46,7 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 	}
 
 	t.log.Errorf("Timed out while trying to read(%i) document %s in %s (&v).", i, key, col)
-	return nil, maskAny(fmt.Errorf("Timed out"))
+	return nil, maskAny(fmt.Errorf("Timed out while trying to read(%i) document %s in %s (&v).", i, key, col))
 
 }
 
@@ -132,7 +132,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 			return resp[0].Rev, nil
 		}
 
-		t.log.Errorf("Failure %i to create existing document '%s' (%s) in collection '%s': got %i, retrying",
+		t.log.Errorf("Failure %i to create existing document '%s' (%s) in collection '%s': got %i",
 			i, key, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
 		backoff += backoff

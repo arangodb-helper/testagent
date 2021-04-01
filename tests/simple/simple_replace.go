@@ -77,7 +77,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 			} else if update[0].StatusCode == 503 || update[0].StatusCode == 0 {
 				// 503 and 412 -> check if accidentally successful
 				checkRetry = true
-			} else {
+			} else if update[0].StatusCode != 1 {
 				success = true
 			}
 		}
