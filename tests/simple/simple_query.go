@@ -63,7 +63,7 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 		time.Sleep(time.Second * 5)
 
 		// Fetch next results
-		getResp, err := t.client.Put("/_api/cursor/"+cursorResp.ID, nil, nil, nil, "", &cursorResp, []int{200, 404}, []int{201, 202, 400, 409, 307}, operationTimeout, 1)
+		getResp, err := t.client.Put("/_api/cursor/"+cursorResp.ID, nil, nil, nil, "", &cursorResp, []int{0, 1, 200, 404, 503}, []int{201, 202, 400, 409, 307}, operationTimeout, 1)
 		if err[0] != nil {
 			// This is a failure
 			t.queryNextBatchCounter.failed++
