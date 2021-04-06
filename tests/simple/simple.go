@@ -653,13 +653,12 @@ func createRandomIfMatchHeader(hdr map[string]string, rev string) (map[string]st
 
 // ifMatchHeader creates a request header with an `If-Match` entry for the given revision.
 func ifMatchHeader(hdr map[string]string, rev string) map[string]string {
-	if rev == "" {
-		panic(fmt.Errorf("rev cannot be empty"))
-	}
 	if hdr == nil {
 		hdr = make(map[string]string)
 	}
-	hdr["If-Match"] = rev
+	if rev != "" {
+		hdr["If-Match"] = rev
+	}
 	return hdr
 }
 
