@@ -132,7 +132,7 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 
 		t.log.Infof("Removing (%d) collection '%s'...", i, c.name)
 		resp, err := t.client.Delete(
-			url, nil, nil, []int{0, 1, 200, 404, 500, 503}, []int{400, 409, 307}, operationTimeout, 1)
+			url, nil, nil, []int{0, 1, 200, 404, 503}, []int{400, 409, 307}, operationTimeout, 1)
 
 		if err[0] != nil {
 			// This is a failure
