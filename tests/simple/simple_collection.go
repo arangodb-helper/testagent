@@ -132,14 +132,14 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 
 		t.log.Infof("Removing (%d) collection '%s'...", i, c.name)
 		resp, err := t.client.Delete(
-			url, nil, nil, []int{0, 1, 200, 404, 503}, []int{400, 409, 307}, operationTimeout, 1)
+			url, nil, nil, []int{0, 1, 200, 404, 500, 503}, []int{400, 409, 307}, operationTimeout, 1)
 
 		if err[0] != nil {
 			// This is a failure
 			t.removeExistingCollectionCounter.failed++
 			t.reportFailure(test.NewFailure("Failed to remove collection '%s': %v", c.name, err[0]))
 			return maskAny(err[0])
-		} else if resp[0].StatusCode == 404 {
+		} else if resp[0].StatusCode == 404 || resp[0].StatusCode == 500 {
 			// Collection not found.
 			// This can happen if the first attempt timed out, but did actually succeed.
 			// So we accept this is there are multiple attempts.

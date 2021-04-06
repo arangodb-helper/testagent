@@ -81,11 +81,14 @@ func handleSignal(sigChannel chan os.Signal, stopChan chan struct{}) {
 	}
 }
 
+
 func main() {
 	cmdMain.Execute()
 }
 
 func cmdMainRun(cmd *cobra.Command, args []string) {
+
+	logging.SetFormatter(logging.MustStringFormatter(`%{time:15:04:05.000} %{shortfunc} %{message}`))
 	log.Infof("Starting %s version %s, build %s", projectName, projectVersion, projectBuild)
 
 	level, err := logging.LogLevel(appFlags.logLevel)
