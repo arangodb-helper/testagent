@@ -13,7 +13,7 @@ func (t *simpleTest) readExistingDocument(
 	c *collection, key, rev string, updateRevision, skipExpectedValueCheck bool) (string, error) {
 
 	operationTimeout := t.OperationTimeout/5
-	testTimeout := time.Now().Add(operationTimeout)
+	testTimeout := time.Now().Add(t.OperationTimeout)
 
 	i := 0
 	url := fmt.Sprintf("/_api/document/%s/%s", c.name, key)
