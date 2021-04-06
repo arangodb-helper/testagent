@@ -33,7 +33,7 @@ func (t *simpleTest) createImportDocument() ([]byte, []UserDocument) {
 // importDocuments imports a bulk set of documents.
 // The operation is expected to succeed.
 func (t *simpleTest) importDocuments(c *collection) error {
-	operationTimeout := t.OperationTimeout*4
+	operationTimeout := t.OperationTimeout
 	testTimeout := time.Now().Add(operationTimeout * 4)
 	
 	q := url.Values{}
