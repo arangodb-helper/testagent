@@ -235,7 +235,7 @@ func (c *ArangoClient) handleResponse(
 		if resp.StatusCode == code {
 			var aerr ArangoError
 			headers := formatHeaders(resp)
-			if tryDecodeBody(body, &aerr); err == nil {
+			if err := tryDecodeBody(body, &aerr); err == nil {
 				return maskAny(errors.Wrapf(err, "Received status %d, from %s request to %s, which is a failure (attempt %d, started at %s, after %s, error %s, headers\n%s\n)", resp.StatusCode, method, url, aresp.Attempts, start.Format(startTSFormat), time.Since(start), aerr.Error(), headers))
 			}
 			return maskAny(errors.Wrapf(err, "Received status %d, from %s request to %s, which is a failure (attempt %d, started at %s, after %s, headers\n%s\n\nbody\n%s\n)", resp.StatusCode, method, url, aresp.Attempts, start.Format(startTSFormat), time.Since(start), headers, string(body)))
