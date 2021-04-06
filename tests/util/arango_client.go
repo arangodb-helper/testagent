@@ -48,7 +48,6 @@ type ArangoResponse struct {
 	StatusCode     int    // HTTP status code of last attempt
 	CoordinatorURL string // URL of coordinator used for last attempt
 	Rev            string // Revision of document as returned by database (not set for all operations)
-	Attempts       int    // Number of attempts
 }
 
 func (e ArangoError) Error() string {
@@ -161,7 +160,6 @@ func (c *ArangoClient) requestWithRetry(
 
 	op := func() (ArangoResponse, error) {
 		var arangoResp ArangoResponse
-		arangoResp.Attempts++
 		start := time.Now()
 		client := createClient(operationTimeout)
 		url, lastCoordinatorURL, err := c.createURL(urlPath, query)
@@ -199,7 +197,7 @@ func (c *ArangoClient) requestWithRetry(
 			return arangoResp, nil
 		}
 		// Process response
-		if err := c.handleResponse(httpResp, method, url, result, &arangoResp, successStatusCodes, failureStatusCodes, start); err != nil {
+		if err := c.handleResponse(httpResp, method, url, result, &arangoResp, i, successStatusCodes, failureStatusCodes, start); err != nil {
 			return arangoResp, maskAny(err)
 		}
 		return arangoResp, nil
@@ -218,8 +216,8 @@ func (c *ArangoClient) requestWithRetry(
 }
 
 func (c *ArangoClient) handleResponse(
-	resp *http.Response, method, url string, result interface{}, aresp *ArangoResponse, successStatusCodes,
-	failureStatusCodes []int, start time.Time) error {
+	resp *http.Response, method, url string, result interface{}, aresp *ArangoResponse,
+	attempt int, successStatusCodes, failureStatusCodes []int, start time.Time) error {
 	// Store status code
 	aresp.StatusCode = resp.StatusCode
 
@@ -227,7 +225,7 @@ func (c *ArangoClient) handleResponse(
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return maskAny(errors.Wrapf(err, "Failed reading response data from %s request to %s (attempt %d, started at %s, after %s, error %v)", method, url, aresp.Attempts, start.Format(startTSFormat), time.Since(start), err))
+		return maskAny(errors.Wrapf(err, "Failed reading response data from %s request to %s (attempt %d, started at %s, after %s, error %v)", method, url, attempt, start.Format(startTSFormat), time.Since(start), err))
 	}
 
 	// Check for failure status
@@ -236,9 +234,9 @@ func (c *ArangoClient) handleResponse(
 			var aerr ArangoError
 			headers := formatHeaders(resp)
 			if err := tryDecodeBody(body, &aerr); err == nil {
-				return maskAny(errors.Wrapf(err, "Received status %d, from %s request to %s, which is a failure (attempt %d, started at %s, after %s, error %s, headers\n%s\n)", resp.StatusCode, method, url, aresp.Attempts, start.Format(startTSFormat), time.Since(start), aerr.Error(), headers))
+				return maskAny(errors.Wrapf(err, "Received status %d, from %s request to %s, which is a failure (attempt %d, started at %s, after %s, error %s, headers\n%s\n)", resp.StatusCode, method, url, attempt, start.Format(startTSFormat), time.Since(start), aerr.Error(), headers))
 			}
-			return maskAny(errors.Wrapf(err, "Received status %d, from %s request to %s, which is a failure (attempt %d, started at %s, after %s, headers\n%s\n\nbody\n%s\n)", resp.StatusCode, method, url, aresp.Attempts, start.Format(startTSFormat), time.Since(start), headers, string(body)))
+			return maskAny(errors.Wrapf(err, "Received status %d, from %s request to %s, which is a failure (attempt %d, started at %s, after %s, headers\n%s\n\nbody\n%s\n)", resp.StatusCode, method, url, attempt, start.Format(startTSFormat), time.Since(start), headers, string(body)))
 		}
 	}
 
@@ -251,7 +249,7 @@ func (c *ArangoClient) handleResponse(
 			// Found a success status
 			if isSuccessStatusCode(code) && result != nil {
 				if err := json.Unmarshal(body, result); err != nil {
-					return maskAny(errors.Wrapf(err, "Failed decoding response data from %s request to %s (attempt %d, started at %s, after %s, error %v)", method, url, aresp.Attempts, start.Format(startTSFormat), time.Since(start), err))
+					return maskAny(errors.Wrapf(err, "Failed decoding response data from %s request to %s (attempt %d, started at %s, after %s, error %v)", method, url, attempt, start.Format(startTSFormat), time.Since(start), err))
 				}
 			}
 			// Return success
@@ -262,7 +260,7 @@ func (c *ArangoClient) handleResponse(
 	// Unexpected status code
 	c.lastCoordinatorURL = nil // Change coordinator
 	headers := formatHeaders(resp)
-	return maskAny(fmt.Errorf("Unexpected status %d from %s request to %s (attempt %d, started at %s, after %s, headers\n%s\n\nbody\n%s\n)", resp.StatusCode, method, url, aresp.Attempts, start.Format(startTSFormat), time.Since(start), headers, string(body)))
+	return maskAny(fmt.Errorf("Unexpected status %d from %s request to %s (attempt %d, started at %s, after %s, headers\n%s\n\nbody\n%s\n)", resp.StatusCode, method, url, attempt, start.Format(startTSFormat), time.Since(start), headers, string(body)))
 }
 
 func tryDecodeBody(body []byte, result interface{}) error {
