@@ -34,11 +34,11 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 		success := false
 		t.log.Infof("Removing (%d) existing document '%s' (%s) from '%s'...", i, key, ifMatchStatus, collectionName)
 		resp, err := t.client.Delete(
-			url, q, hdr, []int{0, 200, 201, 202, 404, 503}, []int{400, 412, 307}, operationTimeout, 1)
+			url, q, hdr, []int{0, 200, 201, 202, 404, 409, 503}, []int{400, 412, 307}, operationTimeout, 1)
 
 		if err[0] == nil { // we have a response
-			if resp[0].StatusCode == 503 || resp[0].StatusCode == 0 {
-				// 0 and 503 -> check if accidentally successful
+			if resp[0].StatusCode == 0 || resp[0].StatusCode == 409 || resp[0].StatusCode == 503 {
+				// 0, 409 and 503 -> check if accidentally successful
 				checkRetry = true
 			} else if resp[0].StatusCode == 404 {
 				if i == 1 {

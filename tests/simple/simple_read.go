@@ -63,7 +63,8 @@ func (t *simpleTest) readExistingDocument(
 		}
 
 		t.log.Infof(
-			"Reading (%d) existing document '%s' (%s) from '%s' got ", i, key, ifMatchStatus, c.name, resp[0].StatusCode)
+			"Reading (%d) existing document '%s' (%s) from '%s' got %d",
+			i, key, ifMatchStatus, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second * 5 {
 			backoff += backoff
@@ -179,7 +180,7 @@ func (t *simpleTest) readNonExistingDocument(collectionName string, key string) 
 			return nil
 		}
 
-		t.log.Infof("Reading (%d) non-existing document '%s' from '%s' got ",
+		t.log.Infof("Reading (%d) non-existing document '%s' from '%s' got %d",
 			i, key, collectionName, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second * 5 {

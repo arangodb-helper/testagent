@@ -80,8 +80,8 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 							"Failed to update existing document '%s' (%s) in collection '%s': got 412 but did not set If-Match",
 							key, ifMatchStatus, c.name))
 				}
-			} else if update[0].StatusCode == 503 || update[0].StatusCode == 0 {
-				// 503 and 412 -> check if accidentally successful
+			} else if update[0].StatusCode == 0 || update[0].StatusCode == 409 || update[0].StatusCode == 503 {
+				// 0, 409, 503 -> check if not accidentally successful
 				checkRetry = true
 			} else if update[0].StatusCode != 1 {
 				success = true

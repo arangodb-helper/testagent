@@ -65,7 +65,7 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 			return resultDocument.rev, nil
 		}
 			
-		t.log.Infof("Creating update AQL query for collection '%s'...", c.name, resp[0].StatusCode)
+		t.log.Infof("Creating update AQL query for collection '%s' got %d", c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second * 5 {
 			backoff += backoff
