@@ -42,7 +42,7 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 				}
 			} else if res[0].StatusCode >= 200 && res[0].StatusCode <= 202 { // document found
 				t.readExistingCounter.succeeded++
-				t.log.Infof(s
+				t.log.Infof(
 					"Reading (%d) document '%s' (%s) in '%s' (name -> '%s') succeeded", i, key, rev, col)
 				return result, nil
 			} 
