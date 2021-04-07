@@ -253,9 +253,7 @@ type UserDocument struct {
 
 // Equals returns true when the value fields of `d` and `other` are the equal.
 func (d UserDocument) Equals(other UserDocument) bool {
-	return d.Value == other.Value &&
-		d.Name == other.Name &&
-		d.Odd == other.Odd
+	return d.Value == other.Value &&d.Name == other.Name &&	d.Odd == other.Odd
 }
 
 func (t *simpleTest) reportFailure(f test.Failure) {

@@ -81,7 +81,9 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 		}
 
 		time.Sleep(backoff)
-		backoff += backoff
+		if backoff < time.Second * 5 {
+			backoff += backoff
+		}
 
 	}
 
@@ -134,7 +136,10 @@ func (t *simpleTest) removeExistingDocumentWrongRevision(collectionName string, 
 		}
 
 		time.Sleep(backoff)
-		backoff += backoff
+		if backoff < time.Second * 5 {
+			backoff += backoff
+		}
+
 	}
 
 	t.deleteExistingWrongRevisionCounter.failed++
@@ -184,7 +189,10 @@ func (t *simpleTest) removeNonExistingDocument(collectionName string, key string
 		}
 
 		time.Sleep(backoff)
-		backoff += backoff
+		if backoff < time.Second * 5 {
+			backoff += backoff
+		}
+
 	}
 
 	t.deleteNonExistingCounter.failed++
