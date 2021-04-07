@@ -44,6 +44,7 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 		if time.Now().After(createTimeout) {
 			break
 		}
+		i++
  	
 		t.log.Infof("Creating (%d) AQL query cursor for '%s'...", i, c.name)
 		queryReq := QueryRequest{
@@ -56,7 +57,7 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 		createReqTime = time.Now()
 		createResp, err = t.client.Post(
 			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 503},
-			[]int{200, 202, 400, 404, 409, 307}, operationTimeout, 1)
+			[]int{200, 202, 307, 400, 404, 409}, operationTimeout, 1)
 		if err[0] != nil {
 			// This is a failure
 			break
@@ -100,8 +101,10 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 		if err[0] != nil {
 			// This is a failure
 			t.queryNextBatchCounter.failed++
-			//t.reportFailure(test.NewFailure("Failed to read next AQL cursor batch in collection '%s': %v", c.name, err))
-			t.log.Errorf("Failed to read next AQL cursor batch in collection '%s': %v", c.name, err[0])
+			t.reportFailure(test.NewFailure(
+				"Failed to read next AQL cursor batch in collection '%s': %v", c.name, err[0]))
+			t.log.Errorf(
+				"Failed to read next AQL cursor batch in collection '%s': %v", c.name, err[0])
 			return maskAny(err[0])
 		}
 
@@ -122,7 +125,9 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 				// since this probably means that the coordinator is not yet up again.
 				// Coordinator rebooted, we expect this to fail now
 				t.queryNextBatchNewCoordinatorCounter.succeeded++
-				t.log.Infof("Reading next batch AQL cursor failed with 404, expected because of coordinator rebooted in between (%s)", createResp[0].CoordinatorURL)
+				t.log.Infof(
+					"Reading next batch AQL cursor failed with 404, expected because of rebooted coord in between (%s)",
+					createResp[0].CoordinatorURL)
 				return nil
 			}
 
