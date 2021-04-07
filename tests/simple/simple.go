@@ -324,9 +324,6 @@ func (t *simpleTest) testLoop() {
 					if rev, err := t.createDocument(c, userDoc, userDoc.Key); err != nil {
 						t.log.Errorf("Failed to create document: %#v", err)
 					} else {
-						userDoc.rev = rev
-						c.existingDocs[userDoc.Key] = userDoc
-
 						// Now try to read it, it must exist
 						t.client.SetCoordinator("")
 						if _, err := t.readExistingDocument(c, userDoc.Key, rev, false, false); err != nil {

@@ -8,6 +8,13 @@ import (
 	"github.com/arangodb-helper/testagent/service/test"
 )
 
+// readDocument tries to read a document. It retries up to `seconds` seconds,
+// if timeout or connection refused or 503 happen, so these are never
+// returned. If the document is not found (404), then this is considered
+// to be an error, if `mustExist` is `true`, otherwise, the function
+// simply returns `nil, nil`. In the good cases, `doc, nil` is returned.
+// If the function times out, an error is returned. This function does
+// not report failures.
 func readDocument(t *simpleTest, col string, key string, rev string, seconds int, mustExist bool) (*UserDocument, error) {
 	backoff := time.Millisecond * 100
 	i := 0
@@ -32,9 +39,9 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 			if res[0].StatusCode == 404 { // no such document
 				if mustExist {
 					t.readExistingCounter.failed++
-					t.reportFailure(
-						test.NewFailure("Failed to read(%d) existing document '%s' (%s) in collection '%s': %v",
-							i, key, rev, col, err[0]))
+					t.log.Errorf(
+						"Failed to read(%d) existing document '%s' (%s) in collection '%s': %v",
+					  i, key, rev, col, err[0])
 					return nil, maskAny(err[0])
 				} else {
 					t.log.Errorf("Failed to read(%d) document %s (%s) in %s (&v).", i, key, rev, col, err)
@@ -42,10 +49,10 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 				}
 			} else if res[0].StatusCode >= 200 && res[0].StatusCode <= 202 { // document found
 				t.readExistingCounter.succeeded++
-				t.log.Infof(s
+				t.log.Infof(
 					"Reading (%d) document '%s' (%s) in '%s' (name -> '%s') succeeded", i, key, rev, col)
 				return result, nil
-			} 
+			}
 		}
 
 		t.log.Infof(
@@ -138,7 +145,8 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 		}
 
 		if success {
-			//c.existingDocs[key] = doc
+			document.rev = resp[0].Rev
+			c.existingDocs[key] = document
 			t.createCounter.succeeded++
 			t.log.Infof("Creating document '%s' in '%s' succeeded", key, c.name)
 			return resp[0].Rev, nil

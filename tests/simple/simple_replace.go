@@ -9,6 +9,7 @@ import (
 	"github.com/arangodb-helper/testagent/service/test"
 )
 
+// replaceExistingDocument tries to replace an existing document.
 func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (string, error) {
 	operationTimeout := t.OperationTimeout
 	testTimeout := time.Now().Add(operationTimeout * 4)
@@ -40,7 +41,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 		t.log.Infof("Replacing (%d) existing document '%s' (%s) in '%s' (name -> '%s')...",
 			i, key, ifMatchStatus, c.name, newName)
 		update, err := t.client.Put(
-			url, q, hdr, newDoc, "", nil, []int{0, 1, 200, 201, 202, 412, 503}, []int{400, 404}, operationTimeout, 1)
+			url, q, hdr, newDoc, "", nil, []int{0, 1, 200, 201, 202, 409, 412, 503}, []int{400, 404}, operationTimeout, 1)
 
 /*
  * 20x, if document was replaced
@@ -53,10 +54,14 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
  * 503, cluster internal mishap, all bets off
  * Testagent:
  *   If first request gives correct result: OK
- *   if wrong result: ERROR  (include 503 in this case)
+ *   if wrong result: ERROR
  *   if connection refused to coordinator: simply retry other
  *   if either timeout (or broken pipe with coordinator):
- * retry 5x and and ERROR then
+ *     try to read the document repeatedly
+ *     if new document there:
+ *       success!
+ *     if old document there:
+ *       treat it as if the replace has not worked
 */
 
 		if err[0] == nil { // We have a response
@@ -75,8 +80,13 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 							"Failed to replace existing document '%s' (%s) in collection '%s': got 412 but did not set If-Match",
 							key, ifMatchStatus, c.name))
 				}
-			} else if update[0].StatusCode == 503 || update[0].StatusCode == 0 {
-				// 503 and 412 -> check if accidentally successful
+			} else if update[0].StatusCode == 503 || update[0].StatusCode == 409 ||
+			          update[0].StatusCode == 0 {
+				// 503 and 0 (timeout) -> check if accidentally successful
+				// 409 can happen if we had a previous timeout and the previous
+				// request and the current one collide with their write transactions.
+				// In this case we want to check if any of the operations was
+				// successful in changing the document.
 				checkRetry = true
 			} else if update[0].StatusCode != 1 {
 				success = true
@@ -85,20 +95,19 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 
 		if checkRetry {
 			expected := c.existingDocs[key]
-			expected.Name = newName
 			d, e := readDocument(t, c.name, key, "", 128, true)
 
 			if e == nil {
 
-				if d.Equals(expected) {
+				if d.Equals(newDoc) {
 					success = true
-				} else {
+				} else if ! d.Equals(expected) {
 					t.replaceExistingCounter.failed++
 					t.reportFailure(test.NewFailure(
-						"Failed to update existing document '%s' (%s) in collection '%s': got 412 but has not been updated",
+						"Failed to replace existing document '%s' (%s) in collection '%s': got 412 but has not been updated",
 						key, ifMatchStatus, c.name))
 					return "", maskAny(fmt.Errorf(
-						"Failed to update existing document '%s' (%s) in collection '%s': got 412 but has not been updated",
+						"Failed to replace existing document '%s' (%s) in collection '%s': got 412 but has not been updated",
 						key, ifMatchStatus, c.name))
 				}
 			} else { // should never get here

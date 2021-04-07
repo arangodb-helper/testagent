@@ -55,7 +55,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
  *    a timeout
  *  503, cluster internal mishap, all bets off
  *  If first request gives correct result: OK
- *  if wrong result: ERROR  (include 503 in this case)
+ *  if wrong result: ERROR
  *  if connection refused to coordinator: simply retry other
  *  if either timeout (or broken pipe with coordinator):
  *    try to read the document repeatedly for up to 15s:
@@ -100,7 +100,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 			d, e := readDocument(t, c.name, key, "", 128, true)
 
 			if e == nil { // document does not exist
-				if d != nil && d.Equals(expected) {
+				if d.Equals(expected) {
 					success = true
 				} else {
 					t.updateExistingCounter.failed++
