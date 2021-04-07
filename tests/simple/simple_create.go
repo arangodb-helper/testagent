@@ -12,8 +12,8 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 	backoff := time.Millisecond * 100
 	i := 0
 	url := fmt.Sprintf("/_api/document/%s/%s", col, key)
-	operationTimeout := time.Second * 30
-	timeout := time.Now().Add(operationTimeout * 8)
+	operationTimeout := time.Duration(seconds / 8) * time.Second
+	timeout := time.Now().Add(time.Duration(seconds) * time.Second)
 
 	for  {
 		i++
@@ -26,7 +26,7 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 		t.log.Infof(
 			"Reading (%d) document '%s' (%s) in '%s' (name -> '%s')...", i, key, rev, col)
 		res, err := t.client.Get(
-			url, nil, hdr, &result, []int{0, 1, 200, 201, 202, 406, 404, 503}, []int{400, 307}, operationTimeout, 1)
+			url, nil, hdr, &result, []int{0, 1, 200, 201, 202, 404, 503}, []int{400, 307}, operationTimeout, 1)
 
 		if err[0] == nil {
 			if res[0].StatusCode == 404 { // no such document
@@ -45,7 +45,10 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 				t.log.Infof(
 					"Reading (%d) document '%s' (%s) in '%s' (name -> '%s') succeeded", i, key, rev, col)
 				return result, nil
-			}
+			} else {
+				// document found, unless response code is 0, 1 or 503, in which
+				// case result is nil
+      }
 		}
 
 		time.Sleep(backoff)
@@ -59,31 +62,6 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 	return nil, maskAny(fmt.Errorf("Timed out while trying to read(%d) document %s in %s (&v).", i, key, col))
 
 }
-
-func (t *simpleTest) createDocument(c *collection, document UserDocument, key string) (string, error) {
-
-	operationTimeout := t.OperationTimeout
-	testTimeout := time.Now().Add(operationTimeout * 4)
-
-	q := url.Values{}
-	q.Set("waitForSync", "true")
-	url := fmt.Sprintf("/_api/document/%s", c.name)
-	backoff := time.Millisecond * 250
-	i := 0
-
-	for {
-
-		i++
-		if time.Now().After(testTimeout) {
-			break;
-		}
-
-		checkRetry := false
-		success := false
-
-		t.log.Infof("Creating (%d) document '%s' in '%s'...", i, key, c.name)
-		resp, err := t.client.Post(url, q, nil, document, "", nil,
-			[]int{0, 1, 200, 201, 202, 409, 503},	[]int{400, 404, 307}, operationTimeout, 1)
 
 /*
 	POST /_api/document
@@ -110,9 +88,33 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 		else (not appeared within 15s):
 			treat as if insert has not worked and go to retry loop
 */
+
 // createDocument creates a new document.
 // The operation is expected to succeed.
+func (t *simpleTest) createDocument(c *collection, document UserDocument, key string) (string, error) {
 
+	operationTimeout := t.OperationTimeout
+	testTimeout := time.Now().Add(operationTimeout * 4)
+
+	q := url.Values{}
+	q.Set("waitForSync", "true")
+	url := fmt.Sprintf("/_api/document/%s", c.name)
+	backoff := time.Millisecond * 250
+	i := 0
+
+	for {
+
+		i++
+		if time.Now().After(testTimeout) {
+			break;
+		}
+
+		checkRetry := false
+		success := false
+
+		t.log.Infof("Creating (%d) document '%s' in '%s'...", i, key, c.name)
+		resp, err := t.client.Post(url, q, nil, document, "", nil,
+			[]int{0, 1, 200, 201, 202, 409, 503},	[]int{400, 404, 307}, operationTimeout, 1)
 
 		if err[0] == nil { // we have a response
 			if resp[0].StatusCode == 503 || resp[0].StatusCode == 409 || resp[0].StatusCode == 0 {
@@ -129,7 +131,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 		}
 
 		if checkRetry {
-			d, e := readDocument(t, c.name, key, "", 120, false)
+			d, e := readDocument(t, c.name, key, "", 128, false)
 			// replace == with Equals
 			if e == nil && d != nil && d.Equals(document) {
 				success = true
