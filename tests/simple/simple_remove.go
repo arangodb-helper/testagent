@@ -38,7 +38,7 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 
 		if err[0] == nil { // we have a response
 			if resp[0].StatusCode == 503 || resp[0].StatusCode == 0 {
-				// 0, 503 and 409 -> check if accidentally successful
+				// 0 and 503 -> check if accidentally successful
 				checkRetry = true
 			} else if resp[0].StatusCode == 404 {
 				if i == 1 {
@@ -53,6 +53,9 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 							"Failed to delete existing document '%s' (%s) in collection '%s': got 404 after only 1 attempt",
 							key, ifMatchStatus, collectionName))
 				} else {
+					// Potentially, an earlier try timed out but the document was
+					// still removed in the end. For this case, we tolerate not
+					// finding the document here, unless it is our first try.
 					success = true
 				}
 			}
@@ -67,10 +70,8 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 
 		if checkRetry {
 			d, e := readDocument(t, collectionName, key, "", 128, false)
-			if e == nil {
-				if d == nil {
-					success = true
-				}
+			if e == nil && d == nil {
+			  success = true
 			}
 		}
 
@@ -171,7 +172,7 @@ func (t *simpleTest) removeNonExistingDocument(collectionName string, key string
 
 		t.log.Infof("Removing non-existing document '%s' from '%s'...", key, collectionName)
 		resp, err := t.client.Delete(
-			url, q, nil, []int{404}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, 1)
+			url, q, nil, []int{0, 1, 404, 503}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, 1)
 
 		if err[0] == nil {
 			if resp[0].StatusCode == 404 {
