@@ -24,7 +24,7 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 		var result *UserDocument
 
 		t.log.Infof(
-			"Reading (%d) document '%s' (%s) in '%s' (name -> '%s')...", i, key, rev, col)
+			"Reading (%d) document '%s' (%s) in '%s' ...", i, key, rev, col)
 		res, err := t.client.Get(
 			url, nil, hdr, &result, []int{0, 1, 200, 201, 202, 404, 503}, []int{400, 307}, operationTimeout, 1)
 
@@ -42,17 +42,14 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 				}
 			} else if res[0].StatusCode >= 200 && res[0].StatusCode <= 202 { // document found
 				t.readExistingCounter.succeeded++
-				t.log.Infof(
+				t.log.Infof(s
 					"Reading (%d) document '%s' (%s) in '%s' (name -> '%s') succeeded", i, key, rev, col)
 				return result, nil
-			} else {
-				// response code is 0, 1 or 503, in which case result is nil
-				return result, nil
-      }
+			} 
 		}
 
 		t.log.Infof(
-			"Reading (%d) document '%s' (%s) in '%s' (name -> '%s') got %d", i, key, rev, col, res[0].StatusCode)
+			"Reading (%d) document '%s' (%s) in '%s' got %d", i, key, rev, col, res[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second * 5 {
 			backoff += backoff
