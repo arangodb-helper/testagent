@@ -40,7 +40,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 		t.log.Infof("Replacing (%d) existing document '%s' (%s) in '%s' (name -> '%s')...",
 			i, key, ifMatchStatus, c.name, newName)
 		update, err := t.client.Put(
-			url, q, hdr, newDoc, "", nil, []int{0, 200, 201, 202, 412, 503}, []int{400, 404}, operationTimeout, 1)
+			url, q, hdr, newDoc, "", nil, []int{0, 1, 200, 201, 202, 412, 503}, []int{400, 404}, operationTimeout, 1)
 
 /*
  * 20x, if document was replaced
@@ -124,7 +124,9 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 		t.log.Errorf("Failure %i to replace existing document '%s' (%s) in collection '%s': got %i, retrying",
 			i, key, c.name, update[0].StatusCode)
 		time.Sleep(backoff)
-		backoff += backoff
+		if backoff < time.Second * 5 {
+			backoff += backoff
+		}
 	}
 
 	// Overall timeout :(
@@ -185,7 +187,9 @@ func (t *simpleTest) replaceExistingDocumentWrongRevision(collectionName string,
 		}
 
 		time.Sleep(backoff)
-		backoff += backoff
+		if backoff < time.Second * 5 {
+			backoff += backoff
+		}
 	}
 
 	t.replaceExistingWrongRevisionCounter.failed++
@@ -249,7 +253,9 @@ func (t *simpleTest) replaceNonExistingDocument(collectionName string, key strin
 		}
 
 		time.Sleep(backoff)
-		backoff += backoff
+		if backoff < time.Second * 5 {
+			backoff += backoff
+		}
 	}
 
 	t.replaceNonExistingCounter.failed++

@@ -100,7 +100,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 			d, e := readDocument(t, c.name, key, "", 128, true)
 
 			if e == nil { // document does not exist
-				if d.Equals(expected) {
+				if d != nil && d.Equals(expected) {
 					success = true
 				} else {
 					t.updateExistingCounter.failed++
@@ -137,7 +137,9 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 		t.log.Errorf("Failure %i to update existing document '%s' (%s) in collection '%s': got %i, retrying",
 			i, key, c.name, update[0].StatusCode)
 		time.Sleep(backoff)
-		backoff += backoff
+		if backoff < time.Second * 5 {
+			backoff += backoff
+		}
 
 	}
 
@@ -198,7 +200,10 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 		}
 
 		time.Sleep(backoff)
-		backoff += backoff
+		if backoff < time.Second * 5 {
+			backoff += backoff
+		}
+
 	}
 
 	t.updateExistingWrongRevisionCounter.failed++
@@ -258,7 +263,10 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 		}
 
 		time.Sleep(backoff)
-		backoff += backoff
+		if backoff < time.Second * 5 {
+			backoff += backoff
+		}
+
 	}
 
 	t.updateNonExistingCounter.failed++

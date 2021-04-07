@@ -61,9 +61,11 @@ func (t *simpleTest) readExistingDocument(
 				return result.rev, nil
 			}
 		}
-		
+
 		time.Sleep(backoff)
-		backoff += backoff
+		if backoff < time.Second * 5 {
+			backoff += backoff
+		}
 
 	}
 
@@ -116,7 +118,9 @@ func (t *simpleTest) readExistingDocumentWrongRevision(
 		}
 
 		time.Sleep(backoff)
-		backoff += backoff
+		if backoff < time.Second * 5 {
+			backoff += backoff
+		}
 
 	}
 
@@ -166,7 +170,9 @@ func (t *simpleTest) readNonExistingDocument(collectionName string, key string) 
 		}
 
 		time.Sleep(backoff)
-		backoff += backoff
+		if backoff < time.Second * 5 {
+			backoff += backoff
+		}
 
 	}
 
