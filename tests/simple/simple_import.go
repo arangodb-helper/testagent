@@ -68,10 +68,11 @@ func (t *simpleTest) importDocuments(c *collection) error {
 				c.existingDocs[d.Key] = d
 			}
 			t.importCounter.succeeded++
-			t.log.Infof("Importing %d documents ('%s' - '%s') into '%s' succeeded", len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name)			
+			t.log.Infof("Importing (%d) %d documents ('%s' - '%s') into '%s' succeeded", i, len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name)			
 			return nil
 		}
 
+		t.log.Infof("Importing (%d) %d documents ('%s' - '%s') into '%s' received", i, resp[0].StatusCode)			
 		time.Sleep(backoff)
 		if backoff < time.Second * 5 {
 			backoff += backoff

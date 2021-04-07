@@ -98,8 +98,8 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 			return nil
 		}
 
-		t.log.Errorf("Failed to create (%d) collection '%s': '%s' (%s) in collection '%s': got %i",
-			i, c.name, resp[0].StatusCode)
+		t.log.Infof("Creating (%d) collection '%s' with numberOfShards=%d, replicationFactor=%d got %d",
+			i, c.name, numberOfShards, replicationFactor, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second * 5 {
 			backoff += backoff
@@ -159,6 +159,7 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 			return nil
 		}
 
+		t.log.Infof("Removing (%d) collection '%s' got %d", i, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second * 5 {
 			backoff += backoff
@@ -205,6 +206,7 @@ func (t *simpleTest) collectionExists(c *collection) (bool, error) {
 
 		// 0, 1, 503 retry
 
+		t.log.Infof("Checking (%d) collection '%s' got %d", i, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second * 5 {
 			backoff += backoff

@@ -62,6 +62,8 @@ func (t *simpleTest) readExistingDocument(
 			}
 		}
 
+		t.log.Infof(
+			"Reading (%d) existing document '%s' (%s) from '%s' got ", i, key, ifMatchStatus, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second * 5 {
 			backoff += backoff
@@ -113,10 +115,18 @@ func (t *simpleTest) readExistingDocumentWrongRevision(
 			return maskAny(err[0])
 		} else if resp[0].StatusCode == 412 {
 			t.readExistingWrongRevisionCounter.succeeded++
-			t.log.Infof("Reading existing document '%s' wrong revision from '%s' succeeded", key, collectionName)
+			t.log.Infof(
+				"Reading existing document '%s' wrong revision from '%s' succeeded", key, collectionName)
 			return nil
+		} else {
+			t.log.Infof(
+				"Reading existing document '%s' wrong revision from '%s' status code '%d'",
+				key, collectionName, resp[0].StatusCode)
 		}
 
+		t.log.Infof(
+			"Reading (%d) existing document '%s' wrong revision from '%s' got %d",
+			i, key, collectionName, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second * 5 {
 			backoff += backoff
@@ -169,6 +179,8 @@ func (t *simpleTest) readNonExistingDocument(collectionName string, key string) 
 			return nil
 		}
 
+		t.log.Infof("Reading (%d) non-existing document '%s' from '%s' got ",
+			i, key, collectionName, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second * 5 {
 			backoff += backoff
