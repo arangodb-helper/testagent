@@ -35,7 +35,7 @@ func (t *simpleTest) createImportDocument() ([]byte, []UserDocument) {
 func (t *simpleTest) importDocuments(c *collection) error {
 	operationTimeout := t.OperationTimeout * 4
 	testTimeout := time.Now().Add(operationTimeout * 4)
-	
+
 	q := url.Values{}
 	q.Set("collection", c.name)
 	q.Set("waitForSync", "true")
@@ -44,12 +44,12 @@ func (t *simpleTest) importDocuments(c *collection) error {
 	i := 0
 
 	for {
-		
+
 		i++
 		if time.Now().After(testTimeout) {
 			break;
 		}
-		
+
 		importData, docs := t.createImportDocument()
 		t.log.Infof("Importing %d documents ('%s' - '%s') into '%s'...",
 			len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name)
@@ -62,28 +62,27 @@ func (t *simpleTest) importDocuments(c *collection) error {
 			t.reportFailure(test.NewFailure("Failed to import documents in collection '%s': %v", c.name, err[0]))
 			return maskAny(err[0])
 		}
-		
+
 		if resp[0].StatusCode >= 200 && resp[0].StatusCode <= 299 {
 			for _, d := range docs {
 				c.existingDocs[d.Key] = d
 			}
 			t.importCounter.succeeded++
-			t.log.Infof("Importing (%d) %d documents ('%s' - '%s') into '%s' succeeded", i, len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name)			
+			t.log.Infof("Importing (%d) %d documents ('%s' - '%s') into '%s' succeeded", i, len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name)
 			return nil
 		}
 
-		t.log.Infof("Importing %d documents ('%s' - '%s') into '%s' got %d",
-			len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name, resp[0].StatusCode)
+		t.log.Infof("Importing (%d) %d documents ('%s' - '%s') into '%s' got %d",
+			i, len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second * 5 {
 			backoff += backoff
 		}
-		
+
 	}
 
 	t.importCounter.failed++
 	t.reportFailure(test.NewFailure("Timed out while importing (%d) documents in collection '%s'", i, c.name))
 	return maskAny(fmt.Errorf("Timed out while importing (%d) documents in collection '%s'", i, c.name))
-	
 
 }
