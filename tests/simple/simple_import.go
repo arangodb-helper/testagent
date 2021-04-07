@@ -72,7 +72,8 @@ func (t *simpleTest) importDocuments(c *collection) error {
 			return nil
 		}
 
-		t.log.Infof("Importing (%d) %d documents ('%s' - '%s') into '%s' received", i, resp[0].StatusCode)			
+		t.log.Infof("Importing %d documents ('%s' - '%s') into '%s' got %d",
+			len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second * 5 {
 			backoff += backoff

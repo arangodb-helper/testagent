@@ -77,10 +77,13 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 
 		if success {
 			t.deleteExistingCounter.succeeded++
-			t.log.Infof("Removing existing document '%s' (%s) from '%s' succeeded", key, ifMatchStatus, collectionName)
+			t.log.Infof("Removing existing document '%s' (%s) from '%s' succeeded",
+				key, ifMatchStatus, collectionName)
 			return nil
 		}
 
+		t.log.Infof("Removing (%d) existing document '%s' (%s) from '%s' got %d",
+			i, key, ifMatchStatus, collectionName, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second * 5 {
 			backoff += backoff
@@ -136,6 +139,8 @@ func (t *simpleTest) removeExistingDocumentWrongRevision(collectionName string, 
 			return maskAny(err[0])
 		}
 
+		t.log.Infof("Removing existing document '%s' wrong revision from '%s' got %d",
+			key, collectionName, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second * 5 {
 			backoff += backoff
@@ -170,7 +175,7 @@ func (t *simpleTest) removeNonExistingDocument(collectionName string, key string
 			break;
 		}
 
-		t.log.Infof("Removing non-existing document '%s' from '%s'...", key, collectionName)
+		t.log.Infof("Removing (%d) non-existing document '%s' from '%s'...", i, key, collectionName)
 		resp, err := t.client.Delete(
 			url, q, nil, []int{0, 1, 404, 503}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, 1)
 
@@ -189,6 +194,8 @@ func (t *simpleTest) removeNonExistingDocument(collectionName string, key string
 			return maskAny(err[0])
 		}
 
+		t.log.Infof("Removing (%d) non-existing document '%s' from '%s' got %d",
+			i, key, collectionName, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second * 5 {
 			backoff += backoff

@@ -67,6 +67,7 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 			break
 		}
 		
+		t.log.Infof("Creating (%d) AQL query cursor for '%s' got %d", i, c.name, createResp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second * 5 {
 			backoff += backoff
@@ -196,6 +197,7 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 			return nil
 		}
 
+		t.log.Infof("Creating (%d) long running AQL query for '%s' got %d", i, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second * 5 {
 			backoff += backoff
