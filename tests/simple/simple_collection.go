@@ -50,7 +50,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 		if err[0] == nil {
 			if resp[0].StatusCode == 503 || resp[0].StatusCode == 409 || resp[0].StatusCode == 0 {
 				checkRetry = true
-			} else if resp[0].StatusCode == 1 && resp[0].StatusCode == 500 { // connection refused or not created
+			} else if resp[0].StatusCode == 1 || resp[0].StatusCode == 500 { // connection refused or not created
 				shouldNotBeThere = true
 			} else {
 				success = true
@@ -69,11 +69,11 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 					t.createCollectionCounter.failed++
 					t.reportFailure(
 						test.NewFailure(
-							"Failure while creating collection '%s': %i reported but collection exists",
-							resp[0].StatusCode, c.name))
+							"Failure while creating collection '%s': %d reported but collection exists",
+							c.name, resp[0].StatusCode))
 					return maskAny(
-						fmt.Errorf("Failure while creating collection '%s': %i reported but collection exists",
-							resp[0].StatusCode, c.name))
+						fmt.Errorf("Failure while creating collection '%s': %d reported but collection exists",
+							c.name, resp[0].StatusCode))
 				} else {
 					success = true
 				}
@@ -109,8 +109,8 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 
 	// Overall timeout :(
 	t.reportFailure(
-		test.NewFailure("Timed out while trying to create (%d) collection %s in %s.", i, c.name))
-	return maskAny(fmt.Errorf("Timed out while trying to create (%d) collection %s in %s.", i, c.name))
+		test.NewFailure("Timed out while trying to create (%d) collection %s.", i, c.name))
+	return maskAny(fmt.Errorf("Timed out while trying to create (%d) collection %s.", i, c.name))
 
 }
 
@@ -144,7 +144,7 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 		} else if resp[0].StatusCode == 404 {
 			// Collection not found.
 			// This can happen if the first attempt timed out, but did actually succeed.
-			// So we accept this is there are multiple attempts.
+			// So we accept this if there are multiple attempts.
 			if i == 1 { // this is a failure in first run
 				// Not enough attempts, this is a failure
 				t.removeExistingCollectionCounter.failed++
