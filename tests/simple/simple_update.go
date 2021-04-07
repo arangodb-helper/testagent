@@ -37,8 +37,8 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 		t.log.Infof(
 			"Updating (%d) existing document '%s' (%s) in '%s' (name -> '%s')...",
 			i, key, ifMatchStatus, c.name, newName)
-		update, err := t.client.Patch(url, q,	hdr, delta, "", nil, []int{0, 200, 201, 202, 412, 503},
-			[]int{400, 404, 409, 307}, operationTimeout, 1)
+		update, err := t.client.Patch(url, q,	hdr, delta, "", nil, []int{0, 200, 201, 202, 409, 412, 503},
+			[]int{400, 404, 307}, operationTimeout, 1)
 
 /**
  *  20x, if document was replaced
