@@ -54,7 +54,7 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 		}
 		
 		createReqTime = time.Now()
-		createResp, err := t.client.Post(
+		createResp, err = t.client.Post(
 			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 503},
 			[]int{200, 202, 400, 404, 409, 307}, operationTimeout, 1)
 		if err[0] != nil {
@@ -154,7 +154,7 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 	}
 
 	operationTimeout := t.OperationTimeout*2
-	testTimeout := operationTimeout * 4
+	testTimeout := time.Now().Add(operationTimeout * 4)
 	i := 0
 	backoff := time.Millisecond * 100
 
@@ -172,10 +172,11 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 			Count:     false,
 		}
 		var cursorResp CursorResponse
-		if resp, err :=	t.client.Post(
+		resp, err := t.client.Post(
 			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 503},
-			[]int{200, 202, 400, 404, 409, 307}, operationTimeout, 1); err[0] != nil {
-				
+			[]int{200, 202, 400, 404, 409, 307}, operationTimeout, 1)
+
+		if err[0] != nil {
 			// This is a failure
 			t.queryLongRunningCounter.failed++
 			t.reportFailure(test.NewFailure(
@@ -201,6 +202,10 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 
 	}
 
+	t.reportFailure(test.NewFailure(
+		"Timed out create (%d) long running AQL cursor in collection '%s'", i, c.name))
+	return maskAny(fmt.Errorf(
+		"Timed out create (%d) long running AQL cursor in collection '%s'", i, c.name))
 	
 }
 
