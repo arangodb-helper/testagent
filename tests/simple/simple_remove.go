@@ -66,7 +66,7 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 		}
 
 		if checkRetry {
-			d, e := readDocument(t, collectionName, key, "", 120, false)
+			d, e := readDocument(t, collectionName, key, "", 128, false)
 			if e == nil {
 				if d == nil {
 					success = true
