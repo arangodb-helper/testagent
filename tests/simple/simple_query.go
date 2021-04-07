@@ -154,31 +154,54 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 	}
 
 	operationTimeout := t.OperationTimeout*2
+	testTimeout := operationTimeout * 4
+	i := 0
+	backoff := time.Millisecond * 100
 
-	t.log.Infof("Creating long running AQL query for '%s'...", c.name)
-	queryReq := QueryRequest{
-		Query:     fmt.Sprintf("FOR d IN %s LIMIT 10 RETURN {d:d, s:SLEEP(2)}", c.name),
-		BatchSize: 10,
-		Count:     false,
-	}
-	var cursorResp CursorResponse
-	if _, err := t.client.Post("/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{201}, []int{200, 202, 400, 404, 409, 307}, operationTimeout, 1); err[0] != nil {
-		// This is a failure
-		t.queryLongRunningCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to create long running AQL cursor in collection '%s': %v", c.name, err[0]))
-		return maskAny(err[0])
-	}
-	resultCount := len(cursorResp.Result)
-	t.queryLongRunningCounter.succeeded++
-	t.log.Infof("Creating long running AQL query for collection '%s' succeeded", c.name)
+	for {
 
-	// We should've fetched all documents, check result count
-	if resultCount != 10 {
-		t.reportFailure(test.NewFailure("Number of documents was %d, expected 10", resultCount))
-		return maskAny(fmt.Errorf("Number of documents was %d, expected 10", resultCount))
+		if time.Now().After(testTimeout) {
+			break
+		}
+		i++
+		
+		t.log.Infof("Creating (%d) long running AQL query for '%s'...", i, c.name)
+		queryReq := QueryRequest{
+			Query:     fmt.Sprintf("FOR d IN %s LIMIT 10 RETURN {d:d, s:SLEEP(2)}", c.name),
+			BatchSize: 10,
+			Count:     false,
+		}
+		var cursorResp CursorResponse
+		if resp, err :=	t.client.Post(
+			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 503},
+			[]int{200, 202, 400, 404, 409, 307}, operationTimeout, 1); err[0] != nil {
+				
+			// This is a failure
+			t.queryLongRunningCounter.failed++
+			t.reportFailure(test.NewFailure(
+				"Failed to create long running AQL cursor in collection '%s': %v", c.name, err[0]))
+			return maskAny(err[0])
+		}
+
+		if resp[0].StatusCode == 201 { // 0, 1, 503 just go another round
+			resultCount := len(cursorResp.Result)
+			t.queryLongRunningCounter.succeeded++
+			t.log.Infof("Creating long running AQL query for collection '%s' succeeded", c.name)
+			// We should've fetched all documents, check result count
+			if resultCount != 10 {
+				t.reportFailure(test.NewFailure("Number of documents was %d, expected 10", resultCount))
+				return maskAny(fmt.Errorf("Number of documents was %d, expected 10", resultCount))
+			}
+		}
+
+		time.Sleep(backoff)
+		if backoff < time.Second * 5 {
+			backoff += backoff
+		}
+
 	}
 
-	return nil
+	
 }
 
 // getUptime queries the uptime of the given coordinator.
