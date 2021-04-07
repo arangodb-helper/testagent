@@ -46,8 +46,8 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 					"Reading (%d) document '%s' (%s) in '%s' (name -> '%s') succeeded", i, key, rev, col)
 				return result, nil
 			} else {
-				// document found, unless response code is 0, 1 or 503, in which
-				// case result is nil
+				// response code is 0, 1 or 503, in which case result is nil
+				return result, nil
       }
 		}
 
