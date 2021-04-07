@@ -45,7 +45,7 @@ func (t *simpleTest) readExistingDocument(
 				// Compare document against expected document
 				if !skipExpectedValueCheck {
 					expected := c.existingDocs[key]
-					if result.Value != expected.Value || result.Name != expected.Name || result.Odd != expected.Odd {
+					if ! result.Equals(expected) {
 						// This is a failure
 						t.readExistingCounter.failed++
 						t.reportFailure(test.NewFailure("Read existing document '%s' (%s) returned different values '%s': got %q expected %q", key, ifMatchStatus, c.name, result, expected))
@@ -119,10 +119,6 @@ func (t *simpleTest) readExistingDocumentWrongRevision(
 			t.log.Infof(
 				"Reading existing document '%s' wrong revision from '%s' succeeded", key, collectionName)
 			return nil
-		} else {
-			t.log.Infof(
-				"Reading existing document '%s' wrong revision from '%s' status code '%d'",
-				key, collectionName, resp[0].StatusCode)
 		}
 
 		t.log.Infof(
@@ -191,7 +187,7 @@ func (t *simpleTest) readNonExistingDocument(collectionName string, key string) 
 
 	t.readNonExistingCounter.failed++
 	t.reportFailure(test.NewFailure(
-		"Timed out while reading non-existing document '%s' in collection '%s'", i, key, collectionName))
+		"Timed out while reading non-existing document '%s' in collection '%s'", key, collectionName))
 	return maskAny(fmt.Errorf(
-		"Timed out while reading non-existing document '%s' in collection '%s'", i, key, collectionName))
+		"Timed out while reading non-existing document '%s' in collection '%s'", key, collectionName))
 }
