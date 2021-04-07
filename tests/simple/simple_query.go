@@ -193,6 +193,7 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 				t.reportFailure(test.NewFailure("Number of documents was %d, expected 10", resultCount))
 				return maskAny(fmt.Errorf("Number of documents was %d, expected 10", resultCount))
 			}
+			return nil
 		}
 
 		time.Sleep(backoff)
