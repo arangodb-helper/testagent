@@ -8,6 +8,7 @@ import (
 	"github.com/arangodb-helper/testagent/service/test"
 )
 
+// updateExistingDocument updates an existing document
 func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (string, error) {
 
 	operationTimeout := t.OperationTimeout

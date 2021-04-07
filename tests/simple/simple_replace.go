@@ -177,7 +177,7 @@ func (t *simpleTest) replaceExistingDocumentWrongRevision(collectionName string,
 			"Replacing (%d) existing document '%s' wrong revision in '%s' (name -> '%s')...",
 			i, key, collectionName, newName)
 		resp, err := t.client.Put(
-			url, q, hdr, newDoc, "", nil,	[]int{412}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
+			url, q, hdr, newDoc, "", nil,	[]int{0, 1, 412, 503}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
 
 		if err[0] == nil {
 			if resp[0].StatusCode == 412 {
@@ -185,6 +185,7 @@ func (t *simpleTest) replaceExistingDocumentWrongRevision(collectionName string,
 				t.log.Infof("Replacing existing document '%s' wrong revision in '%s' (name -> '%s') succeeded", key, collectionName, newName)
 				return nil
 			}
+			// In cases 0 and 1 and 503, we fall through here and try again
 		} else {
 			// This is a failure
 			t.replaceExistingWrongRevisionCounter.failed++
@@ -246,7 +247,7 @@ func (t *simpleTest) replaceNonExistingDocument(collectionName string, key strin
 			i, key, collectionName, newName)
 		resp, err := t.client.Put(
 			fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, nil, newDoc, "", nil,
-			[]int{404}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, 1)
+			[]int{0, 1, 404, 503}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, 1)
 
 		if err[0] == nil {
 			if resp[0].StatusCode == 404 {
@@ -255,6 +256,7 @@ func (t *simpleTest) replaceNonExistingDocument(collectionName string, key strin
 					"Replacing non-existing document '%s' in '%s' (name -> '%s') succeeded", key, collectionName, newName)
 				return nil
 			}
+			// In cases 0, 1 and 503 we fall through here and try again.
 		} else {
 		// This is a failure
 		t.replaceNonExistingCounter.failed++
