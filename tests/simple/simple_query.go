@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/arangodb-helper/testagent/service/test"
+	"github.com/arangodb-helper/testagent/tests/util"
 )
 
 type QueryRequest struct {
@@ -28,28 +29,57 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 	}
 
 	operationTimeout := t.OperationTimeout
+	createTimeout := time.Now().Add(operationTimeout * 5)
+	created := false
+	backoff := time.Millisecond * 250
+	i := 0
 
-	t.log.Infof("Creating AQL query cursor for '%s'...", c.name)
-	queryReq := QueryRequest{
-		//    Query:     fmt.Sprintf("FOR d IN %s LIMIT 10 RETURN {d, s: SLEEP(10)}", collectionName),
-		Query:     fmt.Sprintf("FOR d IN %s LIMIT 10 RETURN d", c.name),
-		BatchSize: 1,
-		Count:     false,
-	}
+	var err[] error
+	var createResp[] util.ArangoResponse
 	var cursorResp CursorResponse
-	createReqTime := time.Now()
-	createResp, err := t.client.Post(
-		"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 503},
-		[]int{200, 202, 400, 404, 409, 307}, operationTimeout, 1)
-	if err[0] != nil {
-		// This is a failure
+	var createReqTime time.Time
+	
+	for {
+
+		if time.Now().After(createTimeout) {
+			break
+		}
+ 	
+		t.log.Infof("Creating (%d) AQL query cursor for '%s'...", i, c.name)
+		queryReq := QueryRequest{
+			//    Query:     fmt.Sprintf("FOR d IN %s LIMIT 10 RETURN {d, s: SLEEP(10)}", collectionName),
+			Query:     fmt.Sprintf("FOR d IN %s LIMIT 10 RETURN d", c.name),
+			BatchSize: 1,
+			Count:     false,
+		}
+		
+		createReqTime = time.Now()
+		createResp, err := t.client.Post(
+			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 503},
+			[]int{200, 202, 400, 404, 409, 307}, operationTimeout, 1)
+		if err[0] != nil {
+			// This is a failure
+			break
+		} else if createResp[0].StatusCode == 201 {
+			created = true
+			t.queryCreateCursorCounter.succeeded++
+			t.log.Infof("Creating AQL cursor for collection '%s' succeeded", c.name)
+			break
+		}
+		
+		time.Sleep(backoff)
+		if backoff < time.Second * 5 {
+			backoff += backoff
+		}
+
+	}
+
+	if !created {
 		t.queryCreateCursorCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to create AQL cursor in collection '%s': %v", c.name, err[0]))
 		return maskAny(err[0])
 	}
-	t.queryCreateCursorCounter.succeeded++
-	t.log.Infof("Creating AQL cursor for collection '%s' succeeded", c.name)
-
+			
 	// Now continue fetching results.
 	// This may fail if (and only if) the coordinator has changed.
 	resultCount := len(cursorResp.Result)
