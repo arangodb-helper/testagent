@@ -15,14 +15,14 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 	testTimeout := time.Now().Add(operationTimeout * 5)
 	backoff := time.Millisecond * 250
 	i := 0
-	
+
 	for {
 
 		if time.Now().After(testTimeout) {
 			break
 		}
 		i++
-		
+
 		t.log.Infof("Creating update AQL query for collection '%s'...", c.name)
 		newName := fmt.Sprintf("AQLUpdate name %s", time.Now())
 		queryReq := QueryRequest{
@@ -30,12 +30,12 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 			BatchSize: 1,
 			Count:     false,
 		}
-		
+
 		var cursorResp CursorResponse
 		resultDocument := &UserDocument{}
 		cursorResp.Result = []interface{}{resultDocument}
 		resp, err := t.client.Post(
-			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 409, 503},
+			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 409, 500, 503},
 			[]int{200, 202, 400, 404, 307}, operationTimeout, 1)
 
 		if err[0] != nil {
@@ -64,7 +64,12 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 
 			return resultDocument.rev, nil
 		}
-			
+
+		// In all other cases we simply try again. Note that this includes the
+		// case that there is first a timeout (whose request actually succeeds
+		// in the end), and then a second try which runs into 409. We still
+		// continue until we have done the change.
+
 		t.log.Infof("Creating update AQL query for collection '%s' got %d", c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second * 5 {
@@ -83,7 +88,7 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 // queryUpdateDocumentsLongRunning runs a long running AQL update query.
 // The operation is expected to succeed.
 func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) (string, error) {
-	
+
 	operationTimeout := t.OperationTimeout*3
 	testTimeout := time.Now().Add(operationTimeout*4)
 	backoff := time.Millisecond * 250
@@ -95,7 +100,7 @@ func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) 
 			break
 		}
 		i++
-		
+
 		t.log.Infof("Creating (%d) long running update AQL query for collection '%s'...", i, c.name)
 		newName := fmt.Sprintf("AQLLongRunningUpdate name %s", time.Now())
 		queryReq := QueryRequest{
@@ -108,7 +113,7 @@ func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) 
 		resultDocument := &UserDocument{}
 		cursorResp.Result = []interface{}{resultDocument}
 		resp, err := t.client.Post(
-			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 409, 503},
+			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 409, 500, 503},
 			[]int{200, 202, 400, 404, 307}, operationTimeout, 1)
 
 		if err[0] != nil {
@@ -119,7 +124,7 @@ func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) 
 			return "", maskAny(err[0])
 		}
 
-		if resp[0].StatusCode == 201 || resp[0].StatusCode == 409 {
+		if resp[0].StatusCode == 201 {
 			resultCount := len(cursorResp.Result)
 			if resultCount != 1 {
 				// This is a failure
@@ -132,9 +137,14 @@ func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) 
 			c.existingDocs[key] = *resultDocument
 			t.queryUpdateLongRunningCounter.succeeded++
 			t.log.Infof("Creating long running update AQL query for collection '%s' succeeded", c.name)
-			
+
 			return resultDocument.rev, nil
 		}
+
+		// In all other cases we simply try again. Note that this includes the
+		// case that there is first a timeout (whose request actually succeeds
+		// in the end), and then a second try which runs into 409. We still
+		// continue until we have done the change.
 
 		t.log.Infof("Creating (%d) long running update AQL query for collection '%s' got %d",
 			i, c.name, resp[0].StatusCode)
@@ -142,7 +152,7 @@ func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) 
 		if (backoff < time.Second * 5) {
 			backoff *= 2
 		}
-		
+
 	}
 
 	t.queryUpdateLongRunningCounter.failed++
@@ -150,5 +160,5 @@ func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) 
 		"Timed out creating (%d) long running update AQL cursor in collection '%s'", i, c.name))
 	return "", maskAny(fmt.Errorf(
 		"Timed out creating (%d) long running update AQL cursor in collection '%s'", i, c.name))
-	
+
 }
