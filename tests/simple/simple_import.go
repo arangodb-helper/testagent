@@ -34,7 +34,7 @@ func (t *simpleTest) createImportDocument() ([]byte, []UserDocument) {
 // The operation is expected to succeed.
 func (t *simpleTest) importDocuments(c *collection) error {
 	operationTimeout := t.OperationTimeout * 4
-	testTimeout := time.Now().Add(operationTimeout * 20)
+	testTimeout := time.Now().Add(t.OperationTimeout * 20)
 
 	q := url.Values{}
 	q.Set("collection", c.name)
