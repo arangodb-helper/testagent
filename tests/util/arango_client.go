@@ -16,7 +16,7 @@ import (
 	//"github.com/arangodb-helper/testagent/pkg/retry"
 	"github.com/arangodb-helper/testagent/service/cluster"
 	logging "github.com/op/go-logging"
-	"github.com/pkg/errors"
+	//"github.com/pkg/errors"
 )
 
 func NewArangoClient(log *logging.Logger, cluster cluster.Cluster) *ArangoClient {
