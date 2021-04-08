@@ -225,7 +225,7 @@ func (c *ArangoClient) handleResponse(
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return maskAny(errors.Wrapf(err, "Failed reading response data from %s request to %s (attempt %d, started at %s, after %s, error %v)", method, url, attempt, start.Format(startTSFormat), time.Since(start), err))
+		return maskAny(fmt.Errorf("Failed reading response data from %s request to %s (attempt %d, started at %s, after %s, error %v)", method, url, attempt, start.Format(startTSFormat), time.Since(start), err))
 	}
 
 	// Check for failure status
