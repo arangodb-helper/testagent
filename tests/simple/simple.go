@@ -48,6 +48,7 @@ type simpleTest struct {
 	collections                         map[string]*collection
 	collectionsMutex                    sync.Mutex
 	lastCollectionIndex                 int32
+	collectionToCleanup                 string
 	readExistingCounter                 counter
 	readExistingWrongRevisionCounter    counter
 	readNonExistingCounter              counter
@@ -261,6 +262,12 @@ func (t *simpleTest) reportFailure(f test.Failure) {
 	t.listener.ReportFailure(f)
 }
 
+func (t *simpleTest) planCollectionDrop(name string) {
+	t.collectionsMutex.Lock()
+	defer t.collectionsMutex.Unlock()
+	t.collectionToCleanup = name
+}
+
 func (t *simpleTest) testLoop() {
 	t.active = true
 	t.actions = 0
@@ -290,6 +297,11 @@ func (t *simpleTest) testLoop() {
 			planIndex = 0
 		}
 
+	  t.collectionsMutex.Lock()
+		if t.collectionToCleanup != "" {
+			plan[planIndex] = 1
+		}
+		t.collectionsMutex.Unlock()
 		switch plan[planIndex] {
 		case 0:
 			// Create collection with initial data
@@ -302,7 +314,19 @@ func (t *simpleTest) testLoop() {
 
 		case 1:
 			// Remove an existing collection
-			if len(t.collections) > 1 && rand.Intn(100)%2 == 0 {
+	    t.collectionsMutex.Lock()
+			toCleanup := t.collectionToCleanup
+		  t.collectionsMutex.Unlock()
+			if toCleanup != "" {
+
+				if err := t.removeExistingCollection(t.collections[t.collectionToCleanup]); err != nil {
+					t.log.Errorf("Failed to remove existing collection: %#v", err)
+				} else {
+	        t.collectionsMutex.Lock()
+					t.collectionToCleanup = ""
+		      t.collectionsMutex.Unlock()
+				}
+			} else if len(t.collections) > 1 && rand.Intn(100)%2 == 0 {
 				c := t.selectRandomCollection()
 				if err := t.removeExistingCollection(c); err != nil {
 					t.log.Errorf("Failed to remove existing collection: %#v", err)

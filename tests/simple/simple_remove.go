@@ -93,6 +93,7 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 
 	// Overall timeout :(
 	t.deleteExistingCounter.failed++
+	t.planCollectionDrop(collectionName)
 	t.reportFailure(
 		test.NewFailure("Timed out while trying to remove(%d) document %s in %s.", i, key, collectionName))
 	return maskAny(fmt.Errorf("Timed out while trying to remove(%d) document %s in %s.", i, key, collectionName))

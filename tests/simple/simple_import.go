@@ -82,6 +82,7 @@ func (t *simpleTest) importDocuments(c *collection) error {
 	}
 
 	t.importCounter.failed++
+	t.planCollectionDrop(c.name)
 	t.reportFailure(test.NewFailure("Timed out while importing (%d) documents in collection '%s'", i, c.name))
 	return maskAny(fmt.Errorf("Timed out while importing (%d) documents in collection '%s'", i, c.name))
 

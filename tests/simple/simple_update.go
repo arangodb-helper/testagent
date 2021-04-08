@@ -152,6 +152,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 
 	// Overall timeout :(
 	t.updateExistingCounter.failed++
+	t.planCollectionDrop(c.name)
 	t.reportFailure(
 		test.NewFailure("Timed out while trying to update(%d) document %s in %s.", i, key, c.name))
 	return "", maskAny(fmt.Errorf("Timed out while trying to update(%d) document %s in %s.", i, key, c.name))

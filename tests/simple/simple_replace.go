@@ -140,6 +140,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 
 	// Overall timeout :(
 	t.replaceExistingCounter.failed++
+	t.planCollectionDrop(c.name)
 	t.reportFailure(test.NewFailure("Timed out (%d) while trying to replace document %s in %s.", i, key, c.name))
 	return "", maskAny(fmt.Errorf("Timed out (%d) while trying to replace document %s in %s.", i, key, c.name))
 

@@ -164,6 +164,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 	t.createCounter.failed++
 	t.reportFailure(
 		test.NewFailure("Timed out while trying to create(%d) document %s in %s.", i, key, c.name))
+	t.planCollectionDrop(c.name)
 	return "", maskAny(fmt.Errorf("Timed out while trying to create(%d) document %s in %s.", i, key, c.name))
 
 }

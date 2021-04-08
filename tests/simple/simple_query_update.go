@@ -78,6 +78,7 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 	}
 
 	t.queryUpdateCounter.failed++
+	t.planCollectionDrop(c.name)
 	t.reportFailure(test.NewFailure(
 		"Timed out while creating (%d) update AQL cursor in collection '%s'",	i, c.name))
 	return "", maskAny(fmt.Errorf(
@@ -156,6 +157,7 @@ func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) 
 	}
 
 	t.queryUpdateLongRunningCounter.failed++
+	t.planCollectionDrop(c.name)
 	t.reportFailure(test.NewFailure(
 		"Timed out creating (%d) long running update AQL cursor in collection '%s'", i, c.name))
 	return "", maskAny(fmt.Errorf(
