@@ -234,9 +234,9 @@ func (c *ArangoClient) handleResponse(
 			var aerr ArangoError
 			headers := formatHeaders(resp)
 			if err := tryDecodeBody(body, &aerr); err == nil {
-				return maskAny(errors.Wrapf(err, "Received status %d, from %s request to %s, which is a failure (attempt %d, started at %s, after %s, error %s, headers\n%s\n)", resp.StatusCode, method, url, attempt, start.Format(startTSFormat), time.Since(start), aerr.Error(), headers))
+				return maskAny(fmt.Errorf("Received status %d, from %s request to %s, which is a failure (attempt %d, started at %s, after %s, error %s, headers\n%s\n)", resp.StatusCode, method, url, attempt, start.Format(startTSFormat), time.Since(start), aerr.Error(), headers))
 			}
-			return maskAny(errors.Wrapf(err, "Received status %d, from %s request to %s, which is a failure (attempt %d, started at %s, after %s, headers\n%s\n\nbody\n%s\n)", resp.StatusCode, method, url, attempt, start.Format(startTSFormat), time.Since(start), headers, string(body)))
+			return maskAny(fmt.Errorf("Received status %d, from %s request to %s, which is a failure (attempt %d, started at %s, after %s, headers\n%s\n\nbody\n%s\n)", resp.StatusCode, method, url, attempt, start.Format(startTSFormat), time.Since(start), headers, string(body)))
 		}
 	}
 
@@ -249,7 +249,7 @@ func (c *ArangoClient) handleResponse(
 			// Found a success status
 			if isSuccessStatusCode(code) && result != nil {
 				if err := json.Unmarshal(body, result); err != nil {
-					return maskAny(errors.Wrapf(err, "Failed decoding response data from %s request to %s (attempt %d, started at %s, after %s, error %v)", method, url, attempt, start.Format(startTSFormat), time.Since(start), err))
+					return maskAny(fmt.Errorf("Failed decoding response data from %s request to %s (attempt %d, started at %s, after %s, error %v)", method, url, attempt, start.Format(startTSFormat), time.Since(start), err))
 				}
 			}
 			// Return success
