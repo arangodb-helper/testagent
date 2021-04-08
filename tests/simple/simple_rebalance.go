@@ -4,6 +4,7 @@ import "github.com/arangodb-helper/testagent/service/test"
 
 // rebalanceShards attempts to rebalance shards over the existing servers.
 // The operation is expected to succeed.
+// This is currently not executed, see tests/simple.go
 func (t *simpleTest) rebalanceShards() error {
 	opts := struct{}{}
 	operationTimeout := t.OperationTimeout
