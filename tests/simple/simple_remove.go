@@ -27,7 +27,7 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 
 		i++
 		if time.Now().After(testTimeout) {
-			break;
+			break
 		}
 
 		checkRetry := false
@@ -71,7 +71,7 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 		if checkRetry {
 			d, e := readDocument(t, collectionName, key, "", 128, false)
 			if e == nil && d == nil {
-			  success = true
+				success = true
 			}
 		}
 
@@ -85,7 +85,7 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 		t.log.Infof("Removing (%d) existing document '%s' (%s) from '%s' got %d",
 			i, key, ifMatchStatus, collectionName, resp[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 
@@ -118,7 +118,7 @@ func (t *simpleTest) removeExistingDocumentWrongRevision(collectionName string, 
 
 		i++
 		if time.Now().After(testTimeout) {
-			break;
+			break
 		}
 
 		t.log.Infof("Removing existing document '%s' wrong revision from '%s'...", key, collectionName)
@@ -143,7 +143,7 @@ func (t *simpleTest) removeExistingDocumentWrongRevision(collectionName string, 
 		t.log.Infof("Removing existing document '%s' wrong revision from '%s' got %d",
 			key, collectionName, resp[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 
@@ -173,7 +173,7 @@ func (t *simpleTest) removeNonExistingDocument(collectionName string, key string
 
 		i++
 		if time.Now().After(testTimeout) {
-			break;
+			break
 		}
 
 		t.log.Infof("Removing (%d) non-existing document '%s' from '%s'...", i, key, collectionName)
@@ -198,7 +198,7 @@ func (t *simpleTest) removeNonExistingDocument(collectionName string, key string
 		t.log.Infof("Removing (%d) non-existing document '%s' from '%s' got %d",
 			i, key, collectionName, resp[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 

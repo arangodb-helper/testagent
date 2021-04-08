@@ -81,7 +81,6 @@ func handleSignal(sigChannel chan os.Signal, stopChan chan struct{}) {
 	}
 }
 
-
 func main() {
 	cmdMain.Execute()
 }

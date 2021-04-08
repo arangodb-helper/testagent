@@ -106,7 +106,7 @@ func (c *ArangoClient) Delete(
 	urlPath string, query url.Values, header map[string]string, successStatusCodes,
 	failureStatusCodes []int, operationTimeout time.Duration, retries int) ([]ArangoResponse, []error) {
 	return c.requestWithRetry("DELETE", urlPath, query, header, nil, "", nil,
-		successStatusCodes, failureStatusCodes,	operationTimeout, retries)
+		successStatusCodes, failureStatusCodes, operationTimeout, retries)
 }
 
 // Post performs a POST operation of a coordinator.
@@ -143,7 +143,7 @@ func (c *ArangoClient) Put(
 // The given input is send to the server (if any), if result != nil and status is success, the response is parsed into result.
 func (c *ArangoClient) requestWithRetry(
 	method, urlPath string, query url.Values, header map[string]string, input interface{},
-	contentType string, result interface{},	successStatusCodes, failureStatusCodes []int,
+	contentType string, result interface{}, successStatusCodes, failureStatusCodes []int,
 	operationTimeout time.Duration, retries int) ([]ArangoResponse, []error) {
 
 	aresps := make([]ArangoResponse, 0, retries)
@@ -189,7 +189,7 @@ func (c *ArangoClient) requestWithRetry(
 				if strings.Contains(err.Error(), "refused") {
 					arangoResp.StatusCode = 1
 				} else if strings.Contains(err.Error(), "canceled") ||
-									strings.Contains(err.Error(), "context deadline exceeded") {
+					strings.Contains(err.Error(), "context deadline exceeded") {
 					arangoResp.StatusCode = 0
 				}
 			}
@@ -208,11 +208,11 @@ func (c *ArangoClient) requestWithRetry(
 		aresps = append(aresps, aresp)
 		errors = append(errors, maskAny(err))
 		if err == nil {
-			break;
+			break
 		}
 	}
 
-	return aresps, errors;
+	return aresps, errors
 }
 
 func (c *ArangoClient) handleResponse(

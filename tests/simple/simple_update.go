@@ -27,10 +27,10 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 	backoff := time.Millisecond * 250
 	i := 0
 
-	for  {
+	for {
 		i++
 		if time.Now().After(testTimeout) {
-			break;
+			break
 		}
 
 		checkRetry := false
@@ -38,34 +38,34 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 		t.log.Infof(
 			"Updating (%d) existing document '%s' (%s) in '%s' (name -> '%s')...",
 			i, key, ifMatchStatus, c.name, newName)
-		update, err := t.client.Patch(url, q,	hdr, delta, "", nil, []int{0, 1, 200, 201, 202, 409, 412, 503},
+		update, err := t.client.Patch(url, q, hdr, delta, "", nil, []int{0, 1, 200, 201, 202, 409, 412, 503},
 			[]int{400, 404, 307}, operationTimeout, 1)
 
-/**
- *  20x, if document was replaced
- *  400, if body bad
- *  404, if document did not exist
- *  409, if unique constraint would be violated (cannot happen here) or
- *       if we had a timeout (or 503) and try again and we collide with
- *       the previous request, in that case we need to checkRetry
- *  412, if if-match was given and document already there
- *  timeout, in which case the document might or might not have been written
- *    after this, either one of the 5 things might have happened,
- *    or nothing might have happened at all,
- *    or any of this might still happen in the future
- *  connection refused with coordinator ==> simply try again with another
- *  connection error ("broken pipe") with coordinator, to be treated like
- *    a timeout
- *  503, cluster internal mishap, all bets off
- *  If first request gives correct result: OK
- *  if wrong result: ERROR
- *  if connection refused to coordinator: simply retry other
- *  if either timeout (or broken pipe with coordinator):
- *    try to read the document repeatedly for up to 15s:
- *      if new document there: treat as if op had worked
- *    else (new version not appeared within 15s):
- *      treat as if op has not worked and go to retry loop
- */
+		/**
+		 *  20x, if document was replaced
+		 *  400, if body bad
+		 *  404, if document did not exist
+		 *  409, if unique constraint would be violated (cannot happen here) or
+		 *       if we had a timeout (or 503) and try again and we collide with
+		 *       the previous request, in that case we need to checkRetry
+		 *  412, if if-match was given and document already there
+		 *  timeout, in which case the document might or might not have been written
+		 *    after this, either one of the 5 things might have happened,
+		 *    or nothing might have happened at all,
+		 *    or any of this might still happen in the future
+		 *  connection refused with coordinator ==> simply try again with another
+		 *  connection error ("broken pipe") with coordinator, to be treated like
+		 *    a timeout
+		 *  503, cluster internal mishap, all bets off
+		 *  If first request gives correct result: OK
+		 *  if wrong result: ERROR
+		 *  if connection refused to coordinator: simply retry other
+		 *  if either timeout (or broken pipe with coordinator):
+		 *    try to read the document repeatedly for up to 15s:
+		 *      if new document there: treat as if op had worked
+		 *    else (new version not appeared within 15s):
+		 *      treat as if op has not worked and go to retry loop
+		 */
 
 		if err[0] == nil { // we have a response
 			if update[0].StatusCode == 412 {
@@ -89,7 +89,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 			} else if update[0].StatusCode != 1 {
 				success = true
 			}
-		}	else { // failure
+		} else { // failure
 			t.updateExistingCounter.failed++
 			t.reportFailure(
 				test.NewFailure("Failed to update existing document '%s' (%s) in collection '%s': %v",
@@ -105,7 +105,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 			if e == nil { // document does not exist
 				if d.Equals(expected) {
 					success = true
-				} else if ! d.Equals(doc) {
+				} else if !d.Equals(doc) {
 					// If we see the existing one, we simply try again on the grounds
 					// that the operation might not have happened. If it is still
 					// happening, we might either collide or suddenly see the new
@@ -144,7 +144,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 		t.log.Errorf("Failure %i to update existing document '%s' (%s) in collection '%s': got %i, retrying",
 			i, key, c.name, update[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 
@@ -180,7 +180,7 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 
 		i++
 		if time.Now().After(testTimeout) {
-			break;
+			break
 		}
 
 		t.log.Infof(
@@ -210,7 +210,7 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 		t.log.Errorf("Failure %i to fail to update document with wrong revision '%s' (%s) in collection '%s': got %i, retrying",
 			i, key, collectionName, resp[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 
@@ -248,7 +248,7 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 
 		i++
 		if time.Now().After(testTimeout) {
-			break;
+			break
 		}
 
 		t.log.Infof(
@@ -275,7 +275,7 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 		t.log.Errorf("Failure %i to fail to update non-existing document '%s' (%s) in collection '%s': got %i, retrying",
 			i, key, collectionName, resp[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 

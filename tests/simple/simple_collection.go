@@ -31,7 +31,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 
 		i++
 		if time.Now().After(testTimeout) {
-			break;
+			break
 		}
 
 		checkRetry := false
@@ -101,7 +101,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 		t.log.Infof("Creating (%d) collection '%s' with numberOfShards=%d, replicationFactor=%d got %d",
 			i, c.name, numberOfShards, replicationFactor, resp[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 
@@ -161,7 +161,7 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 
 		t.log.Infof("Removing (%d) collection '%s' got %d", i, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 
@@ -183,16 +183,16 @@ func (t *simpleTest) collectionExists(c *collection) (bool, error) {
 	backoff := time.Millisecond * 250
 	url := fmt.Sprintf("/_api/collection/%s", c.name)
 
-	for  {
+	for {
 
 		i++
 		if time.Now().After(timeout) {
-			break;
+			break
 		}
 
 		t.log.Infof("Checking (%d) collection '%s'...", i, c.name)
 		resp, err := t.client.Get(
-			url , nil, nil, nil, []int{0, 1, 200, 404, 503}, []int{400, 409, 307}, operationTimeout, 1)
+			url, nil, nil, nil, []int{0, 1, 200, 404, 503}, []int{400, 409, 307}, operationTimeout, 1)
 
 		if err[0] != nil {
 			// This is a failure
@@ -208,7 +208,7 @@ func (t *simpleTest) collectionExists(c *collection) (bool, error) {
 
 		t.log.Infof("Checking (%d) collection '%s' got %d", i, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 

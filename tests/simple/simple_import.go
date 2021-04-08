@@ -47,7 +47,7 @@ func (t *simpleTest) importDocuments(c *collection) error {
 
 		i++
 		if time.Now().After(testTimeout) {
-			break;
+			break
 		}
 
 		importData, docs := t.createImportDocument()
@@ -75,7 +75,7 @@ func (t *simpleTest) importDocuments(c *collection) error {
 		t.log.Infof("Importing (%d) %d documents ('%s' - '%s') into '%s' got %d",
 			i, len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 

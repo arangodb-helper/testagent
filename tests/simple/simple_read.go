@@ -12,7 +12,7 @@ import (
 func (t *simpleTest) readExistingDocument(
 	c *collection, key, rev string, updateRevision, skipExpectedValueCheck bool) (string, error) {
 
-	operationTimeout := t.OperationTimeout/5
+	operationTimeout := t.OperationTimeout / 5
 	testTimeout := time.Now().Add(t.OperationTimeout)
 
 	i := 0
@@ -25,9 +25,9 @@ func (t *simpleTest) readExistingDocument(
 	for {
 
 		if time.Now().After(testTimeout) {
-			break;
+			break
 		}
-		i++;
+		i++
 
 		t.log.Infof("Reading (%d) existing document '%s' (%s) from '%s'...", i, key, ifMatchStatus, c.name)
 		resp, err := t.client.Get(
@@ -45,7 +45,7 @@ func (t *simpleTest) readExistingDocument(
 				// Compare document against expected document
 				if !skipExpectedValueCheck {
 					expected := c.existingDocs[key]
-					if ! result.Equals(expected) {
+					if !result.Equals(expected) {
 						// This is a failure
 						t.readExistingCounter.failed++
 						t.reportFailure(test.NewFailure("Read existing document '%s' (%s) returned different values '%s': got %q expected %q", key, ifMatchStatus, c.name, result, expected))
@@ -66,7 +66,7 @@ func (t *simpleTest) readExistingDocument(
 			"Reading (%d) existing document '%s' (%s) from '%s' got %d",
 			i, key, ifMatchStatus, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 
@@ -102,7 +102,7 @@ func (t *simpleTest) readExistingDocumentWrongRevision(
 		i++
 
 		t.log.Infof("Reading (%d) existing document '%s' wrong revision from '%s'...", i, key, collectionName)
-		resp , err := t.client.Get(
+		resp, err := t.client.Get(
 			url, nil, hdr, &result, []int{0, 1, 412, 406, 503},
 			[]int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
 
@@ -125,7 +125,7 @@ func (t *simpleTest) readExistingDocumentWrongRevision(
 			"Reading (%d) existing document '%s' wrong revision from '%s' got %d",
 			i, key, collectionName, resp[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 
@@ -162,7 +162,7 @@ func (t *simpleTest) readNonExistingDocument(collectionName string, key string) 
 
 		t.log.Infof("Reading (%d) non-existing document '%s' from '%s'...", i, key, collectionName)
 		resp, err := t.client.Get(
-			url, nil, nil, &result,[]int{0, 1, 404, 406, 503}, []int{200, 201, 202, 400, 307}, operationTimeout, 1)
+			url, nil, nil, &result, []int{0, 1, 404, 406, 503}, []int{200, 201, 202, 400, 307}, operationTimeout, 1)
 
 		if err[0] != nil {
 			// This is a failure
@@ -179,7 +179,7 @@ func (t *simpleTest) readNonExistingDocument(collectionName string, key string) 
 		t.log.Infof("Reading (%d) non-existing document '%s' from '%s' got %d",
 			i, key, collectionName, resp[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 

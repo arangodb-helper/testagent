@@ -33,7 +33,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 
 		i++
 		if time.Now().After(testTimeout) {
-			break;
+			break
 		}
 
 		checkRetry := false
@@ -43,26 +43,26 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 		update, err := t.client.Put(
 			url, q, hdr, newDoc, "", nil, []int{0, 1, 200, 201, 202, 409, 412, 503}, []int{400, 404}, operationTimeout, 1)
 
-/*
- * 20x, if document was replaced
- * 404, if document did not exist
- * 412, if if-match was given and document already there
- * timeout, in which case the document might or might not exist
- *   connection refused with coordinator ==> simply try again with another
- *   connection error ("broken pipe") with coordinator, to be treated like
- *   a timeout
- * 503, cluster internal mishap, all bets off
- * Testagent:
- *   If first request gives correct result: OK
- *   if wrong result: ERROR
- *   if connection refused to coordinator: simply retry other
- *   if either timeout (or broken pipe with coordinator):
- *     try to read the document repeatedly
- *     if new document there:
- *       success!
- *     if old document there:
- *       treat it as if the replace has not worked
-*/
+		/*
+		 * 20x, if document was replaced
+		 * 404, if document did not exist
+		 * 412, if if-match was given and document already there
+		 * timeout, in which case the document might or might not exist
+		 *   connection refused with coordinator ==> simply try again with another
+		 *   connection error ("broken pipe") with coordinator, to be treated like
+		 *   a timeout
+		 * 503, cluster internal mishap, all bets off
+		 * Testagent:
+		 *   If first request gives correct result: OK
+		 *   if wrong result: ERROR
+		 *   if connection refused to coordinator: simply retry other
+		 *   if either timeout (or broken pipe with coordinator):
+		 *     try to read the document repeatedly
+		 *     if new document there:
+		 *       success!
+		 *     if old document there:
+		 *       treat it as if the replace has not worked
+		 */
 
 		if err[0] == nil { // We have a response
 			if update[0].StatusCode == 412 {
@@ -81,7 +81,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 							key, ifMatchStatus, c.name))
 				}
 			} else if update[0].StatusCode == 503 || update[0].StatusCode == 409 ||
-			          update[0].StatusCode == 0 {
+				update[0].StatusCode == 0 {
 				// 503 and 0 (timeout) -> check if accidentally successful
 				// 409 can happen if we had a previous timeout and the previous
 				// request and the current one collide with their write transactions.
@@ -101,7 +101,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 
 				if d.Equals(newDoc) {
 					success = true
-				} else if ! d.Equals(expected) {
+				} else if !d.Equals(expected) {
 					t.replaceExistingCounter.failed++
 					t.reportFailure(test.NewFailure(
 						"Failed to replace existing document '%s' (%s) in collection '%s': got 412 but has not been updated",
@@ -113,8 +113,8 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 			} else { // should never get here
 				t.replaceExistingCounter.failed++
 				t.reportFailure(test.NewFailure(
-						"Failed to read existing document '%s' (%s) in collection '%s' that should have been updated: %v",
-						key, ifMatchStatus, c.name, e))
+					"Failed to read existing document '%s' (%s) in collection '%s' that should have been updated: %v",
+					key, ifMatchStatus, c.name, e))
 				return "", maskAny(e)
 			}
 		}
@@ -133,7 +133,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 		t.log.Infof("Replacing (%d) existing document '%s' (%s) in '%s' (name -> '%s') got %d",
 			i, key, ifMatchStatus, c.name, newName, update[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 	}
@@ -171,14 +171,14 @@ func (t *simpleTest) replaceExistingDocumentWrongRevision(collectionName string,
 
 		i++
 		if time.Now().After(testTimeout) {
-			break;
+			break
 		}
 
 		t.log.Infof(
 			"Replacing (%d) existing document '%s' wrong revision in '%s' (name -> '%s')...",
 			i, key, collectionName, newName)
 		resp, err := t.client.Put(
-			url, q, hdr, newDoc, "", nil,	[]int{0, 1, 412, 503}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
+			url, q, hdr, newDoc, "", nil, []int{0, 1, 412, 503}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
 
 		if err[0] == nil {
 			if resp[0].StatusCode == 412 {
@@ -201,7 +201,7 @@ func (t *simpleTest) replaceExistingDocumentWrongRevision(collectionName string,
 			"Replacing (%d) existing document '%s' wrong revision in '%s' (name -> '%s') got %d",
 			i, key, collectionName, newName, resp[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 	}
@@ -241,7 +241,7 @@ func (t *simpleTest) replaceNonExistingDocument(collectionName string, key strin
 
 		i++
 		if time.Now().After(testTimeout) {
-			break;
+			break
 		}
 
 		t.log.Infof("Replacing (%d) non-existing document '%s' in '%s' (name -> '%s')...",
@@ -259,8 +259,8 @@ func (t *simpleTest) replaceNonExistingDocument(collectionName string, key strin
 			}
 			// In cases 0, 1 and 503 we fall through here and try again.
 		} else {
-		// This is a failure
-		t.replaceNonExistingCounter.failed++
+			// This is a failure
+			t.replaceNonExistingCounter.failed++
 			t.reportFailure(
 				test.NewFailure(
 					"Failed to replace non-existing document '%s' in collection '%s': %v", key, collectionName, err[0]))
@@ -270,7 +270,7 @@ func (t *simpleTest) replaceNonExistingDocument(collectionName string, key strin
 		t.log.Infof("Replacing (%d) non-existing document '%s' in '%s' (name -> '%s') got %d",
 			i, key, collectionName, newName, resp[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 	}

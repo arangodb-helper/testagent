@@ -19,13 +19,13 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 	backoff := time.Millisecond * 100
 	i := 0
 	url := fmt.Sprintf("/_api/document/%s/%s", col, key)
-	operationTimeout := time.Duration(seconds / 8) * time.Second
+	operationTimeout := time.Duration(seconds/8) * time.Second
 	timeout := time.Now().Add(time.Duration(seconds) * time.Second)
 
-	for  {
+	for {
 		i++
 		if time.Now().After(timeout) {
-			break;
+			break
 		}
 		hdr := ifMatchHeader(nil, rev)
 		var result *UserDocument
@@ -41,7 +41,7 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 					t.readExistingCounter.failed++
 					t.log.Errorf(
 						"Failed to read(%d) existing document '%s' (%s) in collection '%s': %v",
-					  i, key, rev, col, err[0])
+						i, key, rev, col, err[0])
 					return nil, maskAny(err[0])
 				} else {
 					t.log.Errorf("Failed to read(%d) document %s (%s) in %s (&v).", i, key, rev, col, err)
@@ -58,7 +58,7 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 		t.log.Infof(
 			"Reading (%d) document '%s' (%s) in '%s' got %d", i, key, rev, col, res[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 	}
@@ -112,7 +112,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 
 		i++
 		if time.Now().After(testTimeout) {
-			break;
+			break
 		}
 
 		checkRetry := false
@@ -120,7 +120,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 
 		t.log.Infof("Creating (%d) document '%s' in '%s'...", i, key, c.name)
 		resp, err := t.client.Post(url, q, nil, document, "", nil,
-			[]int{0, 1, 200, 201, 202, 409, 503},	[]int{400, 404, 307}, operationTimeout, 1)
+			[]int{0, 1, 200, 201, 202, 409, 503}, []int{400, 404, 307}, operationTimeout, 1)
 
 		if err[0] == nil { // we have a response
 			if resp[0].StatusCode == 503 || resp[0].StatusCode == 409 || resp[0].StatusCode == 0 {
@@ -154,7 +154,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 
 		t.log.Infof("Creating (%d) document '%s' in '%s' got %d", i, key, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 

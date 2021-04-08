@@ -76,7 +76,7 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 
 		t.log.Infof("Creating (%d) AQL query cursor for '%s' got %d", i, c.name, createResp[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 
@@ -92,8 +92,8 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 			break
 		}
 
-    // Wait a bit, so we increase the chance of a coordinator being
-    // restarting in between this actions (or some other chaos to happen).
+		// Wait a bit, so we increase the chance of a coordinator being
+		// restarting in between this actions (or some other chaos to happen).
 		time.Sleep(time.Second * 5)
 
 		// Fetch next results
@@ -117,8 +117,8 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 		// occurrences and are more tolerant at the end w.r.t. the final
 		// count.
 
-    // Check uptime of coordinator, if too short it has been rebooted
-    // since the initial query call.
+		// Check uptime of coordinator, if too short it has been rebooted
+		// since the initial query call.
 		uptime, oerr := t.getUptime(createResp[0].CoordinatorURL)
 		if err != nil {
 			t.log.Errorf("Failed to get uptime of server '%s': %v", createResp[0].CoordinatorURL, oerr)
@@ -153,7 +153,7 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 			// its uptime in a sensible way.
 			t.queryNextBatchCounter.failed++
 			t.log.Infof(
-					"Reading next batch AQL cursor failed with 500, expected because of potential chaos with dbservers in between (coordinator: %s)",
+				"Reading next batch AQL cursor failed with 500, expected because of potential chaos with dbservers in between (coordinator: %s)",
 				createResp[0].CoordinatorURL)
 			return nil
 		} else if getResp[0].StatusCode == 0 || getResp[0].StatusCode == 503 {
@@ -166,7 +166,7 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 	}
 
 	// We've fetched all documents, check result count
-	if resultCount > 10 || resultCount < 10 - nrTimeOuts {
+	if resultCount > 10 || resultCount < 10-nrTimeOuts {
 		t.reportFailure(test.NewFailure("Number of documents was %d, expected 10", resultCount))
 		return maskAny(fmt.Errorf("Number of documents was %d, expected 10", resultCount))
 	}
@@ -185,7 +185,7 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 		return nil
 	}
 
-	operationTimeout := t.OperationTimeout*2
+	operationTimeout := t.OperationTimeout * 2
 	testTimeout := time.Now().Add(operationTimeout * 4)
 	i := 0
 	backoff := time.Millisecond * 100
@@ -232,7 +232,7 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 
 		t.log.Infof("Creating (%d) long running AQL query for '%s' got %d", i, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 
@@ -248,7 +248,7 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 // getUptime queries the uptime of the given coordinator.
 func (t *simpleTest) getUptime(coordinatorURL string) (time.Duration, error) {
 	t.log.Infof("Checking uptime of '%s'", coordinatorURL)
-	operationTimeout := t.OperationTimeout*2
+	operationTimeout := t.OperationTimeout * 2
 	var statsResp struct {
 		Server struct {
 			Uptime float64 `json:"uptime"`

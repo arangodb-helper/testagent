@@ -72,7 +72,7 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 
 		t.log.Infof("Creating update AQL query for collection '%s' got %d", c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
-		if backoff < time.Second * 5 {
+		if backoff < time.Second*5 {
 			backoff += backoff
 		}
 	}
@@ -80,9 +80,9 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 	t.queryUpdateCounter.failed++
 	t.planCollectionDrop(c.name)
 	t.reportFailure(test.NewFailure(
-		"Timed out while creating (%d) update AQL cursor in collection '%s'",	i, c.name))
+		"Timed out while creating (%d) update AQL cursor in collection '%s'", i, c.name))
 	return "", maskAny(fmt.Errorf(
-		"Timed out while creating (%d) update AQL cursor in collection '%s'",	i, c.name))
+		"Timed out while creating (%d) update AQL cursor in collection '%s'", i, c.name))
 
 }
 
@@ -90,8 +90,8 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 // The operation is expected to succeed.
 func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) (string, error) {
 
-	operationTimeout := t.OperationTimeout*3
-	testTimeout := time.Now().Add(operationTimeout*4)
+	operationTimeout := t.OperationTimeout * 3
+	testTimeout := time.Now().Add(operationTimeout * 4)
 	backoff := time.Millisecond * 250
 	i := 0
 
@@ -105,7 +105,7 @@ func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) 
 		t.log.Infof("Creating (%d) long running update AQL query for collection '%s'...", i, c.name)
 		newName := fmt.Sprintf("AQLLongRunningUpdate name %s", time.Now())
 		queryReq := QueryRequest{
-			Query:     fmt.Sprintf(
+			Query: fmt.Sprintf(
 				"UPDATE \"%s\" WITH { name: \"%s\", unknown: SLEEP(15) } IN %s RETURN NEW", key, newName, c.name),
 			BatchSize: 1,
 			Count:     false,
@@ -150,7 +150,7 @@ func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) 
 		t.log.Infof("Creating (%d) long running update AQL query for collection '%s' got %d",
 			i, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
-		if (backoff < time.Second * 5) {
+		if backoff < time.Second*5 {
 			backoff *= 2
 		}
 

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	service "github.com/arangodb-helper/testagent/service"
-	arangodb "github.com/arangodb-helper/testagent/service/cluster/arangodb"
 	"github.com/arangodb-helper/testagent/service/cluster"
+	arangodb "github.com/arangodb-helper/testagent/service/cluster/arangodb"
 	"github.com/arangodb-helper/testagent/service/test"
 	"github.com/arangodb-helper/testagent/tests/simple"
 	logging "github.com/op/go-logging"
@@ -132,4 +132,3 @@ func Exitf(format string, args ...interface{}) {
 	fmt.Printf(format, args...)
 	os.Exit(1)
 }
-

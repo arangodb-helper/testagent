@@ -254,7 +254,7 @@ type UserDocument struct {
 
 // Equals returns true when the value fields of `d` and `other` are the equal.
 func (d UserDocument) Equals(other UserDocument) bool {
-	return d.Value == other.Value &&d.Name == other.Name &&	d.Odd == other.Odd
+	return d.Value == other.Value && d.Name == other.Name && d.Odd == other.Odd
 }
 
 func (t *simpleTest) reportFailure(f test.Failure) {
@@ -297,7 +297,7 @@ func (t *simpleTest) testLoop() {
 			planIndex = 0
 		}
 
-	  t.collectionsMutex.Lock()
+		t.collectionsMutex.Lock()
 		if t.collectionToCleanup != "" {
 			plan[planIndex] = 1
 		}
@@ -314,17 +314,17 @@ func (t *simpleTest) testLoop() {
 
 		case 1:
 			// Remove an existing collection
-	    t.collectionsMutex.Lock()
+			t.collectionsMutex.Lock()
 			toCleanup := t.collectionToCleanup
-		  t.collectionsMutex.Unlock()
+			t.collectionsMutex.Unlock()
 			if toCleanup != "" {
 
 				if err := t.removeExistingCollection(t.collections[t.collectionToCleanup]); err != nil {
 					t.log.Errorf("Failed to remove existing collection: %#v", err)
 				} else {
-	        t.collectionsMutex.Lock()
+					t.collectionsMutex.Lock()
 					t.collectionToCleanup = ""
-		      t.collectionsMutex.Unlock()
+					t.collectionsMutex.Unlock()
 				}
 			} else if len(t.collections) > 1 && rand.Intn(100)%2 == 0 {
 				c := t.selectRandomCollection()

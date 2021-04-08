@@ -1,7 +1,7 @@
 package cluster
 
 import (
-  "errors"
+	"errors"
 	"io"
 	"net"
 	"net/url"
@@ -10,23 +10,23 @@ import (
 )
 
 type FakeClusterBuilder struct {
-  NrCoordinators int   // ports 8530, ...
-  NrDBServers    int   // ports 8629, ...
-  NrAgents       int   // ports 4001, ...
+	NrCoordinators int // ports 8530, ...
+	NrDBServers    int // ports 8629, ...
+	NrAgents       int // ports 4001, ...
 }
 
 func NewFakeCluster(nrCoord, nrDBS, nrAg int) *FakeClusterBuilder {
-  return &FakeClusterBuilder{
-    NrCoordinators: nrCoord,
-    NrDBServers: nrDBS,
-    NrAgents: nrAg,
-  }
+	return &FakeClusterBuilder{
+		NrCoordinators: nrCoord,
+		NrDBServers:    nrDBS,
+		NrAgents:       nrAg,
+	}
 }
 
 type FakeMachine struct {
-  id       string
-	index    int
-	fc       *FakeCluster
+	id    string
+	index int
+	fc    *FakeCluster
 }
 
 func (m *FakeMachine) ID() string {
@@ -50,23 +50,23 @@ func (m *FakeMachine) HasAgent() bool {
 }
 
 func (m *FakeMachine) AgentURL() url.URL {
-  return url.URL{
+	return url.URL{
 		Scheme: "http",
-		Host:   net.JoinHostPort("127.0.0.1", strconv.Itoa(4001 + m.index)),
+		Host:   net.JoinHostPort("127.0.0.1", strconv.Itoa(4001+m.index)),
 	}
 }
 
 func (m *FakeMachine) DBServerURL() url.URL {
-  return url.URL{
+	return url.URL{
 		Scheme: "http",
-		Host:   net.JoinHostPort("127.0.0.1", strconv.Itoa(8629 + m.index)),
+		Host:   net.JoinHostPort("127.0.0.1", strconv.Itoa(8629+m.index)),
 	}
 }
 
 func (m *FakeMachine) CoordinatorURL() url.URL {
-  return url.URL{
+	return url.URL{
 		Scheme: "http",
-		Host:   net.JoinHostPort("127.0.0.1", strconv.Itoa(8530 + m.index)),
+		Host:   net.JoinHostPort("127.0.0.1", strconv.Itoa(8530+m.index)),
 	}
 }
 
@@ -196,30 +196,30 @@ func (m *FakeMachine) Destroy() error {
 }
 
 type FakeCluster struct {
-  id  string
-  fcb *FakeClusterBuilder
+	id  string
+	fcb *FakeClusterBuilder
 }
 
 // Now need to implement a FakeCluster:
 
 func (fc *FakeCluster) ID() string {
-  return fc.id
+	return fc.id
 }
 
 func (fc *FakeCluster) Add() (Machine, error) {
-  return nil, errors.New("Cannot add machines to fake clusters")
+	return nil, errors.New("Cannot add machines to fake clusters")
 }
 
 func (fc *FakeCluster) ArangoImage() string {
-  return "none"
+	return "none"
 }
 
 func (fc *FakeCluster) WaitUntilReady() error {
-  return nil
+	return nil
 }
 
 func (fc *FakeCluster) Destroy() error {
-  return nil
+	return nil
 }
 
 func (fc *FakeCluster) Machines() ([]Machine, error) {
@@ -229,24 +229,23 @@ func (fc *FakeCluster) Machines() ([]Machine, error) {
 		list = append(list, &FakeMachine{
 			id:    "m" + strconv.Itoa(i),
 			index: i,
-			fc: fc,
+			fc:    fc,
 		})
 		i += 1
 		if i >= fc.fcb.NrAgents && i >= fc.fcb.NrDBServers && i >= fc.fcb.NrCoordinators {
 			break
 		}
 	}
-  return list, nil
+	return list, nil
 }
 
-
 func (fcb *FakeClusterBuilder) Create(agencySize int, forceOneShard bool) (Cluster, error) {
-  if agencySize == fcb.NrAgents {
-    return &FakeCluster{
-      id:  "abc",
-      fcb: fcb,
-    }, nil
-  } else {
-    return nil, errors.New("Wrong number of agents")
-  }
+	if agencySize == fcb.NrAgents {
+		return &FakeCluster{
+			id:  "abc",
+			fcb: fcb,
+		}, nil
+	} else {
+		return nil, errors.New("Wrong number of agents")
+	}
 }
