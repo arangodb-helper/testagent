@@ -120,7 +120,7 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 		// Check uptime of coordinator, if too short it has been rebooted
 		// since the initial query call.
 		uptime, oerr := t.getUptime(createResp[0].CoordinatorURL)
-		if err != nil {
+		if oerr != nil {
 			t.log.Errorf("Failed to get uptime of server '%s': %v", createResp[0].CoordinatorURL, oerr)
 		} else {
 			t.log.Infof("Coordinator '%s' is up for %s", createResp[0].CoordinatorURL, uptime)
@@ -158,11 +158,11 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 			return nil
 		} else if getResp[0].StatusCode == 0 || getResp[0].StatusCode == 503 {
 			nrTimeOuts++
+		} else if getResp[0].StatusCode == 200 {
+			// Ok reading next batch succeeded
+			t.queryNextBatchCounter.succeeded++
+			resultCount += len(cursorResp.Result)
 		}
-
-		// Ok reading next batch succeeded
-		t.queryNextBatchCounter.succeeded++
-		resultCount += len(cursorResp.Result)
 	}
 
 	// We've fetched all documents, check result count
