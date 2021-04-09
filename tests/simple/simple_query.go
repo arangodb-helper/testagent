@@ -91,10 +91,10 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 
 		if time.Now().After(testTimeout) {
 			t.reportFailure(test.NewFailure(
-				"Timedout out while reading next AQL cursor batch in collection '%s' with same coordinator (%s)",
+				"Timed out while reading next AQL cursor batch in collection '%s' with same coordinator (%s)",
 				c.name, createResp[0].CoordinatorURL))
 			return maskAny(fmt.Errorf(
-				"Timedout out while reading next AQL cursor batch in collection '%s' with same coordinator (%s)",
+				"Timed out while reading next AQL cursor batch in collection '%s' with same coordinator (%s)",
 				c.name, createResp[0].CoordinatorURL))
 		}
 
