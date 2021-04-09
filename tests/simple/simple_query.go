@@ -29,7 +29,7 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 	}
 
 	operationTimeout := t.OperationTimeout
-	createTimeout := time.Now().Add(operationTimeout * 5)
+	testTimeout := time.Now().Add(operationTimeout * 5)
 	backoff := time.Millisecond * 250
 	i := 0
 
@@ -40,7 +40,7 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 
 	for {
 
-		if time.Now().After(createTimeout) {
+		if time.Now().After(testTimeout) {
 			break
 		}
 		i++
@@ -86,11 +86,23 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 	// This may fail if (and only if) the coordinator has changed.
 	resultCount := len(cursorResp.Result)
 	nrTimeOuts := 0
+
 	for {
+
+		if time.Now().After(testTimeout) {
+			t.reportFailure(test.NewFailure(
+				"Timedout out while reading next AQL cursor batch in collection '%s' with same coordinator (%s)",
+				c.name, createResp[0].CoordinatorURL))
+			return maskAny(fmt.Errorf(
+				"Timedout out while reading next AQL cursor batch in collection '%s' with same coordinator (%s)",
+				c.name, createResp[0].CoordinatorURL))
+		}
+
 		if !cursorResp.HasMore {
 			// No more data, now see if we have the right amount of results
 			break
 		}
+
 
 		// Wait a bit, so we increase the chance of a coordinator being
 		// restarting in between this actions (or some other chaos to happen).
