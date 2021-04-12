@@ -55,6 +55,7 @@ func (t *simpleTest) importDocuments(c *collection) error {
 			len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name)
 		resp, err := t.client.Post("/_api/import", q, nil, importData, "application/x-www-form-urlencoded", nil,
 			[]int{0, 1, 200, 201, 202, 503}, []int{400, 404, 409, 307}, operationTimeout, 1)
+		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
 
 		if err[0] != nil {
 			// This is a failure
@@ -72,8 +73,6 @@ func (t *simpleTest) importDocuments(c *collection) error {
 			return nil
 		}
 
-		t.log.Infof("Importing (%d) %d documents ('%s' - '%s') into '%s' got %d",
-			i, len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second*5 {
 			backoff += backoff

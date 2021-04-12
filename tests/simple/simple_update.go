@@ -40,6 +40,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 			i, key, ifMatchStatus, c.name, newName)
 		update, err := t.client.Patch(url, q, hdr, delta, "", nil, []int{0, 1, 200, 201, 202, 409, 412, 503},
 			[]int{400, 404, 307}, operationTimeout, 1)
+		t.log.Infof("... got http %d - arangodb %d", update[0].StatusCode, update[0].Error_.ErrorNum)
 
 		/**
 		 *  20x, if document was replaced
@@ -141,8 +142,6 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 			return update[0].Rev, nil
 		}
 
-		t.log.Errorf("Failure %i to update existing document '%s' (%s) in collection '%s': got %i, retrying",
-			i, key, c.name, update[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second*5 {
 			backoff += backoff
@@ -188,6 +187,7 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 			i, key, collectionName, newName)
 		resp, err := t.client.Patch(url, q, hdr, delta, "", nil, []int{0, 1, 412, 503},
 			[]int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
+		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
 
 		if err[0] == nil {
 			if resp[0].StatusCode == 412 {
@@ -207,8 +207,6 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 			return maskAny(err[0])
 		}
 
-		t.log.Errorf("Failure %i to fail to update document with wrong revision '%s' (%s) in collection '%s': got %i, retrying",
-			i, key, collectionName, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second*5 {
 			backoff += backoff
@@ -255,6 +253,7 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 			"Updating (%d) non-existing document '%s' in '%s' (name -> '%s')...", i, key, collectionName, newName)
 		resp, err := t.client.Patch(url, q, nil, delta, "", nil, []int{0, 1, 404, 503},
 			[]int{200, 201, 202, 400, 412, 307}, operationTimeout, 1)
+		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
 
 		if err[0] == nil {
 			if resp[0].StatusCode == 404 {
@@ -272,8 +271,6 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 			return maskAny(err[0])
 		}
 
-		t.log.Errorf("Failure %i to fail to update non-existing document '%s' (%s) in collection '%s': got %i, retrying",
-			i, key, collectionName, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second*5 {
 			backoff += backoff

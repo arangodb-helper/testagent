@@ -43,6 +43,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 		resp, err := t.client.Post(
 			"/_api/collection", nil, nil, opts, "", nil, []int{0, 1, 200, 409, 500, 503},
 			[]int{400, 404, 307}, operationTimeout, 1)
+		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
 
 		// 200: good
 		// 500: collection couldn't be finished. most likely, because
@@ -98,8 +99,6 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 			return nil
 		}
 
-		t.log.Infof("Creating (%d) collection '%s' with numberOfShards=%d, replicationFactor=%d got %d",
-			i, c.name, numberOfShards, replicationFactor, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second*5 {
 			backoff += backoff
@@ -135,6 +134,7 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 		t.log.Infof("Removing (%d) collection '%s'...", i, c.name)
 		resp, err := t.client.Delete(
 			url, nil, nil, []int{0, 1, 200, 404, 503}, []int{400, 409, 307}, operationTimeout, 1)
+		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
 
 		if err[0] != nil {
 			// This is a failure
@@ -159,7 +159,6 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 			return nil
 		}
 
-		t.log.Infof("Removing (%d) collection '%s' got %d", i, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second*5 {
 			backoff += backoff
@@ -193,6 +192,7 @@ func (t *simpleTest) collectionExists(c *collection) (bool, error) {
 		t.log.Infof("Checking (%d) collection '%s'...", i, c.name)
 		resp, err := t.client.Get(
 			url, nil, nil, nil, []int{0, 1, 200, 404, 503}, []int{400, 409, 307}, operationTimeout, 1)
+		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
 
 		if err[0] != nil {
 			// This is a failure
@@ -205,8 +205,6 @@ func (t *simpleTest) collectionExists(c *collection) (bool, error) {
 		}
 
 		// 0, 1, 503 retry
-
-		t.log.Infof("Checking (%d) collection '%s' got %d", i, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second*5 {
 			backoff += backoff

@@ -37,6 +37,7 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 		resp, err := t.client.Post(
 			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 409, 500, 503},
 			[]int{200, 202, 400, 404, 307}, operationTimeout, 1)
+		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
 
 		if err[0] != nil {
 			// This is a failure
@@ -69,8 +70,6 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 		// case that there is first a timeout (whose request actually succeeds
 		// in the end), and then a second try which runs into 409. We still
 		// continue until we have done the change.
-
-		t.log.Infof("Creating update AQL query for collection '%s' got %d", c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second*5 {
 			backoff += backoff
@@ -116,6 +115,7 @@ func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) 
 		resp, err := t.client.Post(
 			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 409, 500, 503},
 			[]int{200, 202, 400, 404, 307}, operationTimeout, 1)
+		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
 
 		if err[0] != nil {
 			// This is a failure
@@ -146,9 +146,6 @@ func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) 
 		// case that there is first a timeout (whose request actually succeeds
 		// in the end), and then a second try which runs into 409. We still
 		// continue until we have done the change.
-
-		t.log.Infof("Creating (%d) long running update AQL query for collection '%s' got %d",
-			i, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second*5 {
 			backoff *= 2

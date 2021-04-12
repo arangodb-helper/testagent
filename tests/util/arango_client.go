@@ -46,6 +46,7 @@ type ArangoError struct {
 
 type ArangoResponse struct {
 	StatusCode     int    // HTTP status code of last attempt
+	Error_         ArangoError // only if there is a response
 	CoordinatorURL string // URL of coordinator used for last attempt
 	Rev            string // Revision of document as returned by database (not set for all operations)
 }
@@ -251,7 +252,15 @@ func (c *ArangoClient) handleResponse(
 				if err := json.Unmarshal(body, result); err != nil {
 					return maskAny(fmt.Errorf("Failed decoding response data from %s request to %s (attempt %d, started at %s, after %s, error %v)", method, url, attempt, start.Format(startTSFormat), time.Since(start), err))
 				}
+				aresp.Error_ = ArangoError{ Error_: false }
+			} else if resp.StatusCode > 1 {
+				if err := json.Unmarshal(body, &aresp.Error_); err != nil {
+					c.log.Infof(
+						"Failed decoding error data from %s request to %s (attempt %d, started at %s, after %s, error %v)",
+						method, url, attempt, start.Format(startTSFormat), time.Since(start), err)
+				}
 			}
+			
 			// Return success
 			return nil
 		}

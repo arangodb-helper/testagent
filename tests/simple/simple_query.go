@@ -56,6 +56,8 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 		createResp, err = t.client.Post(
 			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 500, 503},
 			[]int{200, 202, 307, 400, 404, 409}, operationTimeout, 1)
+		t.log.Infof("... got http %d - arangodb %d", createResp[0].StatusCode, createResp[0].Error_.ErrorNum)
+
 		if err[0] != nil {
 			// This is a failure
 			t.queryCreateCursorCounter.failed++
@@ -74,7 +76,6 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 		// error code 500 can happen if a dbserver suffers from some chaos
 		// during cursor creation. We can simply retry, too.
 
-		t.log.Infof("Creating (%d) AQL query cursor for '%s' got %d", i, c.name, createResp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second*5 {
 			backoff += backoff
@@ -88,7 +89,6 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 	nrTimeOuts := 0
 
 	for {
-
 		if time.Now().After(testTimeout) {
 			t.reportFailure(test.NewFailure(
 				"Timed out while reading next AQL cursor batch in collection '%s' with same coordinator (%s)",
@@ -103,7 +103,6 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 			break
 		}
 
-
 		// Wait a bit, so we increase the chance of a coordinator being
 		// restarting in between this actions (or some other chaos to happen).
 		time.Sleep(time.Second * 5)
@@ -112,6 +111,8 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 		getResp, err := t.client.Put(
 			"/_api/cursor/"+cursorResp.ID, nil, nil, nil, "", &cursorResp, []int{0, 1, 200, 404, 500, 503},
 			[]int{201, 202, 400, 409, 307}, operationTimeout, 1)
+		t.log.Infof("... got http %d - arangodb %d", getResp[0].StatusCode, getResp[0].Error_.ErrorNum)
+
 		if err[0] != nil {
 			// This is a failure
 			t.queryNextBatchCounter.failed++
@@ -219,6 +220,7 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 		resp, err := t.client.Post(
 			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 500, 503},
 			[]int{200, 202, 400, 404, 409, 307}, operationTimeout, 1)
+		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
 
 		if err[0] != nil {
 			// This is a failure
@@ -242,7 +244,6 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 
 		// Otherwise we fall through and simply try again.
 
-		t.log.Infof("Creating (%d) long running AQL query for '%s' got %d", i, c.name, resp[0].StatusCode)
 		time.Sleep(backoff)
 		if backoff < time.Second*5 {
 			backoff += backoff
