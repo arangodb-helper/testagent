@@ -36,7 +36,8 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 
 		checkRetry := false
 		success := false
-		shouldNotBeThere := false
+		shouldNotExist := false
+		shouldExist := false
 
 		t.log.Infof("Creating (%d) collection '%s' with numberOfShards=%d, replicationFactor=%d...",
 			i, c.name, numberOfShards, replicationFactor)
@@ -45,16 +46,38 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 			[]int{400, 404, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
 
-		// 200: good
-		// 500: collection couldn't be finished. most likely, because
+		// 0, 503: recheck without erxpectations
+		//     there: good
+		//     not there: retry
+		// 200   : good
+		// 1, 500: collection couldn't be finished.
+		//     there: failure
+		//     not there: retry
+		// 409   :
+		//     first attempt: failure
+		//     later attempts:
+		//     recheck
+		//         there: done
+		//         else : failure
 
 		if err[0] == nil {
-			if resp[0].StatusCode == 503 || resp[0].StatusCode == 409 || resp[0].StatusCode == 0 {
-				checkRetry = true
-			} else if resp[0].StatusCode == 1 || resp[0].StatusCode == 500 { // connection refused or not created
-				shouldNotBeThere = true
-			} else {
+			if resp[0].StatusCode == 200 {
 				success = true
+			} else {
+				if resp[0].StatusCode == 1 || resp[0].StatusCode == 500 { // connection refused or not created
+					checkRetry = true
+					shouldNotExist = true
+				} else if resp[0].StatusCode == 409 {
+					if i == 1 {
+						// This is a failure
+						t.createCollectionCounter.failed++
+						t.reportFailure(test.NewFailure("Failed to create collection '%s': got 409 on first attempt", c.name))
+						return maskAny(fmt.Errorf("Failed to create collection '%s': got 409 on first attempt", c.name))
+					} else {
+						shouldExist = true
+					}
+				}
+				checkRetry = true
 			}
 		} else {
 			// This is a failure
@@ -64,29 +87,29 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 		}
 
 		if checkRetry {
-			if exists, checkErr := t.collectionExists(c); checkErr == nil { // TODO collectionExists retries
-				if shouldNotBeThere {
-					// Collection has been created, although it shouldn't
-					t.createCollectionCounter.failed++
-					t.reportFailure(
-						test.NewFailure(
-							"Failure while creating collection '%s': %d reported but collection exists",
-							c.name, resp[0].StatusCode))
-					return maskAny(
-						fmt.Errorf("Failure while creating collection '%s': %d reported but collection exists",
-							c.name, resp[0].StatusCode))
-				} else {
+
+			t.log.Infof("Checking existence of collection '%s' ...", c.name)
+			exists, checkErr := t.collectionExists(c);
+			t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
+
+			if checkErr == nil {
+				if exists {
+					if shouldNotExist {
+						// This is a failure
+						t.createCollectionCounter.failed++
+						t.reportFailure(test.NewFailure(
+							"Failed to create collection '%s' rechecked and failed existence", c.name))
+						return maskAny(fmt.Errorf("Failed to create collection '%s' rechecked and failed existence", c.name))
+					}
 					success = true
-				}
-			} else if !exists {
-				if resp[0].StatusCode == 409 {
-					// Collection has not been created, so 409 status is really wrong
-					t.createCollectionCounter.failed++
-					t.reportFailure(
-						test.NewFailure(
-							"Failed to create collection '%s': 409 reported but collection does not exist", c.name))
-					return maskAny(
-						fmt.Errorf("Create collection for '%s' reported 409, but collection does not exist", c.name))
+				} else {
+					if shouldExist {
+						// This is a failure
+						t.createCollectionCounter.failed++
+						t.reportFailure(test.NewFailure(
+							"Failed to create collection '%s' rechecked and failed existence", c.name))
+						return maskAny(fmt.Errorf("Failed to create collection '%s' rechecked and failed existence", c.name))
+					}
 				}
 			}
 		}
