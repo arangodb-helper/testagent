@@ -41,12 +41,14 @@ type simpleTest struct {
 	active                              bool
 	pauseRequested                      bool
 	paused                              bool
+	lastRequestErr                      bool
 	client                              *util.ArangoClient
 	failures                            int
 	actions                             int
 	collections                         map[string]*collection
 	collectionsMutex                    sync.Mutex
 	lastCollectionIndex                 int32
+	collectionToCleanup                 string
 	readExistingCounter                 counter
 	readExistingWrongRevisionCounter    counter
 	readNonExistingCounter              counter
@@ -252,14 +254,18 @@ type UserDocument struct {
 
 // Equals returns true when the value fields of `d` and `other` are the equal.
 func (d UserDocument) Equals(other UserDocument) bool {
-	return d.Value == other.Value &&
-		d.Name == other.Name &&
-		d.Odd == other.Odd
+	return d.Value == other.Value && d.Name == other.Name && d.Odd == other.Odd
 }
 
 func (t *simpleTest) reportFailure(f test.Failure) {
 	t.failures++
 	t.listener.ReportFailure(f)
+}
+
+func (t *simpleTest) planCollectionDrop(name string) {
+	t.collectionsMutex.Lock()
+	defer t.collectionsMutex.Unlock()
+	t.collectionToCleanup = name
 }
 
 func (t *simpleTest) testLoop() {
@@ -291,6 +297,11 @@ func (t *simpleTest) testLoop() {
 			planIndex = 0
 		}
 
+		t.collectionsMutex.Lock()
+		if t.collectionToCleanup != "" {
+			plan[planIndex] = 1
+		}
+		t.collectionsMutex.Unlock()
 		switch plan[planIndex] {
 		case 0:
 			// Create collection with initial data
@@ -303,7 +314,19 @@ func (t *simpleTest) testLoop() {
 
 		case 1:
 			// Remove an existing collection
-			if len(t.collections) > 1 && rand.Intn(100)%2 == 0 {
+			t.collectionsMutex.Lock()
+			toCleanup := t.collectionToCleanup
+			t.collectionsMutex.Unlock()
+			if toCleanup != "" {
+
+				if err := t.removeExistingCollection(t.collections[t.collectionToCleanup]); err != nil {
+					t.log.Errorf("Failed to remove existing collection: %#v", err)
+				} else {
+					t.collectionsMutex.Lock()
+					t.collectionToCleanup = ""
+					t.collectionsMutex.Unlock()
+				}
+			} else if len(t.collections) > 1 && rand.Intn(100)%2 == 0 {
 				c := t.selectRandomCollection()
 				if err := t.removeExistingCollection(c); err != nil {
 					t.log.Errorf("Failed to remove existing collection: %#v", err)
@@ -325,9 +348,6 @@ func (t *simpleTest) testLoop() {
 					if rev, err := t.createDocument(c, userDoc, userDoc.Key); err != nil {
 						t.log.Errorf("Failed to create document: %#v", err)
 					} else {
-						userDoc.rev = rev
-						c.existingDocs[userDoc.Key] = userDoc
-
 						// Now try to read it, it must exist
 						t.client.SetCoordinator("")
 						if _, err := t.readExistingDocument(c, userDoc.Key, rev, false, false); err != nil {
@@ -577,7 +597,7 @@ func (t *simpleTest) testLoop() {
 		case 17:
 			//// Rebalance shards
 			//if err := t.rebalanceShards(); err != nil {
-			//	t.log.Errorf("Failed to rebalance shards: %#v", err)
+			//  t.log.Errorf("Failed to rebalance shards: %#v", err)
 			//}
 			planIndex++
 
@@ -652,13 +672,12 @@ func createRandomIfMatchHeader(hdr map[string]string, rev string) (map[string]st
 
 // ifMatchHeader creates a request header with an `If-Match` entry for the given revision.
 func ifMatchHeader(hdr map[string]string, rev string) map[string]string {
-	if rev == "" {
-		panic(fmt.Errorf("rev cannot be empty"))
-	}
 	if hdr == nil {
 		hdr = make(map[string]string)
 	}
-	hdr["If-Match"] = rev
+	if rev != "" {
+		hdr["If-Match"] = rev
+	}
 	return hdr
 }
 

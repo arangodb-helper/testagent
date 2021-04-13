@@ -52,7 +52,7 @@ func NewService(config ServiceConfig, deps ServiceDependencies) (*Service, error
 }
 
 // Run performs the tests
-func (s *Service) Run(stopChan chan struct{}) error {
+func (s *Service) Run(stopChan chan struct{}, withChaos bool) error {
 	s.startedAt = time.Now()
 	// Start our HTTP server
 	server.StartHTTPServer(s.Logger, s.ServerPort, s.ReportDir, s)
@@ -72,9 +72,11 @@ func (s *Service) Run(stopChan chan struct{}) error {
 	}
 
 	// Create & start a chaos monkey
-	s.Logger.Info("Creating chaos monkey")
-	s.chaosMonkey = chaos.NewChaosMonkey(s.Logger, s.cluster, s.ChaosConfig)
-	s.chaosMonkey.Start()
+	if withChaos {
+		s.Logger.Info("Creating chaos monkey")
+		s.chaosMonkey = chaos.NewChaosMonkey(s.Logger, s.cluster, s.ChaosConfig)
+		s.chaosMonkey.Start()
+	}
 
 	// Run tests
 	for _, t := range s.Tests() {
@@ -89,9 +91,11 @@ func (s *Service) Run(stopChan chan struct{}) error {
 	<-stopChan
 
 	// Stop introducting chaos
-	s.Logger.Info("Stopping chaos")
-	s.chaosMonkey.Stop()
-	s.chaosMonkey.WaitUntilInactive()
+	if withChaos {
+		s.Logger.Info("Stopping chaos")
+		s.chaosMonkey.Stop()
+		s.chaosMonkey.WaitUntilInactive()
+	}
 
 	// Stop all tests
 	s.Logger.Info("Stopping test scripts")
