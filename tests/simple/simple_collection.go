@@ -147,6 +147,7 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 	backoff := time.Millisecond * 250
 	i := 0
 
+	success := false
 	for {
 
 		i++
@@ -156,7 +157,7 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 
 		t.log.Infof("Removing (%d) collection '%s'...", i, c.name)
 		resp, err := t.client.Delete(
-			url, nil, nil, []int{0, 1, 200, 404, 503}, []int{400, 409, 307}, operationTimeout, 1)
+			url, nil, nil, []int{0, 1, 200, 404, 500, 503}, []int{400, 409, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
 
 		if err[0] != nil {
@@ -174,8 +175,14 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 				t.reportFailure(
 					test.NewFailure("Failed to remove collection '%s': got 404 after only 1 attempt", c.name))
 				return maskAny(fmt.Errorf("Failed to remove collection '%s': got 404 after only 1 attempt", c.name))
+			} else {
+				success = true
 			}
 		} else if resp[0].StatusCode == 200 {
+			success = true
+		}
+
+		if success {
 			t.removeExistingCollectionCounter.succeeded++
 			t.log.Infof("Removing collection '%s' succeeded", c.name)
 			t.unregisterCollection(c)
