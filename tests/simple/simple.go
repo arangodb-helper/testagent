@@ -42,7 +42,7 @@ type simpleTest struct {
 	pauseRequested                      bool
 	paused                              bool
 	lastRequestErr                      bool
-	client                              *util.ArangoClient
+	client                              util.ArangoClientInterface
 	failures                            int
 	actions                             int
 	collections                         map[string]*collection

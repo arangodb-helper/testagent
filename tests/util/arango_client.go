@@ -51,6 +51,29 @@ type ArangoResponse struct {
 	Rev            string // Revision of document as returned by database (not set for all operations)
 }
 
+type ArangoClientInterface interface {
+  SetCoordinator(coordinatorURL string) error
+  Get(urlPath string, query url.Values, header map[string]string,
+      result interface{},
+			successStatusCodes, failureStatusCodes []int,
+		  operationTimeout time.Duration, retries int) ([]ArangoResponse, []error)
+  Delete(urlPath string, query url.Values, header map[string]string,
+			successStatusCodes, failureStatusCodes []int,
+		  operationTimeout time.Duration, retries int) ([]ArangoResponse, []error)
+  Post(urlPath string, query url.Values, header map[string]string,
+      input interface{}, contentType string, result interface{},
+			successStatusCodes, failureStatusCodes []int,
+		  operationTimeout time.Duration, retries int) ([]ArangoResponse, []error)
+  Patch(urlPath string, query url.Values, header map[string]string,
+      input interface{}, contentType string, result interface{},
+			successStatusCodes, failureStatusCodes []int,
+		  operationTimeout time.Duration, retries int) ([]ArangoResponse, []error)
+  Put(urlPath string, query url.Values, header map[string]string,
+      input interface{}, contentType string, result interface{},
+			successStatusCodes, failureStatusCodes []int,
+		  operationTimeout time.Duration, retries int) ([]ArangoResponse, []error)
+}
+
 func (e ArangoError) Error() string {
 	return fmt.Sprintf("%s: (code %d, errorNum %d)", e.ErrorMessage, e.Code, e.ErrorNum)
 }
