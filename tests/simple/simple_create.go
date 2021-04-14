@@ -8,6 +8,10 @@ import (
 	"github.com/arangodb-helper/testagent/service/test"
 )
 
+var (
+	ReadTimeout int = 128    // to be overwritten in unittests only
+)
+
 // readDocument tries to read a document. It retries up to `seconds` seconds,
 // if timeout or connection refused or 503 happen, so these are never
 // returned. If the document is not found (404), then this is considered
@@ -138,7 +142,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 		}
 
 		if checkRetry {
-			d, e := readDocument(t, c.name, key, "", 128, false)
+			d, e := readDocument(t, c.name, key, "", ReadTimeout, false)
 			// replace == with Equals
 			if e == nil && d != nil && d.Equals(document) {
 				document.Rev = d.Rev

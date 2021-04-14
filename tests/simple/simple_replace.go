@@ -98,7 +98,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 
 		if checkRetry {
 			expected := c.existingDocs[key]
-			d, e := readDocument(t, c.name, key, "", 128, true)
+			d, e := readDocument(t, c.name, key, "", ReadTimeout, true)
 
 			if e == nil {
 
