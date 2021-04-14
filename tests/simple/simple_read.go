@@ -32,7 +32,8 @@ func (t *simpleTest) readExistingDocument(
 		t.log.Infof("Reading (%d) existing document '%s' (%s) from '%s'...", i, key, ifMatchStatus, c.name)
 		resp, err := t.client.Get(
 			url, nil, hdr, &result, []int{0, 1, 200, 406, 503}, []int{400, 404, 307}, operationTimeout, 1)
-		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
+		t.log.Infof("... got http %d - arangodb %d via %s",
+			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
 		if err[0] != nil {
 			// This is a failure
@@ -103,7 +104,8 @@ func (t *simpleTest) readExistingDocumentWrongRevision(
 		resp, err := t.client.Get(
 			url, nil, hdr, &result, []int{0, 1, 412, 406, 503},
 			[]int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
-		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
+		t.log.Infof("... got http %d - arangodb %d via %s",
+			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
 		if err[0] != nil {
 			// This is a failure
@@ -159,7 +161,8 @@ func (t *simpleTest) readNonExistingDocument(collectionName string, key string) 
 		t.log.Infof("Reading (%d) non-existing document '%s' from '%s'...", i, key, collectionName)
 		resp, err := t.client.Get(
 			url, nil, nil, &result, []int{0, 1, 404, 406, 503}, []int{200, 201, 202, 400, 307}, operationTimeout, 1)
-		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
+		t.log.Infof("... got http %d - arangodb %d via %s",
+			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
 		if err[0] != nil {
 			// This is a failure

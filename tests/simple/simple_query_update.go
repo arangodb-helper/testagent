@@ -37,7 +37,8 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 		resp, err := t.client.Post(
 			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 409, 500, 503},
 			[]int{200, 202, 400, 404, 307}, operationTimeout, 1)
-		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
+		t.log.Infof("... got http %d - arangodb %d via %s",
+			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
 		if err[0] != nil {
 			// This is a failure
@@ -115,7 +116,8 @@ func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) 
 		resp, err := t.client.Post(
 			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 409, 500, 503},
 			[]int{200, 202, 400, 404, 307}, operationTimeout, 1)
-		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
+		t.log.Infof("... got http %d - arangodb %d via %s",
+			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
 		if err[0] != nil {
 			// This is a failure
@@ -130,7 +132,8 @@ func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) 
 			if resultCount != 1 {
 				// This is a failure
 				t.queryUpdateLongRunningCounter.failed++
-				t.reportFailure(test.NewFailure("Failed to create long running update AQL cursor in collection '%s': expected 1 result, got %d", c.name, resultCount))
+				t.reportFailure(test.NewFailure(
+					"Failed to create long running update AQL cursor in collection '%s': expected 1 result, got %d", c.name, resultCount))
 				return "", maskAny(fmt.Errorf("Number of documents was %d, expected 1", resultCount))
 			}
 

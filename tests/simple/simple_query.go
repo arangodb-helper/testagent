@@ -56,7 +56,8 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 		createResp, err = t.client.Post(
 			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 500, 503},
 			[]int{200, 202, 307, 400, 404, 409}, operationTimeout, 1)
-		t.log.Infof("... got http %d - arangodb %d", createResp[0].StatusCode, createResp[0].Error_.ErrorNum)
+		t.log.Infof("... got http %d - arangodb %d via %s",
+			createResp[0].StatusCode, createResp[0].Error_.ErrorNum, createResp[0].CoordinatorURL)
 
 		if err[0] != nil {
 			// This is a failure
@@ -111,7 +112,8 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 		getResp, err := t.client.Put(
 			"/_api/cursor/"+cursorResp.ID, nil, nil, nil, "", &cursorResp, []int{0, 1, 200, 404, 500, 503},
 			[]int{201, 202, 400, 409, 307}, operationTimeout, 1)
-		t.log.Infof("... got http %d - arangodb %d", getResp[0].StatusCode, getResp[0].Error_.ErrorNum)
+		t.log.Infof("... got http %d - arangodb %d via %s",
+			getResp[0].StatusCode, getResp[0].Error_.ErrorNum, getResp[0].CoordinatorURL)
 
 		if err[0] != nil {
 			// This is a failure
@@ -220,7 +222,8 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 		resp, err := t.client.Post(
 			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 500, 503},
 			[]int{200, 202, 400, 404, 409, 307}, operationTimeout, 1)
-		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
+		t.log.Infof("... got http %d - arangodb %d via %s",
+			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
 		if err[0] != nil {
 			// This is a failure

@@ -44,7 +44,8 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 		resp, err := t.client.Post(
 			"/_api/collection", nil, nil, opts, "", nil, []int{0, 1, 200, 409, 500, 503},
 			[]int{400, 404, 307}, operationTimeout, 1)
-		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
+		t.log.Infof("... got http %d - arangodb %d via %s",
+			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
 		// 0, 503: recheck without erxpectations
 		//     there: good

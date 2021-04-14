@@ -35,6 +35,8 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 		t.log.Infof("Removing (%d) existing document '%s' (%s) from '%s'...", i, key, ifMatchStatus, collectionName)
 		resp, err := t.client.Delete(
 			url, q, hdr, []int{0, 200, 201, 202, 404, 409, 503}, []int{400, 412, 307}, operationTimeout, 1)
+		t.log.Infof("... got http %d - arangodb %d via %s",
+			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
 		if err[0] == nil { // we have a response
 			if resp[0].StatusCode == 0 || resp[0].StatusCode == 409 || resp[0].StatusCode == 503 {
@@ -124,6 +126,8 @@ func (t *simpleTest) removeExistingDocumentWrongRevision(collectionName string, 
 		t.log.Infof("Removing existing document '%s' wrong revision from '%s'...", key, collectionName)
 		resp, err := t.client.Delete(
 			url, q, hdr, []int{0, 1, 412, 503}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
+		t.log.Infof("... got http %d - arangodb %d via %s",
+			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
 		if err[0] == nil {
 			if resp[0].StatusCode == 412 {
@@ -179,6 +183,8 @@ func (t *simpleTest) removeNonExistingDocument(collectionName string, key string
 		t.log.Infof("Removing (%d) non-existing document '%s' from '%s'...", i, key, collectionName)
 		resp, err := t.client.Delete(
 			url, q, nil, []int{0, 1, 404, 503}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, 1)
+		t.log.Infof("... got http %d - arangodb %d via %s",
+			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
 		if err[0] == nil {
 			if resp[0].StatusCode == 404 {

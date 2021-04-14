@@ -55,7 +55,8 @@ func (t *simpleTest) importDocuments(c *collection) error {
 			len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name)
 		resp, err := t.client.Post("/_api/import", q, nil, importData, "application/x-www-form-urlencoded", nil,
 			[]int{0, 1, 200, 201, 202, 503}, []int{400, 404, 409, 307}, operationTimeout, 1)
-		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
+		t.log.Infof("... got http %d - arangodb %d via %s",
+			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
 		if err[0] != nil {
 			// This is a failure

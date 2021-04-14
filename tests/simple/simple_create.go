@@ -34,7 +34,8 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 			"Reading (%d) document '%s' (%s) in '%s' ...", i, key, rev, col)
 		res, err := t.client.Get(
 			url, nil, hdr, &result, []int{0, 1, 200, 201, 202, 404, 503}, []int{400, 307}, operationTimeout, 1)
-		t.log.Infof("... got http %d - arangodb %d", res[0].StatusCode, res[0].Error_.ErrorNum)
+		t.log.Infof("... got http %d - arangodb %d via %s",
+			res[0].StatusCode, res[0].Error_.ErrorNum, res[0].CoordinatorURL)
 
 		if err[0] == nil {
 			if res[0].StatusCode == 404 { // no such document
@@ -120,7 +121,8 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 		t.log.Infof("Creating (%d) document '%s' in '%s'...", i, key, c.name)
 		resp, err := t.client.Post(url, q, nil, document, "", nil,
 			[]int{0, 1, 200, 201, 202, 409, 503}, []int{400, 404, 307}, operationTimeout, 1)
-		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
+		t.log.Infof("... got http %d - arangodb %d via %s",
+			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
 		if err[0] == nil { // we have a response
 			if resp[0].StatusCode == 503 || resp[0].StatusCode == 409 || resp[0].StatusCode == 0 {
