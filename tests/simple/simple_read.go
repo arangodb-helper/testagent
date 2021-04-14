@@ -59,7 +59,7 @@ func (t *simpleTest) readExistingDocument(
 				}
 				t.readExistingCounter.succeeded++
 				t.log.Infof("Reading existing document '%s' (%s) from '%s' succeeded", key, ifMatchStatus, c.name)
-				return result.rev, nil
+				return result.Rev, nil
 			}
 		}
 

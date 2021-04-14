@@ -51,7 +51,7 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 			} else if res[0].StatusCode >= 200 && res[0].StatusCode <= 202 { // document found
 				t.readExistingCounter.succeeded++
 				t.log.Infof(
-					"Reading (%d) document '%s' (%s) in '%s' (name -> '%s') succeeded", i, key, rev, col)
+					"Reading (%d) document '%s' (%s) in '%s' (name -> '%s') succeeded", i, key, rev, col, result.Name)
 				return result, nil
 			}
 		}
@@ -127,6 +127,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 				// 0, 503 and 409 -> check if accidentally successful
 				checkRetry = true
 			} else if resp[0].StatusCode != 1 {
+				document.Rev = resp[0].Rev
 				success = true
 			}
 		} else { // failure
@@ -140,16 +141,16 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 			d, e := readDocument(t, c.name, key, "", 128, false)
 			// replace == with Equals
 			if e == nil && d != nil && d.Equals(document) {
+				document.Rev = d.Rev
 				success = true
 			}
 		}
 
 		if success {
-			document.rev = resp[0].Rev
 			c.existingDocs[key] = document
 			t.createCounter.succeeded++
 			t.log.Infof("Creating document '%s' in '%s' succeeded", key, c.name)
-			return resp[0].Rev, nil
+			return document.Rev, nil
 		}
 
 		time.Sleep(backoff)

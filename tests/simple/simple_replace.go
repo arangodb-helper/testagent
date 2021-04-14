@@ -91,6 +91,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 				// successful in changing the document.
 				checkRetry = true
 			} else if update[0].StatusCode != 1 {
+			  newDoc.Rev = update[0].Rev
 				success = true
 			}
 		}
@@ -102,6 +103,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 			if e == nil {
 
 				if d.Equals(newDoc) {
+					newDoc.Rev = d.Rev
 					success = true
 				} else if !d.Equals(expected) {
 					t.replaceExistingCounter.failed++
@@ -123,13 +125,12 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 
 		if success {
 			// Update memory
-			newDoc.rev = update[0].Rev
 			c.existingDocs[key] = newDoc
 			t.replaceExistingCounter.succeeded++
 			t.log.Infof(
 				"Replacing existing document '%s' (%s) in '%s' (name -> '%s') succeeded",
 				key, ifMatchStatus, c.name, newName)
-			return update[0].Rev, nil
+			return newDoc.Rev, nil
 		}
 
 		time.Sleep(backoff)

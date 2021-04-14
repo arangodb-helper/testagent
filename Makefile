@@ -30,7 +30,7 @@ BIN := $(BINDIR)/$(BINNAME)
 SOURCES := $(shell find $(SRCDIR) -name '*.go')
 TEMPLATES := $(shell find $(SRCDIR)/templates -name '*.tmpl')
 
-.PHONY: all clean deps docker build build-local
+.PHONY: all clean deps docker build build-local tests
 
 all: docker
 
@@ -60,6 +60,10 @@ endif
 
 localtest:
 	docker run -it --rm --net=host -v $(HOME)/tmp:/reports -v /var/run/docker.sock:/var/run/docker.sock arangodb/testagent --docker-net-host
+
+tests:
+	go test -coverprofile cover.out github.com/arangodb-helper/testagent/tests/simple -v
+	go tool cover -html=cover.out
 
 docker-push-version: docker
 	docker tag arangodb/testagent arangodb/testagent:$(VERSION)
