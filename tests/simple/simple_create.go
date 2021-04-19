@@ -8,6 +8,10 @@ import (
 	"github.com/arangodb-helper/testagent/service/test"
 )
 
+var (
+	ReadTimeout int = 128    // to be overwritten in unittests only
+)
+
 // readDocument tries to read a document. It retries up to `seconds` seconds,
 // if timeout or connection refused or 503 happen, so these are never
 // returned. If the document is not found (404), then this is considered
@@ -52,7 +56,7 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 			} else if res[0].StatusCode >= 200 && res[0].StatusCode <= 202 { // document found
 				t.readExistingCounter.succeeded++
 				t.log.Infof(
-					"Reading (%d) document '%s' (%s) in '%s' (name -> '%s') succeeded", i, key, rev, col)
+					"Reading (%d) document '%s' (%s) in '%s' (name -> '%s') succeeded", i, key, rev, col, result.Name)
 				return result, nil
 			}
 		}
@@ -129,6 +133,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 				// 0, 503 and 409 -> check if accidentally successful
 				checkRetry = true
 			} else if resp[0].StatusCode != 1 {
+				document.Rev = resp[0].Rev
 				success = true
 			}
 		} else { // failure
@@ -139,19 +144,19 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 		}
 
 		if checkRetry {
-			d, e := readDocument(t, c.name, key, "", 128, false)
+			d, e := readDocument(t, c.name, key, "", ReadTimeout, false)
 			// replace == with Equals
 			if e == nil && d != nil && d.Equals(document) {
+				document.Rev = d.Rev
 				success = true
 			}
 		}
 
 		if success {
-			document.rev = resp[0].Rev
 			c.existingDocs[key] = document
 			t.createCounter.succeeded++
 			t.log.Infof("Creating document '%s' in '%s' succeeded", key, c.name)
-			return resp[0].Rev, nil
+			return document.Rev, nil
 		}
 
 		time.Sleep(backoff)

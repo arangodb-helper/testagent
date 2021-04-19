@@ -89,6 +89,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 				// 0, 409, 503 -> check if not accidentally successful
 				checkRetry = true
 			} else if update[0].StatusCode != 1 {
+			  doc.Rev = update[0].Rev
 				success = true
 			}
 		} else { // failure
@@ -102,10 +103,11 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 		if checkRetry {
 			expected := c.existingDocs[key]
 			expected.Name = newName
-			d, e := readDocument(t, c.name, key, "", 128, true)
+			d, e := readDocument(t, c.name, key, "", ReadTimeout, true)
 
 			if e == nil { // document does not exist
 				if d.Equals(expected) {
+			    doc.Rev = d.Rev
 					success = true
 				} else if !d.Equals(doc) {
 					// If we see the existing one, we simply try again on the grounds
@@ -134,13 +136,12 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 		if success {
 			// Update memory
 			doc.Name = newName
-			doc.rev = update[0].Rev
 			c.existingDocs[key] = doc
 			t.updateExistingCounter.succeeded++
 			t.log.Infof(
 				"Updating existing document '%s' (%s) in '%s' (name -> '%s') succeeded",
 				key, ifMatchStatus, c.name, newName)
-			return update[0].Rev, nil
+			return doc.Rev, nil
 		}
 
 		time.Sleep(backoff)

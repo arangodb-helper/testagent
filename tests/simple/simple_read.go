@@ -50,7 +50,7 @@ func (t *simpleTest) readExistingDocument(
 					if !result.Equals(expected) {
 						// This is a failure
 						t.readExistingCounter.failed++
-						t.reportFailure(test.NewFailure("Read existing document '%s' (%s) returned different values '%s': got %q expected %q", key, ifMatchStatus, c.name, result, expected))
+						t.reportFailure(test.NewFailure("Read existing document '%s' (%s) returned different values '%s': got %v expected %v", key, ifMatchStatus, c.name, result, expected))
 						return "", maskAny(fmt.Errorf("Read returned invalid values"))
 					}
 				}
@@ -60,7 +60,7 @@ func (t *simpleTest) readExistingDocument(
 				}
 				t.readExistingCounter.succeeded++
 				t.log.Infof("Reading existing document '%s' (%s) from '%s' succeeded", key, ifMatchStatus, c.name)
-				return result.rev, nil
+				return result.Rev, nil
 			}
 		}
 

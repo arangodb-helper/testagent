@@ -13,10 +13,8 @@ import (
 	"strings"
 	"time"
 
-	//"github.com/arangodb-helper/testagent/pkg/retry"
 	"github.com/arangodb-helper/testagent/service/cluster"
 	logging "github.com/op/go-logging"
-	//"github.com/pkg/errors"
 )
 
 func NewArangoClient(log *logging.Logger, cluster cluster.Cluster) *ArangoClient {
@@ -49,6 +47,29 @@ type ArangoResponse struct {
 	Error_         ArangoError // only if there is a response
 	CoordinatorURL string // URL of coordinator used for last attempt
 	Rev            string // Revision of document as returned by database (not set for all operations)
+}
+
+type ArangoClientInterface interface {
+  SetCoordinator(coordinatorURL string) error
+  Get(urlPath string, query url.Values, header map[string]string,
+      result interface{},
+			successStatusCodes, failureStatusCodes []int,
+		  operationTimeout time.Duration, retries int) ([]ArangoResponse, []error)
+  Delete(urlPath string, query url.Values, header map[string]string,
+			successStatusCodes, failureStatusCodes []int,
+		  operationTimeout time.Duration, retries int) ([]ArangoResponse, []error)
+  Post(urlPath string, query url.Values, header map[string]string,
+      input interface{}, contentType string, result interface{},
+			successStatusCodes, failureStatusCodes []int,
+		  operationTimeout time.Duration, retries int) ([]ArangoResponse, []error)
+  Patch(urlPath string, query url.Values, header map[string]string,
+      input interface{}, contentType string, result interface{},
+			successStatusCodes, failureStatusCodes []int,
+		  operationTimeout time.Duration, retries int) ([]ArangoResponse, []error)
+  Put(urlPath string, query url.Values, header map[string]string,
+      input interface{}, contentType string, result interface{},
+			successStatusCodes, failureStatusCodes []int,
+		  operationTimeout time.Duration, retries int) ([]ArangoResponse, []error)
 }
 
 func (e ArangoError) Error() string {

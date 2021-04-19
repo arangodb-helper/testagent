@@ -42,7 +42,7 @@ type simpleTest struct {
 	pauseRequested                      bool
 	paused                              bool
 	lastRequestErr                      bool
-	client                              *util.ArangoClient
+	client                              util.ArangoClientInterface
 	failures                            int
 	actions                             int
 	collections                         map[string]*collection
@@ -246,7 +246,7 @@ func (t *simpleTest) shouldStop() bool {
 
 type UserDocument struct {
 	Key   string `json:"_key"`
-	rev   string // Note that we do not export this field!
+	Rev   string `json:"_rev,omitempty"`
 	Value int    `json:"value"`
 	Name  string `json:"name"`
 	Odd   bool   `json:"odd"`
@@ -755,7 +755,7 @@ func (t *simpleTest) createAndInitCollection() error {
 		if rev, err := t.createDocument(c, userDoc, userDoc.Key); err != nil {
 			t.log.Errorf("Failed to create document: %#v", err)
 		} else {
-			userDoc.rev = rev
+			userDoc.Rev = rev
 			c.existingDocs[userDoc.Key] = userDoc
 		}
 		t.actions++
@@ -784,7 +784,7 @@ func (c *collection) selectRandomKey() (string, string) {
 	index := rand.Intn(len(c.existingDocs))
 	for k, v := range c.existingDocs {
 		if index == 0 {
-			return k, v.rev
+			return k, v.Rev
 		}
 		index--
 	}
@@ -792,10 +792,10 @@ func (c *collection) selectRandomKey() (string, string) {
 }
 
 func (c *collection) selectWrongRevision(key string) (string, bool) {
-	correctRev := c.existingDocs[key].rev
+	correctRev := c.existingDocs[key].Rev
 	for _, v := range c.existingDocs {
-		if v.rev != correctRev && v.rev != "" {
-			return v.rev, true
+		if v.Rev != correctRev && v.Rev != "" {
+			return v.Rev, true
 		}
 	}
 	return "", false // This should never be reached when len(t.existingDocs) > 1

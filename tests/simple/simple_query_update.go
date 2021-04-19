@@ -64,7 +64,7 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 			t.queryUpdateCounter.succeeded++
 			t.log.Infof("Creating update AQL query for collection '%s' succeeded", c.name)
 
-			return resultDocument.rev, nil
+			return resultDocument.Rev, nil
 		}
 
 		// In all other cases we simply try again. Note that this includes the
@@ -142,7 +142,7 @@ func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) 
 			t.queryUpdateLongRunningCounter.succeeded++
 			t.log.Infof("Creating long running update AQL query for collection '%s' succeeded", c.name)
 
-			return resultDocument.rev, nil
+			return resultDocument.Rev, nil
 		}
 
 		// In all other cases we simply try again. Note that this includes the
