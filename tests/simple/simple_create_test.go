@@ -26,7 +26,7 @@ var (
 		MaxDocuments:     20000,
 		MaxCollections:   10,
 		OperationTimeout: time.Second * 1,
-		RetryTimeout:     time.Second * 4,
+		RetryTimeout:     time.Minute * 4,
 	}
 	coll *collection = &collection{
 		name: "simple_test_collection",
