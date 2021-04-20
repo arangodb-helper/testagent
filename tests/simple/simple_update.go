@@ -89,7 +89,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 				// 0, 409, 503 -> check if not accidentally successful
 				checkRetry = true
 			} else if update[0].StatusCode != 1 {
-			  doc.Rev = update[0].Rev
+				doc.Rev = update[0].Rev
 				success = true
 			}
 		} else { // failure
@@ -107,7 +107,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 
 			if e == nil { // document does not exist
 				if d.Equals(expected) {
-			    doc.Rev = d.Rev
+					doc.Rev = d.Rev
 					success = true
 				} else if !d.Equals(doc) {
 					// If we see the existing one, we simply try again on the grounds

@@ -92,7 +92,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 				// successful in changing the document.
 				checkRetry = true
 			} else if update[0].StatusCode != 1 {
-			  newDoc.Rev = update[0].Rev
+				newDoc.Rev = update[0].Rev
 				success = true
 			}
 		} else {

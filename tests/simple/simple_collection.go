@@ -90,7 +90,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 		if checkRetry {
 
 			t.log.Infof("Checking existence of collection '%s' ...", c.name)
-			exists, checkErr := t.collectionExists(c);
+			exists, checkErr := t.collectionExists(c)
 			t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
 
 			if checkErr == nil {

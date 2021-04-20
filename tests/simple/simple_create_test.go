@@ -2,11 +2,11 @@ package simple
 
 import (
 	"context"
-	"fmt"
 	"encoding/json"
-  "testing"
-  "time"
+	"fmt"
 	logging "github.com/op/go-logging"
+	"testing"
+	"time"
 
 	"github.com/arangodb-helper/testagent/service"
 	"github.com/arangodb-helper/testagent/service/cluster/arangodb"
@@ -14,23 +14,23 @@ import (
 )
 
 var (
-  log = logging.MustGetLogger("testAgentTests")
+	log      = logging.MustGetLogger("testAgentTests")
 	appFlags struct {
 		port int
-    service.ServiceConfig
-    arangodb.ArangodbConfig
-    SimpleConfig
-    logLevel string
-  }
-  config SimpleConfig = SimpleConfig{
+		service.ServiceConfig
+		arangodb.ArangodbConfig
+		SimpleConfig
+		logLevel string
+	}
+	config SimpleConfig = SimpleConfig{
 		MaxDocuments:     20000,
 		MaxCollections:   10,
 		OperationTimeout: time.Second * 1,
 		RetryTimeout:     time.Minute * 4,
 	}
 	coll *collection = &collection{
-		name: "simple_test_collection",
-    existingDocs: make(map[string]UserDocument, 1000),
+		name:         "simple_test_collection",
+		existingDocs: make(map[string]UserDocument, 1000),
 	}
 )
 
@@ -43,7 +43,7 @@ func next(ctx context.Context, t *testing.T, requests chan *util.MockRequest, ex
 		return req
 	case <-ctx.Done():
 		if expectMore {
-      t.Errorf("Expecting further requests.")
+			t.Errorf("Expecting further requests.")
 		}
 		return nil
 	}
@@ -63,111 +63,135 @@ func createDocumentOkBehaviour(
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
 
 	// Get a normal POST request:
-  req := next(ctx, t, requests, true); if req == nil { return }
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
 	if req.Method != "POST" {
 		t.Errorf("Got wrong method %s instead of POST.", req.Method)
 	}
-	if req.UrlPath != "/_api/document/" + coll.name {
+	if req.UrlPath != "/_api/document/"+coll.name {
 		t.Errorf("Got wrong URL path %s instead of /_api/document/%s",
-		         req.UrlPath, coll.name)
+			req.UrlPath, coll.name)
 	}
 
 	// Answer with a normal good response:
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{ StatusCode: 200, Rev: "abcd1234" },
-		Err: nil,
+		Resp: util.ArangoResponse{StatusCode: 200, Rev: "abcd1234"},
+		Err:  nil,
 	}
 
 	// Get a second document request:
-  req = next(ctx, t, requests, true); if req == nil { return }
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
 	if req.Method != "POST" {
 		t.Errorf("Got wrong method %s instead of POST.", req.Method)
 	}
 
 	// Respond immediately with a 503:
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{ StatusCode: 503 },
-		Err: nil,
+		Resp: util.ArangoResponse{StatusCode: 503},
+		Err:  nil,
 	}
 
 	// Now expect a GET request to see if the document is there, answer
 	// with no:
-  req = next(ctx, t, requests, true); if req == nil { return }
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
 	if req.Method != "GET" {
 		t.Errorf("Got wrong method %s instead of GET.", req.Method)
 	}
-	if req.UrlPath != "/_api/document/" + coll.name + "/doc2" {
+	if req.UrlPath != "/_api/document/"+coll.name+"/doc2" {
 		t.Errorf("Got wrong URL path %s instead of /_api/document/%s/doc2", req.UrlPath, coll.name)
 	}
 
 	// Respond with not found:
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{ StatusCode: 404 },
+		Resp: util.ArangoResponse{StatusCode: 404},
 		Err:  nil,
 	}
 
 	// Expect another try to POST:
-  req = next(ctx, t, requests, true); if req == nil { return }
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
 	if req.Method != "POST" {
 		t.Errorf("Got wrong method %s instead of POST.", req.Method)
 	}
 
 	// this time, let a timeout happen:
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{ StatusCode: 0 },
+		Resp: util.ArangoResponse{StatusCode: 0},
 		Err:  nil,
 	}
 
 	// Expect another GET request to see if the document is there, answer
 	// with no:
-  req = next(ctx, t, requests, true); if req == nil { return }
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
 	if req.Method != "GET" {
 		t.Errorf("Got wrong method %s instead of GET.", req.Method)
 	}
-	if req.UrlPath != "/_api/document/" + coll.name + "/doc2" {
+	if req.UrlPath != "/_api/document/"+coll.name+"/doc2" {
 		t.Errorf("Got wrong URL path %s instead of /_api/document/%s/doc2", req.UrlPath, coll.name)
 	}
 
 	// Respond with not found:
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{ StatusCode: 404 },
+		Resp: util.ArangoResponse{StatusCode: 404},
 		Err:  nil,
 	}
 
 	// Expect another try to POST:
-  req = next(ctx, t, requests, true); if req == nil { return }
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
 	if req.Method != "POST" {
 		t.Errorf("Got wrong method %s instead of POST.", req.Method)
 	}
 
 	// this time, let a connection refused happen:
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{ StatusCode: 1 },
+		Resp: util.ArangoResponse{StatusCode: 1},
 		Err:  nil,
 	}
 	// No GET in this case!
 
 	// Expect another try to POST:
-  req = next(ctx, t, requests, true); if req == nil { return }
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
 	if req.Method != "POST" {
 		t.Errorf("Got wrong method %s instead of POST.", req.Method)
 	}
 
 	// finally, it works:
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{ StatusCode: 201, Rev: "abc123" },
+		Resp: util.ArangoResponse{StatusCode: 201, Rev: "abc123"},
 		Err:  nil,
 	}
 
 	// Expect another try to POST: (doc3 now)
-  req = next(ctx, t, requests, true); if req == nil { return }
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
 	if req.Method != "POST" {
 		t.Errorf("Got wrong method %s instead of POST.", req.Method)
 	}
 
 	// Respond with an unexpected status code, this will be a failure:
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{ StatusCode: 412 },
+		Resp: util.ArangoResponse{StatusCode: 412},
 		Err:  fmt.Errorf("Received unexpected status code 412."),
 	}
 
@@ -183,14 +207,14 @@ func TestCreateDocumentOkWithRetry(t *testing.T) {
 		collections:  make(map[string]*collection),
 	}
 	mockClient := util.NewMockClient(t, createDocumentOkBehaviour)
-  test.client = mockClient
+	test.client = mockClient
 	test.listener = util.MockListener{}
 	doc := UserDocument{
-    Key: "doc1",
+		Key:   "doc1",
 		Value: 12,
-		Name: "hanswurst",
-		Odd: true,
-  }
+		Name:  "hanswurst",
+		Odd:   true,
+	}
 	rev, err := test.createDocument(coll, doc, "doc1")
 	if rev == "" || err != nil {
 		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
@@ -203,7 +227,7 @@ func TestCreateDocumentOkWithRetry(t *testing.T) {
 	if rev != "" || err == nil {
 		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
 	}
-  mockClient.Shutdown()
+	mockClient.Shutdown()
 }
 
 func createDocumentTimeoutOkBehaviour(
@@ -211,35 +235,40 @@ func createDocumentTimeoutOkBehaviour(
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
 
 	// Get a normal POST request:
-  req := next(ctx, t, requests, true); if req == nil { return }
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
 	if req.Method != "POST" {
 		t.Errorf("Got wrong method %s instead of POST.", req.Method)
 	}
 
 	// let a timeout happen:
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{ StatusCode: 0 },
+		Resp: util.ArangoResponse{StatusCode: 0},
 		Err:  nil,
 	}
 
 	// Expect another GET request to see if the document is there, answer
 	// with yes:
-  req = next(ctx, t, requests, true); if req == nil { return }
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
 	if req.Method != "GET" {
 		t.Errorf("Got wrong method %s instead of GET.", req.Method)
 	}
-	if req.UrlPath != "/_api/document/" + coll.name + "/doc1" {
+	if req.UrlPath != "/_api/document/"+coll.name+"/doc1" {
 		t.Errorf("Got wrong URL path %s instead of /_api/document/%s/doc2", req.UrlPath, coll.name)
 	}
 
 	// Respond with found:
 	json.Unmarshal([]byte(`{"name":"hanswurst", "value": 12, "odd": true, "_key": "doc1", "_rev": "abc12345"}`),
-	               req.Result)
+		req.Result)
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{ StatusCode: 200, Rev: "abc12345" },
+		Resp: util.ArangoResponse{StatusCode: 200, Rev: "abc12345"},
 		Err:  nil,
 	}
-
 
 	// No more requests coming:
 	next(ctx, t, requests, false)
@@ -253,29 +282,29 @@ func TestCreateDocumentTimeoutThenOK(t *testing.T) {
 		collections:  make(map[string]*collection),
 	}
 	mockClient := util.NewMockClient(t, createDocumentTimeoutOkBehaviour)
-  test.client = mockClient
+	test.client = mockClient
 	test.listener = util.MockListener{}
 	doc := UserDocument{
-    Key: "doc1",
+		Key:   "doc1",
 		Value: 12,
-		Name: "hanswurst",
-		Odd: true,
-  }
+		Name:  "hanswurst",
+		Odd:   true,
+	}
 	rev, err := test.createDocument(coll, doc, "doc1")
 	if rev == "" || err != nil {
 		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
 	}
-  mockClient.Shutdown()
+	mockClient.Shutdown()
 }
 
 func createDocumentOverallTimeout(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
 
-  var req *util.MockRequest
+	var req *util.MockRequest
 	for {
 		// Get a normal POST request:
-		select {  // here, we do not know if we expect another one or not
+		select { // here, we do not know if we expect another one or not
 		case req = <-requests:
 		case <-ctx.Done():
 			return
@@ -286,20 +315,23 @@ func createDocumentOverallTimeout(
 
 		// let a timeout happen:
 		responses <- &util.MockResponse{
-			Resp: util.ArangoResponse{ StatusCode: 0 },
+			Resp: util.ArangoResponse{StatusCode: 0},
 			Err:  nil,
 		}
 
 		// Expect another GET request to see if the document is there, answer
 		// with no:
-		req = next(ctx, t, requests, true); if req == nil { return }
+		req = next(ctx, t, requests, true)
+		if req == nil {
+			return
+		}
 		if req.Method != "GET" {
 			t.Errorf("Got wrong method %s instead of GET.", req.Method)
 		}
 
 		// Respond with not found:
 		responses <- &util.MockResponse{
-			Resp: util.ArangoResponse{ StatusCode: 404 },
+			Resp: util.ArangoResponse{StatusCode: 404},
 			Err:  nil,
 		}
 	}
@@ -313,19 +345,19 @@ func TestCreateDocumentOverallTimeout(t *testing.T) {
 		collections:  make(map[string]*collection),
 	}
 	mockClient := util.NewMockClient(t, createDocumentOverallTimeout)
-  test.client = mockClient
+	test.client = mockClient
 	test.listener = util.MockListener{}
 	doc := UserDocument{
-    Key: "doc1",
+		Key:   "doc1",
 		Value: 12,
-		Name: "hanswurst",
-		Odd: true,
-  }
+		Name:  "hanswurst",
+		Odd:   true,
+	}
 	rev, err := test.createDocument(coll, doc, "doc1")
 	if rev != "" || err == nil {
 		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
 	}
-  mockClient.Shutdown()
+	mockClient.Shutdown()
 }
 
 func createDocumentReadTimeout(
@@ -333,20 +365,23 @@ func createDocumentReadTimeout(
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
 
 	// Get a normal POST request:
-  req := next(ctx, t, requests, true); if req == nil { return }
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
 	if req.Method != "POST" {
 		t.Errorf("Got wrong method %s instead of POST.", req.Method)
 	}
 
 	// let a timeout happen:
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{ StatusCode: 0 },
+		Resp: util.ArangoResponse{StatusCode: 0},
 		Err:  nil,
 	}
 
 	for {
 		// Get a sequence of read requests:
-		select {  // here, we do not know if we expect another one or not
+		select { // here, we do not know if we expect another one or not
 		case req = <-requests:
 		case <-ctx.Done():
 			return
@@ -357,15 +392,15 @@ func createDocumentReadTimeout(
 
 		// let a timeout happen:
 		responses <- &util.MockResponse{
-			Resp: util.ArangoResponse{ StatusCode: 0 },
+			Resp: util.ArangoResponse{StatusCode: 0},
 			Err:  nil,
 		}
 	}
 }
 
 func TestCreateDocumentReadTimeout(t *testing.T) {
-	ReadTimeout = 5   // to speed up timeout failure, needs to be longer than
-	                  // operationTimeout*4, which is 4
+	ReadTimeout = 5 // to speed up timeout failure, needs to be longer than
+	// operationTimeout*4, which is 4
 	test := simpleTest{
 		SimpleConfig: config,
 		reportDir:    ".",
@@ -373,18 +408,17 @@ func TestCreateDocumentReadTimeout(t *testing.T) {
 		collections:  make(map[string]*collection),
 	}
 	mockClient := util.NewMockClient(t, createDocumentReadTimeout)
-  test.client = mockClient
+	test.client = mockClient
 	test.listener = util.MockListener{}
 	doc := UserDocument{
-    Key: "doc1",
+		Key:   "doc1",
 		Value: 12,
-		Name: "hanswurst",
-		Odd: true,
-  }
+		Name:  "hanswurst",
+		Odd:   true,
+	}
 	rev, err := test.createDocument(coll, doc, "doc1")
 	if rev != "" || err == nil {
 		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
 	}
-  mockClient.Shutdown()
+	mockClient.Shutdown()
 }
-
