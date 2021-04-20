@@ -315,7 +315,7 @@ func replaceExistingDocumentOverallTimeout(
 			t.Errorf("Got wrong method %s instead of GET.", req.Method)
 		}
 
-		// Respond with not found:
+		// Respond with old document:
 		if x, ok := req.Result.(**UserDocument); ok {
 			*x = &UserDocument{}
 		  **x = coll.existingDocs["doc1"]
@@ -583,6 +583,182 @@ func TestReplaceExistingDocumentReadUnexpected(t *testing.T) {
 		collections:  make(map[string]*collection),
 	}
 	mockClient := util.NewMockClient(t, replaceExistingDocumentReadUnexpected)
+  test.client = mockClient
+	test.listener = util.MockListener{}
+	doc := UserDocument{
+    Key: "doc1",
+		Value: 12,
+		Name: "hanswurst",
+		Odd: true,
+  }
+	rev, err := test.createDocument(coll, doc, "doc1")
+	if rev == "" || err != nil {
+		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
+	}
+	rev, err = test.replaceExistingDocument(coll, "doc1", rev)
+	if rev != "" || err == nil {
+		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+	}
+  mockClient.Shutdown()
+}
+
+func replaceExistingDocumentPreconditionFailed(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a normal POST request (as preparation)
+  req := next(ctx, t, requests, true); if req == nil { return }
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	path := "/_api/document/" + coll.name;
+	if req.UrlPath != path {
+		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
+	}
+
+	// Answer with a normal good response:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{ StatusCode: 200, Rev: "abcd1234" },
+		Err: nil,
+	}
+
+	// Get a normal PUT request:
+  req = next(ctx, t, requests, true); if req == nil { return }
+	if req.Method != "PUT" {
+		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	}
+
+	// return with 412 precondition failed
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{ StatusCode: 412 },
+		Err:  nil,
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestReplaceExistingDocumentPreconditionFailed(t *testing.T) {
+	test := simpleTest{
+		SimpleConfig: config,
+		reportDir:    ".",
+		log:          log,
+		collections:  make(map[string]*collection),
+	}
+	mockClient := util.NewMockClient(t, replaceExistingDocumentPreconditionFailed)
+  test.client = mockClient
+	test.listener = util.MockListener{}
+	doc := UserDocument{
+    Key: "doc1",
+		Value: 12,
+		Name: "hanswurst",
+		Odd: true,
+  }
+	rev, err := test.createDocument(coll, doc, "doc1")
+	if rev == "" || err != nil {
+		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
+	}
+	rev, err = test.replaceExistingDocument(coll, "doc1", rev)
+	if rev != "" || err == nil {
+		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+	}
+  mockClient.Shutdown()
+}
+
+func replaceExistingDocumentPreconditionFailed2(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a normal POST request (as preparation)
+  req := next(ctx, t, requests, true); if req == nil { return }
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	path := "/_api/document/" + coll.name;
+	if req.UrlPath != path {
+		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
+	}
+
+	// Answer with a normal good response:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{ StatusCode: 200, Rev: "abcd1234" },
+		Err: nil,
+	}
+
+	// Get a normal PUT request:
+  req = next(ctx, t, requests, true); if req == nil { return }
+	if req.Method != "PUT" {
+		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	}
+
+	// first a timeout:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{ StatusCode: 0 },
+		Err:  nil,
+	}
+
+	// Expect a GET request to see if the document is there, answer
+	// with yes and give the old one:
+	req = next(ctx, t, requests, true); if req == nil { return }
+	if req.Method != "GET" {
+		t.Errorf("Got wrong method %s instead of GET.", req.Method)
+	}
+
+	// Respond with old document:
+	if x, ok := req.Result.(**UserDocument); ok {
+		*x = &UserDocument{}
+		**x = coll.existingDocs["doc1"]
+	}
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{ StatusCode: 200},
+		Err: nil,
+	}
+	
+	// Get another PUT request, now round 2:
+  req = next(ctx, t, requests, true); if req == nil { return }
+	if req.Method != "PUT" {
+		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	}
+
+	// return with 412 precondition failed:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{ StatusCode: 412 },
+		Err:  nil,
+	}
+
+	// This could now either run into a failure if no if-match header
+	// was given, or it could retry, in which case another GET comes
+	// our way:
+
+	// Expect a GET request to see if the document is there, answer
+	// with yes and give the old one:
+	req = potentialNext(ctx, t, requests); if req == nil { return }
+	if req.Method != "GET" {
+		t.Errorf("Got wrong method %s instead of GET.", req.Method)
+	}
+
+	// Respond with old document:
+	if x, ok := req.Result.(**UserDocument); ok {
+		*x = &UserDocument{}
+		**x = coll.existingDocs["doc1"]
+	}
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{ StatusCode: 200},
+		Err: nil,
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestReplaceExistingDocumentPreconditionFailed2(t *testing.T) {
+	test := simpleTest{
+		SimpleConfig: config,
+		reportDir:    ".",
+		log:          log,
+		collections:  make(map[string]*collection),
+	}
+	mockClient := util.NewMockClient(t, replaceExistingDocumentPreconditionFailed2)
   test.client = mockClient
 	test.listener = util.MockListener{}
 	doc := UserDocument{

@@ -49,6 +49,15 @@ func next(ctx context.Context, t *testing.T, requests chan *util.MockRequest, ex
 	}
 }
 
+func potentialNext(ctx context.Context, t *testing.T, requests chan *util.MockRequest) *util.MockRequest {
+	select {
+	case req := <-requests:
+		return req
+	case <-ctx.Done():
+		return nil
+	}
+}
+
 func createDocumentOkBehaviour(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
