@@ -46,9 +46,10 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 				if mustExist {
 					t.readExistingCounter.failed++
 					t.log.Errorf(
-						"Failed to read(%d) existing document '%s' (%s) in collection '%s': %v",
-						i, key, rev, col, err[0])
-					return nil, maskAny(err[0])
+						"Failed to read(%d) existing document '%s' (%s) in collection '%s'",
+						i, key, rev, col)
+					return nil, maskAny(fmt.Errorf("Failed to read(%d) existing document '%s' (%s) in collection '%s'",
+						i, key, rev, col))
 				} else {
 					t.log.Errorf("Failed to read(%d) document %s (%s) in %s got 404.", i, key, rev, col)
 					return nil, nil
@@ -68,8 +69,8 @@ func readDocument(t *simpleTest, col string, key string, rev string, seconds int
 	}
 
 	t.readExistingCounter.failed++
-	t.log.Errorf("Timed out while trying to read(%d) document %s in %s (&v).", i, key, col)
-	return nil, maskAny(fmt.Errorf("Timed out while trying to read(%d) document %s in %s (&v).", i, key, col))
+	t.log.Errorf("Timed out while trying to read(%d) document %s in %s.", i, key, col)
+	return nil, maskAny(fmt.Errorf("Timed out while trying to read(%d) document %s in %s.", i, key, col))
 
 }
 
