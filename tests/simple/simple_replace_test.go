@@ -328,6 +328,11 @@ func replaceExistingDocumentOverallTimeout(
 }
 
 func TestReplaceExistingDocumentOverallTimeout(t *testing.T) {
+	saveReadTimeout := ReadTimeout
+	ReadTimeout = 5   // to speed up timeout failure, needs to be longer than
+	                  // operationTimeout*4, which is 4
+	defer func() { ReadTimeout = saveReadTimeout }()
+
 	test := simpleTest{
 		SimpleConfig: config,
 		reportDir:    ".",
@@ -406,8 +411,11 @@ func replaceExistingDocumentReadTimeout(
 }
 
 func TestReplaceExistingDocumentReadTimeout(t *testing.T) {
+	saveReadTimeout := ReadTimeout
 	ReadTimeout = 5   // to speed up timeout failure, needs to be longer than
 	                  // operationTimeout*4, which is 4
+	defer func() { ReadTimeout = saveReadTimeout }()
+
 	test := simpleTest{
 		SimpleConfig: config,
 		reportDir:    ".",
@@ -483,8 +491,6 @@ func replaceExistingDocumentReadNotFound(
 }
 
 func TestReplaceExistingDocumentReadNotFound(t *testing.T) {
-	ReadTimeout = 5   // to speed up timeout failure, needs to be longer than
-	                  // operationTimeout*4, which is 4
 	test := simpleTest{
 		SimpleConfig: config,
 		reportDir:    ".",
@@ -492,6 +498,91 @@ func TestReplaceExistingDocumentReadNotFound(t *testing.T) {
 		collections:  make(map[string]*collection),
 	}
 	mockClient := util.NewMockClient(t, replaceExistingDocumentReadNotFound)
+  test.client = mockClient
+	test.listener = util.MockListener{}
+	doc := UserDocument{
+    Key: "doc1",
+		Value: 12,
+		Name: "hanswurst",
+		Odd: true,
+  }
+	rev, err := test.createDocument(coll, doc, "doc1")
+	if rev == "" || err != nil {
+		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
+	}
+	rev, err = test.replaceExistingDocument(coll, "doc1", rev)
+	if rev != "" || err == nil {
+		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+	}
+  mockClient.Shutdown()
+}
+
+func replaceExistingDocumentReadUnexpected(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a normal POST request (as preparation)
+  req := next(ctx, t, requests, true); if req == nil { return }
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	path := "/_api/document/" + coll.name;
+	if req.UrlPath != path {
+		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
+	}
+
+	// Answer with a normal good response:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{ StatusCode: 200, Rev: "abcd1234" },
+		Err: nil,
+	}
+
+	// Get a normal PUT request:
+  req = next(ctx, t, requests, true); if req == nil { return }
+	if req.Method != "PUT" {
+		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	}
+
+	// let a timeout happen:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{ StatusCode: 0 },
+		Err:  nil,
+	}
+
+	// Get a read requests:
+  req = next(ctx, t, requests, true); if req == nil { return }
+	if req.Method != "GET" {
+		t.Errorf("Got wrong method %s instead of GET.", req.Method)
+	}
+
+	// Return with an unknown document, which is a failure:
+	strange := UserDocument{
+		Name: "Strange",
+		Value: 4711,
+		Odd: true,
+		Key: "doc1",
+		Rev: "grzfzl",
+	}
+	if x, ok := req.Result.(**UserDocument); ok {
+		*x = &strange
+	}
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{ StatusCode: 200 },
+		Err:  nil,
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestReplaceExistingDocumentReadUnexpected(t *testing.T) {
+	test := simpleTest{
+		SimpleConfig: config,
+		reportDir:    ".",
+		log:          log,
+		collections:  make(map[string]*collection),
+	}
+	mockClient := util.NewMockClient(t, replaceExistingDocumentReadUnexpected)
   test.client = mockClient
 	test.listener = util.MockListener{}
 	doc := UserDocument{
