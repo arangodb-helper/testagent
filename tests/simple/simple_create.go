@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	ReadTimeout int = 128    // to be overwritten in unittests only
+	ReadTimeout int = 128 // to be overwritten in unittests only
 )
 
 // readDocument tries to read a document. It retries up to `seconds` seconds,
