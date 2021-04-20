@@ -38,13 +38,22 @@ func next(ctx context.Context, t *testing.T, requests chan *util.MockRequest, ex
 	select {
 	case req := <-requests:
 		if !expectMore {
-			t.Errorf("Did not expect further request.")
+			t.Errorf("Did not expect further request, got: %v.", req)
 		}
 		return req
 	case <-ctx.Done():
 		if expectMore {
 			t.Errorf("Expecting further requests.")
 		}
+		return nil
+	}
+}
+
+func potentialNext(ctx context.Context, t *testing.T, requests chan *util.MockRequest) *util.MockRequest {
+	select {
+	case req := <-requests:
+		return req
+	case <-ctx.Done():
 		return nil
 	}
 }

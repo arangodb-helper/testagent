@@ -69,9 +69,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 
 		if err[0] == nil { // We have a response
 			if update[0].StatusCode == 412 {
-				if (!explicitRev && i > 1) || explicitRev {
-					checkRetry = true
-				} else {
+				if i == 1 || !explicitRev {
 					// We got a 412 without asking for an explicit revision on first attempt
 					t.replaceExistingCounter.failed++
 					t.reportFailure(
@@ -82,6 +80,8 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 						fmt.Errorf(
 							"Failed to replace existing document '%s' (%s) in collection '%s': got 412 but did not set If-Match",
 							key, ifMatchStatus, c.name))
+				} else {
+					checkRetry = true
 				}
 			} else if update[0].StatusCode == 503 || update[0].StatusCode == 409 ||
 				update[0].StatusCode == 0 {
@@ -119,11 +119,20 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 				} else if !d.Equals(expected) {
 					t.replaceExistingCounter.failed++
 					t.reportFailure(test.NewFailure(
-						"Failed to replace existing document '%s' (%s) in collection '%s': got 412 but has not been updated",
-						key, ifMatchStatus, c.name))
+						"Failed to replace existing document '%s' (%s) in collection '%s': found unexpected document: %v",
+						key, ifMatchStatus, c.name, d))
 					return "", maskAny(fmt.Errorf(
-						"Failed to replace existing document '%s' (%s) in collection '%s': got 412 but has not been updated",
-						key, ifMatchStatus, c.name))
+						"Failed to replace existing document '%s' (%s) in collection '%s': found unexpected document: %v",
+						key, ifMatchStatus, c.name, d))
+				} else if update[0].StatusCode == 412 {
+					t.replaceExistingCounter.failed++
+					t.reportFailure(test.NewFailure(
+						"Failed to replace existing document '%s' (%s) in collection '%s': found old document, and still got 412: %v",
+						key, ifMatchStatus, c.name, d))
+					return "", maskAny(fmt.Errorf(
+						"Failed to replace existing document '%s' (%s) in collection '%s': found old document, and still got 412: %v",
+						key, ifMatchStatus, c.name, d))
+
 				}
 			} else { // should never get here
 				t.replaceExistingCounter.failed++
@@ -281,6 +290,7 @@ func (t *simpleTest) replaceNonExistingDocument(collectionName string, key strin
 			return maskAny(err[0])
 		}
 
+		time.Sleep(backoff)
 		if backoff < time.Second*5 {
 			backoff += backoff
 		}
