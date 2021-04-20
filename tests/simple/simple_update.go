@@ -71,9 +71,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 
 		if err[0] == nil { // we have a response
 			if update[0].StatusCode == 412 {
-				if (!explicitRev && i > 1) || explicitRev {
-					checkRetry = true
-				} else {
+				if i == 1 || !explicitRev {
 					// We got a 412 without asking for an explicit revision on first attempt
 					t.updateExistingCounter.failed++
 					t.reportFailure(
@@ -84,6 +82,8 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 						fmt.Errorf(
 							"Failed to update existing document '%s' (%s) in collection '%s': got 412 but did not set If-Match",
 							key, ifMatchStatus, c.name))
+				} else {
+					checkRetry = true
 				}
 			} else if update[0].StatusCode == 0 || update[0].StatusCode == 409 || update[0].StatusCode == 503 {
 				// 0, 409, 503 -> check if not accidentally successful
@@ -117,11 +117,20 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 					t.updateExistingCounter.failed++
 					t.reportFailure(
 						test.NewFailure(
-							"Failed to update existing document '%s' (%s) in collection '%s': got 412 but has not been updated",
-							key, ifMatchStatus, c.name))
+							"Failed to update existing document '%s' (%s) in collection '%s': found unexpected document: %v",
+							key, ifMatchStatus, c.name, d))
 					return "", maskAny(fmt.Errorf(
-						"Failed to update existing document '%s' (%s) in collection '%s': got 412 but has not been updated",
-						key, ifMatchStatus, c.name))
+						"Failed to update existing document '%s' (%s) in collection '%s': found unexpected document: %v",
+						key, ifMatchStatus, c.name, d))
+				} else if update[0].StatusCode == 412 {
+					t.replaceExistingCounter.failed++
+					t.reportFailure(test.NewFailure(
+						"Failed to update existing document '%s' (%s) in collection '%s': found old document, and still got 412: %v",
+						key, ifMatchStatus, c.name, d))
+					return "", maskAny(fmt.Errorf(
+						"Failed to update existing document '%s' (%s) in collection '%s': found old document, and still got 412: %v",
+						key, ifMatchStatus, c.name, d))
+
 				}
 			} else { // should never get here
 				t.updateExistingCounter.failed++
