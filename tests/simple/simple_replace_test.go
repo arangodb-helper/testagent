@@ -713,7 +713,7 @@ func replaceExistingDocumentPreconditionFailed2(
 		Resp: util.ArangoResponse{ StatusCode: 200},
 		Err: nil,
 	}
-	
+
 	// Get another PUT request, now round 2:
   req = next(ctx, t, requests, true); if req == nil { return }
 	if req.Method != "PUT" {
@@ -773,6 +773,85 @@ func TestReplaceExistingDocumentPreconditionFailed2(t *testing.T) {
 	}
 	rev, err = test.replaceExistingDocument(coll, "doc1", rev)
 	if rev != "" || err == nil {
+		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+	}
+  mockClient.Shutdown()
+}
+
+func replaceExistingDocumentWrongRevision(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a normal POST request (as preparation)
+  req := next(ctx, t, requests, true); if req == nil { return }
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	path := "/_api/document/" + coll.name;
+	if req.UrlPath != path {
+		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
+	}
+
+	// Answer with a normal good response:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{ StatusCode: 200, Rev: "abcd1234" },
+		Err: nil,
+	}
+
+	// Get a normal PUT request:
+  req = next(ctx, t, requests, true); if req == nil { return }
+	if req.Method != "PUT" {
+		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	}
+
+	// return with 412 precondition failed
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{ StatusCode: 412 },
+		Err:  nil,
+	}
+
+	// Get a normal PUT request:
+  req = next(ctx, t, requests, true); if req == nil { return }
+	if req.Method != "PUT" {
+		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	}
+
+	// return with 200
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{ StatusCode: 200, Rev: "abcd1235" },
+		Err:  fmt.Errorf("Test failure"),
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestReplaceExistingDocumentWrongRevision(t *testing.T) {
+	test := simpleTest{
+		SimpleConfig: config,
+		reportDir:    ".",
+		log:          log,
+		collections:  make(map[string]*collection),
+	}
+	mockClient := util.NewMockClient(t, replaceExistingDocumentWrongRevision)
+  test.client = mockClient
+	test.listener = util.MockListener{}
+	doc := UserDocument{
+    Key: "doc1",
+		Value: 12,
+		Name: "hanswurst",
+		Odd: true,
+  }
+	rev, err := test.createDocument(coll, doc, "doc1")
+	if rev == "" || err != nil {
+		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
+	}
+	err = test.replaceExistingDocumentWrongRevision(coll.name, "doc1", rev + "bla")
+	if err != nil {
+		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+	}
+	err = test.replaceExistingDocumentWrongRevision(coll.name, "doc1", rev + "bla2")
+	if err == nil {
 		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
 	}
   mockClient.Shutdown()
