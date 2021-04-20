@@ -223,7 +223,7 @@ func createDocumentTimeoutOkBehaviour(
 		t.Errorf("Got wrong URL path %s instead of /_api/document/%s/doc2", req.UrlPath, coll.name)
 	}
 
-	// Respond with not found:
+	// Respond with found:
 	json.Unmarshal([]byte(`{"name":"hanswurst", "value": 12, "odd": true, "_key": "doc1", "_rev": "abc12345"}`),
 	               req.Result)
 	responses <- &util.MockResponse{
@@ -282,7 +282,7 @@ func createDocumentOverallTimeout(
 		}
 
 		// Expect another GET request to see if the document is there, answer
-		// with yes:
+		// with no:
 		req = next(ctx, t, requests, true); if req == nil { return }
 		if req.Method != "GET" {
 			t.Errorf("Got wrong method %s instead of GET.", req.Method)

@@ -95,6 +95,16 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 			  newDoc.Rev = update[0].Rev
 				success = true
 			}
+		} else {
+			t.replaceExistingCounter.failed++
+			t.reportFailure(
+				test.NewFailure(
+					"Failed to replace existing document '%s' (%s) in collection '%s': got unexpected code %d",
+					key, ifMatchStatus, c.name, update[0].StatusCode))
+			return "", maskAny(
+				fmt.Errorf(
+					"Failed to replace existing document '%s' (%s) in collection '%s': got unexpected code %d",
+					key, ifMatchStatus, c.name, update[0].StatusCode))
 		}
 
 		if checkRetry {
