@@ -919,3 +919,144 @@ func TestReplaceExistingDocumentWrongRevisionOverallTimeout(t *testing.T) {
   mockClient.Shutdown()
 }
 
+func replaceNonExistingDocument(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a normal POST request (as preparation)
+  req := next(ctx, t, requests, true); if req == nil { return }
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	path := "/_api/document/" + coll.name;
+	if req.UrlPath != path {
+		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
+	}
+
+	// Answer with a normal good response:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{ StatusCode: 200, Rev: "abcd1234" },
+		Err: nil,
+	}
+
+	// Get a normal PUT request:
+  req = next(ctx, t, requests, true); if req == nil { return }
+	if req.Method != "PUT" {
+		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	}
+
+	// return with 404 precondition failed
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{ StatusCode: 404 },
+		Err:  nil,
+	}
+
+	// Get a normal PUT request:
+  req = next(ctx, t, requests, true); if req == nil { return }
+	if req.Method != "PUT" {
+		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	}
+
+	// return with 200
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{ StatusCode: 200, Rev: "abcd1235" },
+		Err:  fmt.Errorf("Test failure"),
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestReplaceNonExistingDocument(t *testing.T) {
+	test := simpleTest{
+		SimpleConfig: config,
+		reportDir:    ".",
+		log:          log,
+		collections:  make(map[string]*collection),
+	}
+	mockClient := util.NewMockClient(t, replaceNonExistingDocument)
+  test.client = mockClient
+	test.listener = util.MockListener{}
+	doc := UserDocument{
+    Key: "doc1",
+		Value: 12,
+		Name: "hanswurst",
+		Odd: true,
+  }
+	rev, err := test.createDocument(coll, doc, "doc1")
+	if rev == "" || err != nil {
+		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
+	}
+	err = test.replaceNonExistingDocument(coll.name, "doc1")
+	if err != nil {
+		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+	}
+	err = test.replaceNonExistingDocument(coll.name, "doc1")
+	if err == nil {
+		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+	}
+  mockClient.Shutdown()
+}
+
+func replaceNonExistingDocumentOverallTimeout(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a normal POST request (as preparation)
+  req := next(ctx, t, requests, true); if req == nil { return }
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	path := "/_api/document/" + coll.name;
+	if req.UrlPath != path {
+		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
+	}
+
+	// Answer with a normal good response:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{ StatusCode: 200, Rev: "abcd1234" },
+		Err: nil,
+	}
+
+	for {
+		// Get a normal PUT request:
+		req = potentialNext(ctx, t, requests); if req == nil { return }
+		if req.Method != "PUT" {
+			t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+		}
+
+		// return with 503
+		responses <- &util.MockResponse{
+			Resp: util.ArangoResponse{ StatusCode: 503 },
+			Err:  nil,
+		}
+	}
+}
+
+func TestReplaceNonExistingDocumentOverallTimeout(t *testing.T) {
+	test := simpleTest{
+		SimpleConfig: config,
+		reportDir:    ".",
+		log:          log,
+		collections:  make(map[string]*collection),
+	}
+	mockClient := util.NewMockClient(t, replaceNonExistingDocumentOverallTimeout)
+  test.client = mockClient
+	test.listener = util.MockListener{}
+	doc := UserDocument{
+    Key: "doc1",
+		Value: 12,
+		Name: "hanswurst",
+		Odd: true,
+  }
+	rev, err := test.createDocument(coll, doc, "doc1")
+	if rev == "" || err != nil {
+		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
+	}
+	err = test.replaceNonExistingDocument(coll.name, "doc1")
+	if err == nil {
+		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+	}
+  mockClient.Shutdown()
+}
+

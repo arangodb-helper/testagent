@@ -290,6 +290,7 @@ func (t *simpleTest) replaceNonExistingDocument(collectionName string, key strin
 			return maskAny(err[0])
 		}
 
+		time.Sleep(backoff)
 		if backoff < time.Second*5 {
 			backoff += backoff
 		}
