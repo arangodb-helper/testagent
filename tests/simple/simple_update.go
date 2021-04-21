@@ -97,7 +97,10 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 			t.reportFailure(
 				test.NewFailure("Failed to update existing document '%s' (%s) in collection '%s': %v",
 					key, ifMatchStatus, c.name, err[0]))
-			return "", maskAny(err[0])
+			return "", maskAny(
+				fmt.Errorf(
+					"Failed to update existing document '%s' (%s) in collection '%s': got unexpected code %d",
+					key, ifMatchStatus, c.name, update[0].StatusCode))
 		}
 
 		if checkRetry {
@@ -209,6 +212,7 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 					key, collectionName, newName)
 				return nil
 			}
+			// In cases 0 and 1 and 503, we fall through here and try again
 		} else {
 			// This is a failure
 			t.updateExistingWrongRevisionCounter.failed++
@@ -223,7 +227,6 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 		if backoff < time.Second*5 {
 			backoff += backoff
 		}
-
 	}
 
 	t.updateExistingWrongRevisionCounter.failed++
@@ -275,6 +278,7 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 					"Updating non-existing document '%s' in '%s' (name -> '%s') succeeded", key, collectionName, newName)
 				return nil
 			}
+			// In cases 0, 1 and 503 we fall through here and try again.
 		} else {
 			// This is a failure
 			t.updateNonExistingCounter.failed++
@@ -288,7 +292,6 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 		if backoff < time.Second*5 {
 			backoff += backoff
 		}
-
 	}
 
 	t.updateNonExistingCounter.failed++

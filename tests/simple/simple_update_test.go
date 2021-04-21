@@ -9,7 +9,7 @@ import (
 	"github.com/arangodb-helper/testagent/tests/util"
 )
 
-func replaceExistingDocumentOk(
+func updateExistingDocumentOk(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
 
@@ -32,13 +32,13 @@ func replaceExistingDocumentOk(
 		Err:  nil,
 	}
 
-	// Get a normal PUT request:
+	// Get a normal PATCH request:
 	req = next(ctx, t, requests, true)
 	if req == nil {
 		return
 	}
-	if req.Method != "PUT" {
-		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
 	}
 	path = "/_api/document/" + coll.name + "/doc1"
 	if req.UrlPath != path {
@@ -56,8 +56,8 @@ func replaceExistingDocumentOk(
 	if req == nil {
 		return
 	}
-	if req.Method != "PUT" {
-		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
 	}
 
 	// Respond immediately with a 503:
@@ -90,13 +90,13 @@ func replaceExistingDocumentOk(
 		Err:  nil,
 	}
 
-	// Expect another try to PUT:
+	// Expect another try to PATCH:
 	req = next(ctx, t, requests, true)
 	if req == nil {
 		return
 	}
-	if req.Method != "PUT" {
-		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
 	}
 
 	// this time, let a timeout happen:
@@ -125,13 +125,13 @@ func replaceExistingDocumentOk(
 		Err:  nil,
 	}
 
-	// Expect another try to PUT:
+	// Expect another try to PATCH:
 	req = next(ctx, t, requests, true)
 	if req == nil {
 		return
 	}
-	if req.Method != "PUT" {
-		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
 	}
 
 	// this time, let a connection refused happen:
@@ -141,13 +141,13 @@ func replaceExistingDocumentOk(
 	}
 	// No GET in this case!
 
-	// Expect another try to PUT:
+	// Expect another try to PATCH:
 	req = next(ctx, t, requests, true)
 	if req == nil {
 		return
 	}
-	if req.Method != "PUT" {
-		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
 	}
 
 	// finally, it works:
@@ -156,13 +156,13 @@ func replaceExistingDocumentOk(
 		Err:  nil,
 	}
 
-	// Expect another try to PUT:
+	// Expect another try to PATCH:
 	req = next(ctx, t, requests, true)
 	if req == nil {
 		return
 	}
-	if req.Method != "PUT" {
-		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
 	}
 
 	// Respond with an unexpected status code, this will be a failure:
@@ -175,7 +175,7 @@ func replaceExistingDocumentOk(
 	next(ctx, t, requests, false)
 }
 
-func TestReplaceExistingDocumentOkWithRetry(t *testing.T) {
+func TestUpdateExistingDocumentOkWithRetry(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
 		reportDir:    ".",
@@ -183,7 +183,7 @@ func TestReplaceExistingDocumentOkWithRetry(t *testing.T) {
 		collections:  make(map[string]*collection),
 	}
 
-	mockClient := util.NewMockClient(t, replaceExistingDocumentOk)
+	mockClient := util.NewMockClient(t, updateExistingDocumentOk)
 	test.client = mockClient
 	test.listener = util.MockListener{}
 	doc := UserDocument{
@@ -192,27 +192,27 @@ func TestReplaceExistingDocumentOkWithRetry(t *testing.T) {
 		Name:  "hanswurst",
 		Odd:   true,
 	}
-	// First create a document to replace:
+	// First create a document to update:
 	rev, err := test.createDocument(coll, doc, "doc1")
 	if rev == "" || err != nil {
 		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
 	}
-	rev2, err := test.replaceExistingDocument(coll, "doc1", rev)
+	rev2, err := test.updateExistingDocument(coll, "doc1", rev)
 	if rev2 == "" || err != nil || rev2 == rev {
-		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev2, err)
+		t.Errorf("Unexpected result from updateExistingDocument: %v, err: %v", rev2, err)
 	}
-	rev, err = test.replaceExistingDocument(coll, "doc1", rev2)
+	rev, err = test.updateExistingDocument(coll, "doc1", rev2)
 	if rev == "" || err != nil || rev == rev2 {
-		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+		t.Errorf("Unexpected result from updateExistingDocument: %v, err: %v", rev, err)
 	}
-	rev2, err = test.replaceExistingDocument(coll, "doc1", rev)
+	rev2, err = test.updateExistingDocument(coll, "doc1", rev)
 	if rev2 != "" || err == nil {
-		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev2, err)
+		t.Errorf("Unexpected result from updateExistingDocument: %v, err: %v", rev2, err)
 	}
 	mockClient.Shutdown()
 }
 
-func replaceExistingDocumentTimeoutOkBehaviour(
+func updateExistingDocumentTimeoutOkBehaviour(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
 
@@ -235,16 +235,17 @@ func replaceExistingDocumentTimeoutOkBehaviour(
 		Err:  nil,
 	}
 
-	// Get a normal PUT request:
+	// Get a normal PATCH request:
 	req = next(ctx, t, requests, true)
 	if req == nil {
 		return
 	}
-	if req.Method != "PUT" {
-		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
 	}
 	// Save new document:
-	newDoc := req.Input.(UserDocument)
+	patch := req.Input.(map[string]interface{})
+	newName := patch["name"].(string)
 
 	// let a timeout happen:
 	responses <- &util.MockResponse{
@@ -269,7 +270,8 @@ func replaceExistingDocumentTimeoutOkBehaviour(
 	// Respond with found:
 	if x, ok := req.Result.(**UserDocument); ok {
 		*x = &UserDocument{}
-		**x = newDoc
+		**x = coll.existingDocs["doc1"]
+		(*x).Name = newName
 		(*x).Rev = "abc1235"
 	}
 	responses <- &util.MockResponse{
@@ -281,14 +283,14 @@ func replaceExistingDocumentTimeoutOkBehaviour(
 	next(ctx, t, requests, false)
 }
 
-func TestReplaceExistingDocumentTimeoutThenOK(t *testing.T) {
+func TestUpdateExistingDocumentTimeoutThenOK(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
 		reportDir:    ".",
 		log:          log,
 		collections:  make(map[string]*collection),
 	}
-	mockClient := util.NewMockClient(t, replaceExistingDocumentTimeoutOkBehaviour)
+	mockClient := util.NewMockClient(t, updateExistingDocumentTimeoutOkBehaviour)
 	test.client = mockClient
 	test.listener = util.MockListener{}
 	doc := UserDocument{
@@ -301,14 +303,14 @@ func TestReplaceExistingDocumentTimeoutThenOK(t *testing.T) {
 	if rev == "" || err != nil {
 		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
 	}
-	rev, err = test.replaceExistingDocument(coll, "doc1", rev)
+	rev, err = test.updateExistingDocument(coll, "doc1", rev)
 	if rev == "" || err != nil {
-		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+		t.Errorf("Unexpected result from updateExistingDocument: %v, err: %v", rev, err)
 	}
 	mockClient.Shutdown()
 }
 
-func replaceExistingDocumentOverallTimeout(
+func updateExistingDocumentOverallTimeout(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
 
@@ -332,14 +334,14 @@ func replaceExistingDocumentOverallTimeout(
 	}
 
 	for {
-		// Get a normal PUT request:
+		// Get a normal PATCH request:
 		select { // here, we do not know if we expect another one or not
 		case req = <-requests:
 		case <-ctx.Done():
 			return
 		}
-		if req.Method != "PUT" {
-			t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+		if req.Method != "PATCH" {
+			t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
 		}
 
 		// let a timeout happen:
@@ -370,7 +372,7 @@ func replaceExistingDocumentOverallTimeout(
 	}
 }
 
-func TestReplaceExistingDocumentOverallTimeout(t *testing.T) {
+func TestUpdateExistingDocumentOverallTimeout(t *testing.T) {
 	saveReadTimeout := ReadTimeout
 	ReadTimeout = 5 // to speed up timeout failure, needs to be longer than
 	// operationTimeout*4, which is 4
@@ -382,7 +384,7 @@ func TestReplaceExistingDocumentOverallTimeout(t *testing.T) {
 		log:          log,
 		collections:  make(map[string]*collection),
 	}
-	mockClient := util.NewMockClient(t, replaceExistingDocumentOverallTimeout)
+	mockClient := util.NewMockClient(t, updateExistingDocumentOverallTimeout)
 	test.client = mockClient
 	test.listener = util.MockListener{}
 	doc := UserDocument{
@@ -395,14 +397,14 @@ func TestReplaceExistingDocumentOverallTimeout(t *testing.T) {
 	if rev == "" || err != nil {
 		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
 	}
-	rev, err = test.replaceExistingDocument(coll, "doc1", rev)
+	rev, err = test.updateExistingDocument(coll, "doc1", rev)
 	if rev != "" || err == nil {
-		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+		t.Errorf("Unexpected result from updateExistingDocument: %v, err: %v", rev, err)
 	}
 	mockClient.Shutdown()
 }
 
-func replaceExistingDocumentReadTimeout(
+func updateExistingDocumentReadTimeout(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
 
@@ -425,13 +427,13 @@ func replaceExistingDocumentReadTimeout(
 		Err:  nil,
 	}
 
-	// Get a normal PUT request:
+	// Get a normal PATCH request:
 	req = next(ctx, t, requests, true)
 	if req == nil {
 		return
 	}
-	if req.Method != "PUT" {
-		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
 	}
 
 	// let a timeout happen:
@@ -459,7 +461,7 @@ func replaceExistingDocumentReadTimeout(
 	}
 }
 
-func TestReplaceExistingDocumentReadTimeout(t *testing.T) {
+func TestUpdateExistingDocumentReadTimeout(t *testing.T) {
 	saveReadTimeout := ReadTimeout
 	ReadTimeout = 5 // to speed up timeout failure, needs to be longer than
 	// operationTimeout*4, which is 4
@@ -471,7 +473,7 @@ func TestReplaceExistingDocumentReadTimeout(t *testing.T) {
 		log:          log,
 		collections:  make(map[string]*collection),
 	}
-	mockClient := util.NewMockClient(t, replaceExistingDocumentReadTimeout)
+	mockClient := util.NewMockClient(t, updateExistingDocumentReadTimeout)
 	test.client = mockClient
 	test.listener = util.MockListener{}
 	doc := UserDocument{
@@ -484,14 +486,14 @@ func TestReplaceExistingDocumentReadTimeout(t *testing.T) {
 	if rev == "" || err != nil {
 		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
 	}
-	rev, err = test.replaceExistingDocument(coll, "doc1", rev)
+	rev, err = test.updateExistingDocument(coll, "doc1", rev)
 	if rev != "" || err == nil {
-		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+		t.Errorf("Unexpected result from updateExistingDocument: %v, err: %v", rev, err)
 	}
 	mockClient.Shutdown()
 }
 
-func replaceExistingDocumentReadNotFound(
+func updateExistingDocumentReadNotFound(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
 
@@ -514,13 +516,13 @@ func replaceExistingDocumentReadNotFound(
 		Err:  nil,
 	}
 
-	// Get a normal PUT request:
+	// Get a normal PATCH request:
 	req = next(ctx, t, requests, true)
 	if req == nil {
 		return
 	}
-	if req.Method != "PUT" {
-		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
 	}
 
 	// let a timeout happen:
@@ -548,14 +550,14 @@ func replaceExistingDocumentReadNotFound(
 	next(ctx, t, requests, false)
 }
 
-func TestReplaceExistingDocumentReadNotFound(t *testing.T) {
+func TestUpdateExistingDocumentReadNotFound(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
 		reportDir:    ".",
 		log:          log,
 		collections:  make(map[string]*collection),
 	}
-	mockClient := util.NewMockClient(t, replaceExistingDocumentReadNotFound)
+	mockClient := util.NewMockClient(t, updateExistingDocumentReadNotFound)
 	test.client = mockClient
 	test.listener = util.MockListener{}
 	doc := UserDocument{
@@ -568,14 +570,14 @@ func TestReplaceExistingDocumentReadNotFound(t *testing.T) {
 	if rev == "" || err != nil {
 		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
 	}
-	rev, err = test.replaceExistingDocument(coll, "doc1", rev)
+	rev, err = test.updateExistingDocument(coll, "doc1", rev)
 	if rev != "" || err == nil {
-		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+		t.Errorf("Unexpected result from updateExistingDocument: %v, err: %v", rev, err)
 	}
 	mockClient.Shutdown()
 }
 
-func replaceExistingDocumentReadUnexpected(
+func updateExistingDocumentReadUnexpected(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
 
@@ -598,13 +600,13 @@ func replaceExistingDocumentReadUnexpected(
 		Err:  nil,
 	}
 
-	// Get a normal PUT request:
+	// Get a normal PATCH request:
 	req = next(ctx, t, requests, true)
 	if req == nil {
 		return
 	}
-	if req.Method != "PUT" {
-		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
 	}
 
 	// let a timeout happen:
@@ -642,14 +644,14 @@ func replaceExistingDocumentReadUnexpected(
 	next(ctx, t, requests, false)
 }
 
-func TestReplaceExistingDocumentReadUnexpected(t *testing.T) {
+func TestUpdateExistingDocumentReadUnexpected(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
 		reportDir:    ".",
 		log:          log,
 		collections:  make(map[string]*collection),
 	}
-	mockClient := util.NewMockClient(t, replaceExistingDocumentReadUnexpected)
+	mockClient := util.NewMockClient(t, updateExistingDocumentReadUnexpected)
 	test.client = mockClient
 	test.listener = util.MockListener{}
 	doc := UserDocument{
@@ -662,14 +664,14 @@ func TestReplaceExistingDocumentReadUnexpected(t *testing.T) {
 	if rev == "" || err != nil {
 		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
 	}
-	rev, err = test.replaceExistingDocument(coll, "doc1", rev)
+	rev, err = test.updateExistingDocument(coll, "doc1", rev)
 	if rev != "" || err == nil {
-		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+		t.Errorf("Unexpected result from updateExistingDocument: %v, err: %v", rev, err)
 	}
 	mockClient.Shutdown()
 }
 
-func replaceExistingDocumentPreconditionFailed(
+func updateExistingDocumentPreconditionFailed(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
 
@@ -692,13 +694,13 @@ func replaceExistingDocumentPreconditionFailed(
 		Err:  nil,
 	}
 
-	// Get a normal PUT request:
+	// Get a normal PATCH request:
 	req = next(ctx, t, requests, true)
 	if req == nil {
 		return
 	}
-	if req.Method != "PUT" {
-		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
 	}
 
 	// return with 412 precondition failed
@@ -711,14 +713,14 @@ func replaceExistingDocumentPreconditionFailed(
 	next(ctx, t, requests, false)
 }
 
-func TestReplaceExistingDocumentPreconditionFailed(t *testing.T) {
+func TestUpdateExistingDocumentPreconditionFailed(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
 		reportDir:    ".",
 		log:          log,
 		collections:  make(map[string]*collection),
 	}
-	mockClient := util.NewMockClient(t, replaceExistingDocumentPreconditionFailed)
+	mockClient := util.NewMockClient(t, updateExistingDocumentPreconditionFailed)
 	test.client = mockClient
 	test.listener = util.MockListener{}
 	doc := UserDocument{
@@ -731,14 +733,14 @@ func TestReplaceExistingDocumentPreconditionFailed(t *testing.T) {
 	if rev == "" || err != nil {
 		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
 	}
-	rev, err = test.replaceExistingDocument(coll, "doc1", rev)
+	rev, err = test.updateExistingDocument(coll, "doc1", rev)
 	if rev != "" || err == nil {
-		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+		t.Errorf("Unexpected result from updateExistingDocument: %v, err: %v", rev, err)
 	}
 	mockClient.Shutdown()
 }
 
-func replaceExistingDocumentPreconditionFailed2(
+func updateExistingDocumentPreconditionFailed2(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
 
@@ -761,13 +763,13 @@ func replaceExistingDocumentPreconditionFailed2(
 		Err:  nil,
 	}
 
-	// Get a normal PUT request:
+	// Get a normal PATCH request:
 	req = next(ctx, t, requests, true)
 	if req == nil {
 		return
 	}
-	if req.Method != "PUT" {
-		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
 	}
 
 	// first a timeout:
@@ -796,13 +798,13 @@ func replaceExistingDocumentPreconditionFailed2(
 		Err:  nil,
 	}
 
-	// Get another PUT request, now round 2:
+	// Get another PATCH request, now round 2:
 	req = next(ctx, t, requests, true)
 	if req == nil {
 		return
 	}
-	if req.Method != "PUT" {
-		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
 	}
 
 	// return with 412 precondition failed:
@@ -839,7 +841,7 @@ func replaceExistingDocumentPreconditionFailed2(
 	next(ctx, t, requests, false)
 }
 
-func TestReplaceExistingDocumentPreconditionFailed2(t *testing.T) {
+func TestUpdateExistingDocumentPreconditionFailed2(t *testing.T) {
 	stillSeen := false
 	butSeen := false
 	for {
@@ -849,7 +851,7 @@ func TestReplaceExistingDocumentPreconditionFailed2(t *testing.T) {
 			log:          log,
 			collections:  make(map[string]*collection),
 		}
-		mockClient := util.NewMockClient(t, replaceExistingDocumentPreconditionFailed2)
+		mockClient := util.NewMockClient(t, updateExistingDocumentPreconditionFailed2)
 		test.client = mockClient
 		test.listener = util.MockListener{}
 		doc := UserDocument{
@@ -862,11 +864,11 @@ func TestReplaceExistingDocumentPreconditionFailed2(t *testing.T) {
 		if rev == "" || err != nil {
 			t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
 		}
-		rev, err = test.replaceExistingDocument(coll, "doc1", rev)
+		rev, err = test.updateExistingDocument(coll, "doc1", rev)
 		if rev != "" || err == nil {
-			t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+			t.Errorf("Unexpected result from updateExistingDocument: %v, err: %v", rev, err)
 		}
-  	if strings.Contains(err.Error(), "but did not set") {
+		if strings.Contains(err.Error(), "but did not set") {
 		  butSeen = true
 		}
 	  if strings.Contains(err.Error(), "still") {
@@ -875,12 +877,11 @@ func TestReplaceExistingDocumentPreconditionFailed2(t *testing.T) {
 	  if butSeen && stillSeen {
 	    break
 		}
-
 		mockClient.Shutdown()
 	}
 }
 
-func replaceExistingDocumentWrongRevision(
+func updateExistingDocumentWrongRevision(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
 
@@ -903,13 +904,13 @@ func replaceExistingDocumentWrongRevision(
 		Err:  nil,
 	}
 
-	// Get a normal PUT request:
+	// Get a normal PATCH request:
 	req = next(ctx, t, requests, true)
 	if req == nil {
 		return
 	}
-	if req.Method != "PUT" {
-		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
 	}
 
 	// return with 412 precondition failed
@@ -918,13 +919,13 @@ func replaceExistingDocumentWrongRevision(
 		Err:  nil,
 	}
 
-	// Get a normal PUT request:
+	// Get a normal PATCH request:
 	req = next(ctx, t, requests, true)
 	if req == nil {
 		return
 	}
-	if req.Method != "PUT" {
-		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
 	}
 
 	// return with 200
@@ -937,14 +938,14 @@ func replaceExistingDocumentWrongRevision(
 	next(ctx, t, requests, false)
 }
 
-func TestReplaceExistingDocumentWrongRevision(t *testing.T) {
+func TestUpdateExistingDocumentWrongRevision(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
 		reportDir:    ".",
 		log:          log,
 		collections:  make(map[string]*collection),
 	}
-	mockClient := util.NewMockClient(t, replaceExistingDocumentWrongRevision)
+	mockClient := util.NewMockClient(t, updateExistingDocumentWrongRevision)
 	test.client = mockClient
 	test.listener = util.MockListener{}
 	doc := UserDocument{
@@ -957,18 +958,18 @@ func TestReplaceExistingDocumentWrongRevision(t *testing.T) {
 	if rev == "" || err != nil {
 		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
 	}
-	err = test.replaceExistingDocumentWrongRevision(coll.name, "doc1", rev+"bla")
+	err = test.updateExistingDocumentWrongRevision(coll.name, "doc1", rev+"bla")
 	if err != nil {
-		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+		t.Errorf("Unexpected result from updateExistingDocument: %v, err: %v", rev, err)
 	}
-	err = test.replaceExistingDocumentWrongRevision(coll.name, "doc1", rev+"bla2")
+	err = test.updateExistingDocumentWrongRevision(coll.name, "doc1", rev+"bla2")
 	if err == nil {
-		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+		t.Errorf("Unexpected result from updateExistingDocument: %v, err: %v", rev, err)
 	}
 	mockClient.Shutdown()
 }
 
-func replaceExistingDocumentWrongRevisionOverallTimeout(
+func updateExistingDocumentWrongRevisionOverallTimeout(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
 
@@ -992,13 +993,13 @@ func replaceExistingDocumentWrongRevisionOverallTimeout(
 	}
 
 	for {
-		// Get a normal PUT request:
+		// Get a normal PATCH request:
 		req = potentialNext(ctx, t, requests)
 		if req == nil {
 			return
 		}
-		if req.Method != "PUT" {
-			t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+		if req.Method != "PATCH" {
+			t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
 		}
 
 		// return with 503
@@ -1009,14 +1010,14 @@ func replaceExistingDocumentWrongRevisionOverallTimeout(
 	}
 }
 
-func TestReplaceExistingDocumentWrongRevisionOverallTimeout(t *testing.T) {
+func TestUpdateExistingDocumentWrongRevisionOverallTimeout(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
 		reportDir:    ".",
 		log:          log,
 		collections:  make(map[string]*collection),
 	}
-	mockClient := util.NewMockClient(t, replaceExistingDocumentWrongRevisionOverallTimeout)
+	mockClient := util.NewMockClient(t, updateExistingDocumentWrongRevisionOverallTimeout)
 	test.client = mockClient
 	test.listener = util.MockListener{}
 	doc := UserDocument{
@@ -1029,14 +1030,14 @@ func TestReplaceExistingDocumentWrongRevisionOverallTimeout(t *testing.T) {
 	if rev == "" || err != nil {
 		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
 	}
-	err = test.replaceExistingDocumentWrongRevision(coll.name, "doc1", rev+"bla2")
+	err = test.updateExistingDocumentWrongRevision(coll.name, "doc1", rev+"bla2")
 	if err == nil {
-		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+		t.Errorf("Unexpected result from updateExistingDocument: %v, err: %v", rev, err)
 	}
 	mockClient.Shutdown()
 }
 
-func replaceNonExistingDocument(
+func updateNonExistingDocument(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
 
@@ -1059,13 +1060,13 @@ func replaceNonExistingDocument(
 		Err:  nil,
 	}
 
-	// Get a normal PUT request:
+	// Get a normal PATCH request:
 	req = next(ctx, t, requests, true)
 	if req == nil {
 		return
 	}
-	if req.Method != "PUT" {
-		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
 	}
 
 	// return with 404 precondition failed
@@ -1074,13 +1075,13 @@ func replaceNonExistingDocument(
 		Err:  nil,
 	}
 
-	// Get a normal PUT request:
+	// Get a normal PATCH request:
 	req = next(ctx, t, requests, true)
 	if req == nil {
 		return
 	}
-	if req.Method != "PUT" {
-		t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
 	}
 
 	// return with 200
@@ -1093,14 +1094,14 @@ func replaceNonExistingDocument(
 	next(ctx, t, requests, false)
 }
 
-func TestReplaceNonExistingDocument(t *testing.T) {
+func TestUpdateNonExistingDocument(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
 		reportDir:    ".",
 		log:          log,
 		collections:  make(map[string]*collection),
 	}
-	mockClient := util.NewMockClient(t, replaceNonExistingDocument)
+	mockClient := util.NewMockClient(t, updateNonExistingDocument)
 	test.client = mockClient
 	test.listener = util.MockListener{}
 	doc := UserDocument{
@@ -1113,18 +1114,18 @@ func TestReplaceNonExistingDocument(t *testing.T) {
 	if rev == "" || err != nil {
 		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
 	}
-	err = test.replaceNonExistingDocument(coll.name, "doc1")
+	err = test.updateNonExistingDocument(coll.name, "doc1")
 	if err != nil {
-		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+		t.Errorf("Unexpected result from updateExistingDocument: %v, err: %v", rev, err)
 	}
-	err = test.replaceNonExistingDocument(coll.name, "doc1")
+	err = test.updateNonExistingDocument(coll.name, "doc1")
 	if err == nil {
-		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+		t.Errorf("Unexpected result from updateExistingDocument: %v, err: %v", rev, err)
 	}
 	mockClient.Shutdown()
 }
 
-func replaceNonExistingDocumentOverallTimeout(
+func updateNonExistingDocumentOverallTimeout(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
 
@@ -1148,13 +1149,13 @@ func replaceNonExistingDocumentOverallTimeout(
 	}
 
 	for {
-		// Get a normal PUT request:
+		// Get a normal PATCH request:
 		req = potentialNext(ctx, t, requests)
 		if req == nil {
 			return
 		}
-		if req.Method != "PUT" {
-			t.Errorf("Got wrong method %s instead of PUT.", req.Method)
+		if req.Method != "PATCH" {
+			t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
 		}
 
 		// return with 503
@@ -1165,14 +1166,14 @@ func replaceNonExistingDocumentOverallTimeout(
 	}
 }
 
-func TestReplaceNonExistingDocumentOverallTimeout(t *testing.T) {
+func TestUpdateNonExistingDocumentOverallTimeout(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
 		reportDir:    ".",
 		log:          log,
 		collections:  make(map[string]*collection),
 	}
-	mockClient := util.NewMockClient(t, replaceNonExistingDocumentOverallTimeout)
+	mockClient := util.NewMockClient(t, updateNonExistingDocumentOverallTimeout)
 	test.client = mockClient
 	test.listener = util.MockListener{}
 	doc := UserDocument{
@@ -1185,9 +1186,9 @@ func TestReplaceNonExistingDocumentOverallTimeout(t *testing.T) {
 	if rev == "" || err != nil {
 		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
 	}
-	err = test.replaceNonExistingDocument(coll.name, "doc1")
+	err = test.updateNonExistingDocument(coll.name, "doc1")
 	if err == nil {
-		t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
+		t.Errorf("Unexpected result from updateExistingDocument: %v, err: %v", rev, err)
 	}
 	mockClient.Shutdown()
 }
