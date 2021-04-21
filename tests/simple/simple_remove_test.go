@@ -648,7 +648,7 @@ func removeExistingDocumentNotFound(
 	// respond with not found:
 	responses <- &util.MockResponse{
 		Resp: util.ArangoResponse{StatusCode: 404},
-		Err:  fmt.Errorf("Document not found: 404"),
+		Err:  nil,
 	}
 
 	// Get a normal DELETE request:
