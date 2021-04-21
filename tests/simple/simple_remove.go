@@ -34,7 +34,7 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 		success := false
 		t.log.Infof("Removing (%d) existing document '%s' (%s) from '%s'...", i, key, ifMatchStatus, collectionName)
 		resp, err := t.client.Delete(
-			url, q, hdr, []int{0, 200, 201, 202, 404, 409, 503}, []int{400, 412, 307}, operationTimeout, 1)
+			url, q, hdr, []int{0, 1, 200, 201, 202, 404, 409, 503}, []int{400, 412, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
@@ -60,7 +60,10 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 					// finding the document here, unless it is our first try.
 					success = true
 				}
+			} else if resp[0].StatusCode != 1 {  // 200, 201 or 202 are good
+				success = true
 			}
+			// for statuscode 1 we fall through and will try again (unless timeout)
 		} else {
 			t.deleteExistingCounter.failed++
 			t.reportFailure(
