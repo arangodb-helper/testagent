@@ -60,7 +60,7 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 					// finding the document here, unless it is our first try.
 					success = true
 				}
-			} else if resp[0].StatusCode != 1 {  // 200, 201 or 202 are good
+			} else if resp[0].StatusCode != 1 { // 200, 201 or 202 are good
 				success = true
 			}
 			// for statuscode 1 we fall through and will try again (unless timeout)

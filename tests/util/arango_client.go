@@ -43,33 +43,33 @@ type ArangoError struct {
 }
 
 type ArangoResponse struct {
-	StatusCode     int    // HTTP status code of last attempt
+	StatusCode     int         // HTTP status code of last attempt
 	Error_         ArangoError // only if there is a response
-	CoordinatorURL string // URL of coordinator used for last attempt
-	Rev            string // Revision of document as returned by database (not set for all operations)
+	CoordinatorURL string      // URL of coordinator used for last attempt
+	Rev            string      // Revision of document as returned by database (not set for all operations)
 }
 
 type ArangoClientInterface interface {
-  SetCoordinator(coordinatorURL string) error
-  Get(urlPath string, query url.Values, header map[string]string,
-      result interface{},
-			successStatusCodes, failureStatusCodes []int,
-		  operationTimeout time.Duration, retries int) ([]ArangoResponse, []error)
-  Delete(urlPath string, query url.Values, header map[string]string,
-			successStatusCodes, failureStatusCodes []int,
-		  operationTimeout time.Duration, retries int) ([]ArangoResponse, []error)
-  Post(urlPath string, query url.Values, header map[string]string,
-      input interface{}, contentType string, result interface{},
-			successStatusCodes, failureStatusCodes []int,
-		  operationTimeout time.Duration, retries int) ([]ArangoResponse, []error)
-  Patch(urlPath string, query url.Values, header map[string]string,
-      input interface{}, contentType string, result interface{},
-			successStatusCodes, failureStatusCodes []int,
-		  operationTimeout time.Duration, retries int) ([]ArangoResponse, []error)
-  Put(urlPath string, query url.Values, header map[string]string,
-      input interface{}, contentType string, result interface{},
-			successStatusCodes, failureStatusCodes []int,
-		  operationTimeout time.Duration, retries int) ([]ArangoResponse, []error)
+	SetCoordinator(coordinatorURL string) error
+	Get(urlPath string, query url.Values, header map[string]string,
+		result interface{},
+		successStatusCodes, failureStatusCodes []int,
+		operationTimeout time.Duration, retries int) ([]ArangoResponse, []error)
+	Delete(urlPath string, query url.Values, header map[string]string,
+		successStatusCodes, failureStatusCodes []int,
+		operationTimeout time.Duration, retries int) ([]ArangoResponse, []error)
+	Post(urlPath string, query url.Values, header map[string]string,
+		input interface{}, contentType string, result interface{},
+		successStatusCodes, failureStatusCodes []int,
+		operationTimeout time.Duration, retries int) ([]ArangoResponse, []error)
+	Patch(urlPath string, query url.Values, header map[string]string,
+		input interface{}, contentType string, result interface{},
+		successStatusCodes, failureStatusCodes []int,
+		operationTimeout time.Duration, retries int) ([]ArangoResponse, []error)
+	Put(urlPath string, query url.Values, header map[string]string,
+		input interface{}, contentType string, result interface{},
+		successStatusCodes, failureStatusCodes []int,
+		operationTimeout time.Duration, retries int) ([]ArangoResponse, []error)
 }
 
 func (e ArangoError) Error() string {
@@ -273,7 +273,7 @@ func (c *ArangoClient) handleResponse(
 				if err := json.Unmarshal(body, result); err != nil {
 					return maskAny(fmt.Errorf("Failed decoding response data from %s request to %s (attempt %d, started at %s, after %s, error %v)", method, url, attempt, start.Format(startTSFormat), time.Since(start), err))
 				}
-				aresp.Error_ = ArangoError{ Error_: false }
+				aresp.Error_ = ArangoError{Error_: false}
 			} else if resp.StatusCode > 1 {
 				if err := json.Unmarshal(body, &aresp.Error_); err != nil {
 					c.log.Infof(
@@ -281,7 +281,7 @@ func (c *ArangoClient) handleResponse(
 						method, url, attempt, start.Format(startTSFormat), time.Since(start), err)
 				}
 			}
-			
+
 			// Return success
 			return nil
 		}

@@ -612,7 +612,6 @@ func TestRemoveExistingDocumentReadNotFound(t *testing.T) {
 	mockClient.Shutdown()
 }
 
-
 func removeExistingDocumentNotFound(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
@@ -734,7 +733,6 @@ func TestRemoveExistingDocumentNotFound(t *testing.T) {
 	}
 	mockClient.Shutdown()
 }
-
 
 func removeExistingDocumentPreconditionFailed(
 	ctx context.Context, t *testing.T,

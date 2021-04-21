@@ -866,14 +866,14 @@ func TestReplaceExistingDocumentPreconditionFailed2(t *testing.T) {
 		if rev != "" || err == nil {
 			t.Errorf("Unexpected result from replaceExistingDocument: %v, err: %v", rev, err)
 		}
-  	if strings.Contains(err.Error(), "but did not set") {
-		  butSeen = true
+		if strings.Contains(err.Error(), "but did not set") {
+			butSeen = true
 		}
-	  if strings.Contains(err.Error(), "still") {
-	    stillSeen = true
-	  }
-	  if butSeen && stillSeen {
-	    break
+		if strings.Contains(err.Error(), "still") {
+			stillSeen = true
+		}
+		if butSeen && stillSeen {
+			break
 		}
 
 		mockClient.Shutdown()
