@@ -613,6 +613,129 @@ func TestRemoveExistingDocumentReadNotFound(t *testing.T) {
 }
 
 
+func removeExistingDocumentNotFound(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a normal POST request (as preparation)
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	path := "/_api/document/" + coll.name
+	if req.UrlPath != path {
+		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
+	}
+
+	// Answer with a normal good response:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 200, Rev: "abcd1234"},
+		Err:  nil,
+	}
+
+	// Get a normal DELETE request:
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "DELETE" {
+		t.Errorf("Got wrong method %s instead of DELETE.", req.Method)
+	}
+
+	// respond with not found:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 404},
+		Err:  fmt.Errorf("Document not found: 404"),
+	}
+
+	// Get a normal DELETE request:
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "DELETE" {
+		t.Errorf("Got wrong method %s instead of DELETE.", req.Method)
+	}
+
+	// let a timeout happen:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 503},
+		Err:  nil,
+	}
+
+	// Get a read requests:
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "GET" {
+		t.Errorf("Got wrong method %s instead of GET.", req.Method)
+	}
+
+	// Respond with found, but original version:
+	if x, ok := req.Result.(**UserDocument); ok {
+		*x = &UserDocument{}
+		**x = coll.existingDocs["doc1"]
+	}
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 200, Rev: "abcd1234"},
+		Err:  nil,
+	}
+
+	// Get a normal DELETE request:
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "DELETE" {
+		t.Errorf("Got wrong method %s instead of DELETE.", req.Method)
+	}
+
+	// respond with 404 not found:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 404},
+		Err:  nil,
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestRemoveExistingDocumentNotFound(t *testing.T) {
+	test := simpleTest{
+		SimpleConfig: config,
+		reportDir:    ".",
+		log:          log,
+		collections:  make(map[string]*collection),
+	}
+	mockClient := util.NewMockClient(t, removeExistingDocumentNotFound)
+	test.client = mockClient
+	test.listener = util.MockListener{}
+	doc := UserDocument{
+		Key:   "doc1",
+		Value: 12,
+		Name:  "hanswurst",
+		Odd:   true,
+	}
+	rev, err := test.createDocument(coll, doc, "doc1")
+	if rev == "" || err != nil {
+		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
+	}
+	err = test.removeExistingDocument(coll.name, "doc1", rev)
+	if err == nil {
+		t.Errorf("Unexpected result from removeExistingDocument, err: %v", err)
+	}
+	err = test.removeExistingDocument(coll.name, "doc1", rev)
+	if err != nil {
+		t.Errorf("Unexpected result from removeExistingDocument, err: %v", err)
+	}
+	mockClient.Shutdown()
+}
+
+
 func removeExistingDocumentPreconditionFailed(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
