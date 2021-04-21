@@ -85,7 +85,7 @@ func (t *simpleTest) readExistingDocumentWrongRevision(
 	collectionName string, key, rev string, updateRevision bool) error {
 
 	operationTimeout := t.OperationTimeout / 5
-	testTimeout := time.Now().Add(operationTimeout)
+	testTimeout := time.Now().Add(t.OperationTimeout)
 
 	i := 0
 	backoff := time.Millisecond * 250
