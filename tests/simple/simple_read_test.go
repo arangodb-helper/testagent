@@ -162,7 +162,9 @@ func TestReadExistingDocumentOkWithRetry(t *testing.T) {
 	if rev2 == "" || err != nil {
 		t.Errorf("Unexpected result from readExistingDocument: %v, err: %v", rev2, err)
 	}
-	rev, err = test.readExistingDocument(coll, "doc1", rev2, false, false)
+	// Note that for a change (and for code coverage), we ask for an update
+	// of the known revision here, which will do nothing:
+	rev, err = test.readExistingDocument(coll, "doc1", rev2, true, false)
 	if rev == "" || err != nil {
 		t.Errorf("Unexpected result from readExistingDocument: %v, err: %v", rev, err)
 	}
