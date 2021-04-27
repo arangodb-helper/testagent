@@ -738,6 +738,7 @@ func (t *simpleTest) createAndInitCollection() error {
 		if _, err := t.readExistingDocument(c, k, "", true, false); err != nil {
 			t.log.Errorf("Failed to read existing document '%s': %#v", k, err)
 			t.unregisterCollection(c)
+			return maskAny(err)
 		}
 		t.actions++
 	}
