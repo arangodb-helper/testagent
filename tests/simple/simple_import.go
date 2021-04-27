@@ -51,9 +51,10 @@ func (t *simpleTest) importDocuments(c *collection) error {
 		}
 
 		importData, docs := t.createImportDocument()
+		var result interface{}
 		t.log.Infof("Importing %d documents ('%s' - '%s') into '%s'...",
 			len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name)
-		resp, err := t.client.Post("/_api/import", q, nil, importData, "application/x-www-form-urlencoded", nil,
+		resp, err := t.client.Post("/_api/import", q, nil, importData, "application/x-www-form-urlencoded", result,
 			[]int{0, 1, 200, 201, 202, 503}, []int{400, 404, 409, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
@@ -66,6 +67,21 @@ func (t *simpleTest) importDocuments(c *collection) error {
 		}
 
 		if resp[0].StatusCode >= 200 && resp[0].StatusCode <= 299 {
+			switch v := result.(type) {
+			case map[string]interface{}:
+				if details, ok := result["details"]; ok {
+					t.importCounter.failed++
+					t.reportFailure(
+						test.NewFailure("Failed to import documents in collection '%s': incomplete import details %v", c.name, details))
+					return maskAny(fmt.Errorf("Failed to import documents in collection '%s': incomplete import"))
+				}
+			default:
+				t.importCounter.failed++
+				t.reportFailure(
+					test.NewFailure("Failed to import documents in collection '%s': unexpected result %v", c.name, result))
+				return maskAny(fmt.Errorf("Failed to import documents in collection '%s': unexpected result %v", c.name, result))
+			}
+		
 			for _, d := range docs {
 				c.existingDocs[d.Key] = d
 			}
