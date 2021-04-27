@@ -736,7 +736,8 @@ func (t *simpleTest) createAndInitCollection() error {
 			return nil
 		}
 		if _, err := t.readExistingDocument(c, k, "", true, false); err != nil {
-			t.log.Errorf("Failed to read existing document '%s': %#v", k, err)
+			t.log.Errorf("Failed to read existing document '%s': %#v, unregistering collection from chaos", k, err)
+			t.unregisterCollection(c)
 		}
 		t.actions++
 	}
