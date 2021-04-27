@@ -718,17 +718,17 @@ func (t *simpleTest) createAndInitCollection() error {
 	if err := t.createCollection(c, 9, 2); err != nil {
 		t.log.Errorf("Failed to create collection: %v", err)
 		t.reportFailure(test.NewFailure("Creating collection '%s' failed: %v", c.name, err))
-		return maskAny(err)
 	}
-	t.registerCollection(c)
 	t.createCollectionCounter.succeeded++
 	t.actions++
 
 	// Import documents
 	if err := t.importDocuments(c); err != nil {
-		t.log.Errorf("Failed to import documents: %#v", err)
+		t.log.Errorf("Failed to import documents: %#v, unregistering collection from chaos", err)
+		return maskAny(err)
 	}
 	t.actions++
+	t.registerCollection(c)
 
 	// Check imported documents
 	for k := range c.existingDocs {
@@ -737,6 +737,8 @@ func (t *simpleTest) createAndInitCollection() error {
 		}
 		if _, err := t.readExistingDocument(c, k, "", true, false); err != nil {
 			t.log.Errorf("Failed to read existing document '%s': %#v", k, err)
+			t.unregisterCollection(c)
+			return maskAny(err)
 		}
 		t.actions++
 	}
