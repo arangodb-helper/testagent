@@ -5,17 +5,20 @@ import (
 	"fmt"
 	"net/url"
 	"time"
-
 	"github.com/arangodb-helper/testagent/service/test"
+)
+
+const (
+	ndocs = 10000
 )
 
 // createImportDocument creates a #document based import file.
 func (t *simpleTest) createImportDocument() ([]byte, []UserDocument) {
 	buf := &bytes.Buffer{}
-	docs := make([]UserDocument, 0, 10000)
+	docs := make([]UserDocument, 0, ndocs)
 	fmt.Fprintf(buf, `[ "_key", "value", "name", "odd" ]`)
 	fmt.Fprintln(buf)
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < ndocs; i++ {
 		key := fmt.Sprintf("docimp%05d", i)
 		userDoc := UserDocument{
 			Key:   key,
@@ -54,7 +57,7 @@ func (t *simpleTest) importDocuments(c *collection) error {
 		var result interface{}
 		t.log.Infof("Importing %d documents ('%s' - '%s') into '%s'...",
 			len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name)
-		resp, err := t.client.Post("/_api/import", q, nil, importData, "application/x-www-form-urlencoded", result,
+		resp, err := t.client.Post("/_api/import", q, nil, importData, "application/x-www-form-urlencoded", &result,
 			[]int{0, 1, 200, 201, 202, 503}, []int{400, 404, 409, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
@@ -69,11 +72,38 @@ func (t *simpleTest) importDocuments(c *collection) error {
 		if resp[0].StatusCode >= 200 && resp[0].StatusCode <= 299 {
 			switch v := result.(type) {
 			case map[string]interface{}:
-				if details, ok := result["details"]; ok {
-					t.importCounter.failed++
-					t.reportFailure(
-						test.NewFailure("Failed to import documents in collection '%s': incomplete import details %v", c.name, details))
-					return maskAny(fmt.Errorf("Failed to import documents in collection '%s': incomplete import"))
+				if created, ok := v["created"]; ok {
+					if cint, ok := created.(float64); ok {
+						if cint != ndocs {
+							if details, ok := v["details"]; ok {
+								t.importCounter.failed++
+								t.reportFailure(
+									test.NewFailure(
+										"Failed to import documents in collection '%s': incomplete import of only %d documents, details: %v",
+										c.name, cint, details))
+								return maskAny(fmt.Errorf("Failed to import documents in collection '%s': incomplete import"))
+							} else { // details missing although error
+								t.reportFailure(test.NewFailure(
+									"Failed to import documents in collection '%s': incomplete import of only %d documents no details(!!!)",
+									c.name, cint))
+								return maskAny(fmt.Errorf("Failed to import documents in collection '%s': incomplete import"))
+							}
+						} // no import off
+					} else { // cint not int64 convertible
+						t.reportFailure(test.NewFailure(
+							"Failed to import documents in collection '%s': invalid response on import, cannot convert import count %T %+v",
+							c.name, created, created))
+						return maskAny(fmt.Errorf(
+							"Failed to import documents in collection '%s': invalid response on import, cannot convert import count %T %+v",
+							c.name, created, created))
+					}
+				} else { // no created key in result
+					t.reportFailure(test.NewFailure(
+						"Failed to import documents in collection '%s': invalid response on import, no 'created' key in result",
+						c.name))
+					return maskAny(fmt.Errorf(
+						"Failed to import documents in collection '%s': invalid response on import, , no 'created' key in result",
+						c.name))
 				}
 			default:
 				t.importCounter.failed++
@@ -81,7 +111,7 @@ func (t *simpleTest) importDocuments(c *collection) error {
 					test.NewFailure("Failed to import documents in collection '%s': unexpected result %v", c.name, result))
 				return maskAny(fmt.Errorf("Failed to import documents in collection '%s': unexpected result %v", c.name, result))
 			}
-		
+
 			for _, d := range docs {
 				c.existingDocs[d.Key] = d
 			}
