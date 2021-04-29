@@ -21,7 +21,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 	//operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
 	// For now, we increase the timeout to 5 minutes, since the cluster-internal
 	// timeout is 4 minutes:
-	operationTimeout := time.Minute
+	operationTimeout := t.OperationTimeout
 	testTimeout := time.Now().Add(operationTimeout * 5)
 
 	backoff := time.Millisecond * 250
@@ -112,6 +112,8 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 						return maskAny(fmt.Errorf("Failed to create collection '%s' rechecked and failed existence", c.name))
 					}
 				}
+			} else {
+				return maskAny(checkErr)
 			}
 		}
 
