@@ -126,8 +126,7 @@ func createCollectionTestTimeoutFail(
 		if req.Method != "GET" {
 			t.Errorf("Got wrong method %s instead of POST.", req.Method)
 		}
-		// Answer with a normal good response:
-		// Respond with found:
+		// Respond with not found:
 		responses <- &util.MockResponse{
 			Resp: util.ArangoResponse { StatusCode: 404, },
 			Err:  nil,
@@ -557,7 +556,7 @@ func createCollectionConflictLaterAttemptExistsOk(
 	if req.Method != "GET" {
 		t.Errorf("Got wrong method %s instead of POST.", req.Method)
 	}
-	// let a timeout happen:
+	// respond with not found:
 	responses <- &util.MockResponse{
 		Resp: util.ArangoResponse{StatusCode: 404},
 		Err:  nil,
@@ -569,7 +568,7 @@ func createCollectionConflictLaterAttemptExistsOk(
 	if req.Method != "POST" {
 		t.Errorf("Got wrong method %s instead of POST.", req.Method)
 	}
-	// let a timeout happen:
+	// respond with conflict:
 	responses <- &util.MockResponse{
 		Resp: util.ArangoResponse{StatusCode: 409},
 		Err:  nil,
@@ -581,7 +580,7 @@ func createCollectionConflictLaterAttemptExistsOk(
 	if req.Method != "GET" {
 		t.Errorf("Got wrong method %s instead of POST.", req.Method)
 	}
-	// let a timeout happen:
+	// return OK:
 	responses <- &util.MockResponse{
 		Resp: util.ArangoResponse{StatusCode: 200},
 		Err:  nil,
