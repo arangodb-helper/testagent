@@ -178,8 +178,7 @@ func createCollectionReadTimeoutFail(
 		if req == nil {
 			return
 		}
-		// Answer with a normal good response:
-		// Respond with found:
+		// Respond with temporarily unavailable:
 		responses <- &util.MockResponse{
 			Resp: util.ArangoResponse { StatusCode: 503, },
 			Err:  nil,
@@ -219,8 +218,7 @@ func createCollectionCreateReadErrorFail(
 	if req.Method != "POST" {
 		t.Errorf("Got wrong method %s instead of POST.", req.Method)
 	}
-	// Answer with a normal good response:
-	// Respond with found:
+	// Answer with temporarily not available:
 	responses <- &util.MockResponse{
 		Resp: util.ArangoResponse { StatusCode: 503, },
 		Err:  nil,
@@ -233,8 +231,7 @@ func createCollectionCreateReadErrorFail(
 	if req.Method != "GET" {
 		t.Errorf("Got wrong method %s instead of POST.", req.Method)
 	}
-	// Answer with a normal good response:
-	// Respond with found:
+	// Answer with a error:
 	responses <- &util.MockResponse{
 		Resp: util.ArangoResponse {},
 		Err:  fmt.Errorf("error"),
@@ -243,7 +240,7 @@ func createCollectionCreateReadErrorFail(
 	// Get a normal POST request (as preparation)
 	req = next(ctx, t, requests, true)
 	if req == nil {
-		return 
+		return
 	}
 	if req.Method != "POST" {
 		t.Errorf("Got wrong method %s instead of POST.", req.Method)
