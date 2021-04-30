@@ -37,6 +37,9 @@ func createCollectionOk(
 		Resp: util.ArangoResponse { StatusCode: 200, },
 		Err:  nil,
 	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
 }
 	
 func TestCollectionCreateOk(t *testing.T) {
@@ -71,6 +74,8 @@ func createCollectionRedirectFail(
 		Resp: util.ArangoResponse{},
 		Err: fmt.Errorf("Error"),
 	}
+	// No more requests coming:
+	next(ctx, t, requests, false)
 }
 	
 func TestCollectionCreateRedirectFail(t *testing.T) {
@@ -264,6 +269,8 @@ func createCollectionCreateReadErrorFail(
 		Resp: util.ArangoResponse {},
 		Err:  fmt.Errorf("error"),
 	}
+	// No more requests coming:
+	next(ctx, t, requests, false)
 }
 	
 func TestCollectionCreateReadErrorFail(t *testing.T) {
@@ -311,6 +318,8 @@ func createCollectionTimeoutOk(
 		Resp: util.ArangoResponse { StatusCode: 200, },
 		Err:  nil,
 	}
+	// No more requests coming:
+	next(ctx, t, requests, false)
 }
 
 
@@ -360,7 +369,8 @@ func createCollectionUnknownOk(
 		Resp: util.ArangoResponse { StatusCode: 200, },
 		Err:  nil,
 	}
-
+	// No more requests coming:
+	next(ctx, t, requests, false)
 }
 
 func TestCollectionCreateUnknownOk(t *testing.T) {
@@ -410,7 +420,8 @@ func createCollectionRefusedExistsFail(
 		Resp: util.ArangoResponse { StatusCode: 200, },
 		Err:  nil,
 	}
-
+	// No more requests coming:
+	next(ctx, t, requests, false)
 }
 
 func TestCollectionCreateRefusedExistsFail(t *testing.T) {
@@ -458,7 +469,8 @@ func createCollectionUnfinishedExistsFail(
 		Resp: util.ArangoResponse { StatusCode: 200, },
 		Err:  nil,
 	}
-
+	// No more requests coming:
+	next(ctx, t, requests, false)
 }
 
 func TestCollectionCreateUnfinishedExistsFail(t *testing.T) {
@@ -498,6 +510,8 @@ func createCollectionConflictFirstAttemptFail(
 		Err:  nil,
 	}
 
+	// No more requests coming:
+	next(ctx, t, requests, false)
 }
 
 func TestCollectionCreateConflictFirstAttemptFail(t *testing.T) {
@@ -572,7 +586,8 @@ func createCollectionConflictLaterAttemptExistsOk(
 		Resp: util.ArangoResponse{StatusCode: 200},
 		Err:  nil,
 	}
-
+	// No more requests coming:
+	next(ctx, t, requests, false)
 }
 
 func TestCollectionCreateConflictLaterAttemptExistsOk(t *testing.T) {
@@ -647,7 +662,8 @@ func createCollectionConflictLaterAttemptNotExistsFail(
 		Resp: util.ArangoResponse{StatusCode: 404},
 		Err:  nil,
 	}
-
+	// No more requests coming:
+	next(ctx, t, requests, false)
 }
 
 func TestCollectionCreateConflictLaterAttemptNotExistsFail(t *testing.T) {
@@ -691,6 +707,8 @@ func removeExistingCollectionOk(
 		Resp: util.ArangoResponse { StatusCode: 200, },
 		Err:  nil,
 	}
+	// No more requests coming:
+	next(ctx, t, requests, false)
 }
 	
 func TestCollectionExistingRemoveOk(t *testing.T) {
@@ -731,6 +749,8 @@ func removeExistingCollectionErrorFail(
 		Resp: util.ArangoResponse{},
 		Err:  fmt.Errorf("error"),
 	}
+	// No more requests coming:
+	next(ctx, t, requests, false)
 }
 	
 func TestCollectionExistingRemoveErrorFail(t *testing.T) {
@@ -771,6 +791,8 @@ func removeExistingCollectionMissingFirstFail(
 		Resp: util.ArangoResponse { StatusCode: 404, },
 		Err:  nil,
 	}
+	// No more requests coming:
+	next(ctx, t, requests, false)
 }
 	
 func TestCollectionExistingRemoveMissingFirstFail(t *testing.T) {
@@ -825,6 +847,8 @@ func removeExistingCollectionMissingLaterOk(
 		Resp: util.ArangoResponse { StatusCode: 404, },
 		Err:  nil,
 	}
+	// No more requests coming:
+	next(ctx, t, requests, false)
 }
 	
 func TestCollectionExistingRemoveMissingLaterOk(t *testing.T) {
@@ -869,6 +893,8 @@ func removeExistingCollectionTimeoutFail(
 			Err:  nil,
 		}
 	}
+	// No more requests coming:
+	next(ctx, t, requests, false)
 }
 	
 func TestCollectionExistingRemoveTimeoutFail(t *testing.T) {
