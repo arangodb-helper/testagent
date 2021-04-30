@@ -893,8 +893,6 @@ func removeExistingCollectionTimeoutFail(
 			Err:  nil,
 		}
 	}
-	// No more requests coming:
-	next(ctx, t, requests, false)
 }
 	
 func TestCollectionExistingRemoveTimeoutFail(t *testing.T) {
