@@ -892,7 +892,7 @@ func removeExistingCollectionTimeoutFail(
 	var req *util.MockRequest
 
 	for {
-		req = next(ctx, t, requests, true)
+		req = potentialNext(ctx, t, requests)
 		if req == nil {
 			return
 		}
