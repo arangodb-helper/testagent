@@ -59,6 +59,7 @@ func TestCollectionCreateOk(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
 	}
+	mockClient.Shutdown()
 }
 
 func createCollectionRedirectFail(
@@ -95,6 +96,7 @@ func TestCollectionCreateRedirectFail(t *testing.T) {
 	if err == nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
 	}
+	mockClient.Shutdown()
 }
 
 func createCollectionTestTimeoutFail(
@@ -105,7 +107,7 @@ func createCollectionTestTimeoutFail(
 	var req *util.MockRequest
 
 	for {
-		req = next(ctx, t, requests, true)
+		req = potentialNext(ctx, t, requests)
 		if req == nil {
 			return
 		}
@@ -119,7 +121,7 @@ func createCollectionTestTimeoutFail(
 			Err:  nil,
 		}
 		// Get a normal POST request (as preparation)
-		req = next(ctx, t, requests, true)
+		req = potentialNext(ctx, t, requests)
 		if req == nil {
 			return
 		}
@@ -152,6 +154,7 @@ func TestCollectionCreateTestTimeoutFail(t *testing.T) {
 	if err == nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
 	}
+	mockClient.Shutdown()
 }
 
 func createCollectionReadTimeoutFail(
@@ -165,7 +168,7 @@ func createCollectionReadTimeoutFail(
 	}
 	if req.Method != "POST" {
 		t.Errorf("Got wrong method %s instead of POST.", req.Method)
-		}
+	}
 	// Answer with a normal good response:
 	// Respond with found:
 	responses <- &util.MockResponse{
@@ -174,9 +177,12 @@ func createCollectionReadTimeoutFail(
 	}
 	for {
 		// Get a normal POST request (as preparation)
-		req = next(ctx, t, requests, true)
+		req = potentialNext(ctx, t, requests)
 		if req == nil {
 			return
+		}
+		if req.Method != "GET" {
+			t.Errorf("Got wrong method %s instead of GET.", req.Method)
 		}
 		// Respond with temporarily unavailable:
 		responses <- &util.MockResponse{
@@ -188,6 +194,8 @@ func createCollectionReadTimeoutFail(
 }
 
 func TestCollectionCreateReadTimeoutFail(t *testing.T) {
+	ReadTimeout = 5 // to speed up timeout failure, needs to be longer than
+	// operationTimeout*4, which is 4
 	test := simpleTest{
 		SimpleConfig: config,
 		reportDir:    ".",
@@ -204,6 +212,7 @@ func TestCollectionCreateReadTimeoutFail(t *testing.T) {
 	if err == nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
 	}
+	mockClient.Shutdown()
 }
 
 func createCollectionCreateReadErrorFail(
@@ -213,7 +222,7 @@ func createCollectionCreateReadErrorFail(
 	// Get a normal POST request (as preparation)
 	req := next(ctx, t, requests, true)
 	if req == nil {
-		return 
+		return
 	}
 	if req.Method != "POST" {
 		t.Errorf("Got wrong method %s instead of POST.", req.Method)
@@ -229,12 +238,12 @@ func createCollectionCreateReadErrorFail(
 		return
 	}
 	if req.Method != "GET" {
-		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+		t.Errorf("Got wrong method %s instead of GET.", req.Method)
 	}
 	// Answer with a error:
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse {},
-		Err:  fmt.Errorf("error"),
+		Resp: util.ArangoResponse {StatusCode: 404},
+		Err:  nil,
 	}
 
 	// Get a normal POST request (as preparation)
@@ -245,8 +254,7 @@ func createCollectionCreateReadErrorFail(
 	if req.Method != "POST" {
 		t.Errorf("Got wrong method %s instead of POST.", req.Method)
 	}
-	// Answer with a normal good response:
-	// Respond with found:
+	// Answer with a conflict:
 	responses <- &util.MockResponse{
 		Resp: util.ArangoResponse { StatusCode: 409, },
 		Err:  nil,
@@ -257,13 +265,12 @@ func createCollectionCreateReadErrorFail(
 		return
 	}
 	if req.Method != "GET" {
-			t.Errorf("Got wrong method %s instead of POST.", req.Method)
+			t.Errorf("Got wrong method %s instead of GET.", req.Method)
 	}
-	// Answer with a normal good response:
-	// Respond with found:
+	// Answer with an error:
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse {},
-		Err:  fmt.Errorf("error"),
+		Resp: util.ArangoResponse {StatusCode: 200},
+		Err:  nil,
 	}
 	// No more requests coming:
 	next(ctx, t, requests, false)
@@ -283,9 +290,10 @@ func TestCollectionCreateReadErrorFail(t *testing.T) {
 
 	// Create collection
 	err := test.createCollection(foo, 9, 2)
-	if err == nil {
+	if err != nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
 	}
+	mockClient.Shutdown()
 }
 
 func createCollectionTimeoutOk(
@@ -336,7 +344,7 @@ func TestCollectionCreateTimeoutOk(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
 	}
-
+	mockClient.Shutdown()
 }
 
 func createCollectionUnknownOk(
@@ -356,10 +364,13 @@ func createCollectionUnknownOk(
 		Resp: util.ArangoResponse{StatusCode: 503},
 		Err:  nil,
 	}
-	// Expect another try to POST
+	// Expect a try to GET
 	req = next(ctx, t, requests, true)
 	if req == nil {
 		return
+	}
+	if req.Method != "GET" {
+		t.Errorf("Got wrong method %s instead of GET.", req.Method)
 	}
 	responses <- &util.MockResponse{
 		Resp: util.ArangoResponse { StatusCode: 200, },
@@ -386,7 +397,7 @@ func TestCollectionCreateUnknownOk(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
 	}
-
+	mockClient.Shutdown()
 }
 
 
@@ -407,10 +418,13 @@ func createCollectionRefusedExistsFail(
 		Resp: util.ArangoResponse{StatusCode: 1},
 		Err:  nil,
 	}
-	// Expect another try to POST
+	// Expect a try to POST again:
 	req = next(ctx, t, requests, true)
 	if req == nil {
 		return
+	}
+	if req.Method != "GET" {
+		t.Errorf("Got wrong method %s instead of GET.", req.Method)
 	}
 	responses <- &util.MockResponse{
 		Resp: util.ArangoResponse { StatusCode: 200, },
@@ -436,7 +450,7 @@ func TestCollectionCreateRefusedExistsFail(t *testing.T) {
 	if err == nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
 	}
-
+	mockClient.Shutdown()
 }
 
 func createCollectionUnfinishedExistsFail(
@@ -469,6 +483,7 @@ func createCollectionUnfinishedExistsFail(
 	next(ctx, t, requests, false)
 }
 
+// GO ON HERE
 func TestCollectionCreateUnfinishedExistsFail(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
@@ -485,7 +500,7 @@ func TestCollectionCreateUnfinishedExistsFail(t *testing.T) {
 	if err == nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
 	}
-
+	mockClient.Shutdown()
 }
 
 
@@ -526,7 +541,7 @@ func TestCollectionCreateConflictFirstAttemptFail(t *testing.T) {
 	if err == nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
 	}
-
+	mockClient.Shutdown()
 }
 
 
@@ -603,7 +618,7 @@ func TestCollectionCreateConflictLaterAttemptExistsOk(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
 	}
-
+	mockClient.Shutdown()
 }
 
 func createCollectionConflictLaterAttemptNotExistsFail(
@@ -679,7 +694,7 @@ func TestCollectionCreateConflictLaterAttemptNotExistsFail(t *testing.T) {
 	if err == nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
 	}
-
+	mockClient.Shutdown()
 }
 
 
@@ -724,6 +739,7 @@ func TestCollectionExistingRemoveOk(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
 	}
+	mockClient.Shutdown()
 }
 
 func removeExistingCollectionErrorFail(
@@ -766,6 +782,7 @@ func TestCollectionExistingRemoveErrorFail(t *testing.T) {
 	if err == nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
 	}
+	mockClient.Shutdown()
 }
 
 func removeExistingCollectionMissingFirstFail(
@@ -808,6 +825,7 @@ func TestCollectionExistingRemoveMissingFirstFail(t *testing.T) {
 	if err == nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
 	}
+	mockClient.Shutdown()
 }
 
 func removeExistingCollectionMissingLaterOk(
@@ -864,6 +882,7 @@ func TestCollectionExistingRemoveMissingLaterOk(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
 	}
+	mockClient.Shutdown()
 }
 
 func removeExistingCollectionTimeoutFail(
@@ -908,5 +927,6 @@ func TestCollectionExistingRemoveTimeoutFail(t *testing.T) {
 	if err == nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
 	}
+	mockClient.Shutdown()
 }
 
