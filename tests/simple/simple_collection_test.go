@@ -30,7 +30,7 @@ func createCollectionOk(
 	if req.UrlPath != path {
 		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
 	}
-	
+
 	// Answer with a normal good response:
 	// Respond with found:
 	responses <- &util.MockResponse{
@@ -41,7 +41,7 @@ func createCollectionOk(
 	// No more requests coming:
 	next(ctx, t, requests, false)
 }
-	
+
 func TestCollectionCreateOk(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
@@ -53,7 +53,7 @@ func TestCollectionCreateOk(t *testing.T) {
 	mockClient := util.NewMockClient(t, createCollectionOk)
 	test.client = mockClient
 	test.listener = util.MockListener{}
-	
+
 	// Create collection
 	err := test.createCollection(foo, 9, 2)
 	if err != nil {
@@ -77,7 +77,7 @@ func createCollectionRedirectFail(
 	// No more requests coming:
 	next(ctx, t, requests, false)
 }
-	
+
 func TestCollectionCreateRedirectFail(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
@@ -89,7 +89,7 @@ func TestCollectionCreateRedirectFail(t *testing.T) {
 	mockClient := util.NewMockClient(t, createCollectionRedirectFail)
 	test.client = mockClient
 	test.listener = util.MockListener{}
-	
+
 	// Create collection
 	err := test.createCollection(foo, 9, 2)
 	if err == nil {
@@ -133,9 +133,9 @@ func createCollectionTestTimeoutFail(
 			Err:  nil,
 		}
 	}
-	
+
 }
-	
+
 func TestCollectionCreateTestTimeoutFail(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
@@ -147,7 +147,7 @@ func TestCollectionCreateTestTimeoutFail(t *testing.T) {
 	mockClient := util.NewMockClient(t, createCollectionTestTimeoutFail)
 	test.client = mockClient
 	test.listener = util.MockListener{}
-	
+
 	// Create collection
 	err := test.createCollection(foo, 9, 2)
 	if err == nil {
@@ -186,9 +186,9 @@ func createCollectionReadTimeoutFail(
 			Err:  nil,
 		}
 	}
-	
+
 }
-	
+
 func TestCollectionCreateReadTimeoutFail(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
@@ -200,7 +200,7 @@ func TestCollectionCreateReadTimeoutFail(t *testing.T) {
 	mockClient := util.NewMockClient(t, createCollectionReadTimeoutFail)
 	test.client = mockClient
 	test.listener = util.MockListener{}
-	
+
 	// Create collection
 	err := test.createCollection(foo, 9, 2)
 	if err == nil {
@@ -240,7 +240,7 @@ func createCollectionCreateReadErrorFail(
 		Resp: util.ArangoResponse {},
 		Err:  fmt.Errorf("error"),
 	}
-	
+
 	// Get a normal POST request (as preparation)
 	req = next(ctx, t, requests, true)
 	if req == nil {
@@ -272,7 +272,7 @@ func createCollectionCreateReadErrorFail(
 	// No more requests coming:
 	next(ctx, t, requests, false)
 }
-	
+
 func TestCollectionCreateReadErrorFail(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
@@ -284,7 +284,7 @@ func TestCollectionCreateReadErrorFail(t *testing.T) {
 	mockClient := util.NewMockClient(t, createCollectionCreateReadErrorFail)
 	test.client = mockClient
 	test.listener = util.MockListener{}
-	
+
 	// Create collection
 	err := test.createCollection(foo, 9, 2)
 	if err == nil {
@@ -334,7 +334,7 @@ func TestCollectionCreateTimeoutOk(t *testing.T) {
 	mockClient := util.NewMockClient(t, createCollectionTimeoutOk)
 	test.client = mockClient
 	test.listener = util.MockListener{}
-	
+
 	// Create collection
 	err := test.createCollection(foo, 9, 2)
 	if err != nil {
@@ -346,7 +346,7 @@ func TestCollectionCreateTimeoutOk(t *testing.T) {
 func createCollectionUnknownOk(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
-	
+
 	//POST -> 503 -> retry -> 200
 	req := next(ctx, t, requests, true)
 	if req == nil {
@@ -384,7 +384,7 @@ func TestCollectionCreateUnknownOk(t *testing.T) {
 	mockClient := util.NewMockClient(t, createCollectionUnknownOk)
 	test.client = mockClient
 	test.listener = util.MockListener{}
-	
+
 	// Create collection
 	err := test.createCollection(foo, 9, 2)
 	if err != nil {
@@ -397,7 +397,7 @@ func TestCollectionCreateUnknownOk(t *testing.T) {
 func createCollectionRefusedExistsFail(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
-	
+
 	// POST -> 1 -> 200 -> error
 	req := next(ctx, t, requests, true)
 	if req == nil {
@@ -435,7 +435,7 @@ func TestCollectionCreateRefusedExistsFail(t *testing.T) {
 	mockClient := util.NewMockClient(t, createCollectionRefusedExistsFail)
 	test.client = mockClient
 	test.listener = util.MockListener{}
-	
+
 	err := test.createCollection(foo, 9, 2)
 	if err == nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
@@ -446,7 +446,7 @@ func TestCollectionCreateRefusedExistsFail(t *testing.T) {
 func createCollectionUnfinishedExistsFail(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
-	
+
 	// POST -> 1 -> 200 -> error
 	req := next(ctx, t, requests, true)
 	if req == nil {
@@ -484,7 +484,7 @@ func TestCollectionCreateUnfinishedExistsFail(t *testing.T) {
 	mockClient := util.NewMockClient(t, createCollectionUnfinishedExistsFail)
 	test.client = mockClient
 	test.listener = util.MockListener{}
-	
+
 	err := test.createCollection(foo, 9, 2)
 	if err == nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
@@ -496,7 +496,7 @@ func TestCollectionCreateUnfinishedExistsFail(t *testing.T) {
 func createCollectionConflictFirstAttemptFail(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
-	
+
 	req := next(ctx, t, requests, true)
 	if req == nil {
 		return
@@ -525,7 +525,7 @@ func TestCollectionCreateConflictFirstAttemptFail(t *testing.T) {
 	mockClient := util.NewMockClient(t, createCollectionConflictFirstAttemptFail)
 	test.client = mockClient
 	test.listener = util.MockListener{}
-	
+
 	err := test.createCollection(foo, 9, 2)
 	if err == nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
@@ -537,7 +537,7 @@ func TestCollectionCreateConflictFirstAttemptFail(t *testing.T) {
 func createCollectionConflictLaterAttemptExistsOk(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
-	
+
 	req := next(ctx, t, requests, true)
 	if req == nil {
 		return
@@ -601,7 +601,7 @@ func TestCollectionCreateConflictLaterAttemptExistsOk(t *testing.T) {
 	mockClient := util.NewMockClient(t, createCollectionConflictLaterAttemptExistsOk)
 	test.client = mockClient
 	test.listener = util.MockListener{}
-	
+
 	// Create collection -> 409 -> 200 must fail
 	err := test.createCollection(foo, 9, 2)
 	if err != nil {
@@ -613,7 +613,7 @@ func TestCollectionCreateConflictLaterAttemptExistsOk(t *testing.T) {
 func createCollectionConflictLaterAttemptNotExistsFail(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
-	
+
 	req := next(ctx, t, requests, true)
 	if req == nil {
 		return
@@ -677,7 +677,7 @@ func TestCollectionCreateConflictLaterAttemptNotExistsFail(t *testing.T) {
 	mockClient := util.NewMockClient(t, createCollectionConflictLaterAttemptNotExistsFail)
 	test.client = mockClient
 	test.listener = util.MockListener{}
-	
+
 	// Create collection -> 409 -> 200 must fail
 	err := test.createCollection(foo, 9, 2)
 	if err == nil {
@@ -710,7 +710,7 @@ func removeExistingCollectionOk(
 	// No more requests coming:
 	next(ctx, t, requests, false)
 }
-	
+
 func TestCollectionExistingRemoveOk(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
@@ -722,7 +722,7 @@ func TestCollectionExistingRemoveOk(t *testing.T) {
 	mockClient := util.NewMockClient(t, removeExistingCollectionOk)
 	test.client = mockClient
 	test.listener = util.MockListener{}
-	
+
 	// Create collection
 	err := test.removeExistingCollection(foo)
 	if err != nil {
@@ -752,7 +752,7 @@ func removeExistingCollectionErrorFail(
 	// No more requests coming:
 	next(ctx, t, requests, false)
 }
-	
+
 func TestCollectionExistingRemoveErrorFail(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
@@ -764,7 +764,7 @@ func TestCollectionExistingRemoveErrorFail(t *testing.T) {
 	mockClient := util.NewMockClient(t, removeExistingCollectionErrorFail)
 	test.client = mockClient
 	test.listener = util.MockListener{}
-	
+
 	// Create collection
 	err := test.removeExistingCollection(foo)
 	if err == nil {
@@ -794,7 +794,7 @@ func removeExistingCollectionMissingFirstFail(
 	// No more requests coming:
 	next(ctx, t, requests, false)
 }
-	
+
 func TestCollectionExistingRemoveMissingFirstFail(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
@@ -806,7 +806,7 @@ func TestCollectionExistingRemoveMissingFirstFail(t *testing.T) {
 	mockClient := util.NewMockClient(t, removeExistingCollectionMissingFirstFail)
 	test.client = mockClient
 	test.listener = util.MockListener{}
-	
+
 	// Create collection
 	err := test.removeExistingCollection(foo)
 	if err == nil {
@@ -850,7 +850,7 @@ func removeExistingCollectionMissingLaterOk(
 	// No more requests coming:
 	next(ctx, t, requests, false)
 }
-	
+
 func TestCollectionExistingRemoveMissingLaterOk(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
@@ -862,7 +862,7 @@ func TestCollectionExistingRemoveMissingLaterOk(t *testing.T) {
 	mockClient := util.NewMockClient(t, removeExistingCollectionMissingLaterOk)
 	test.client = mockClient
 	test.listener = util.MockListener{}
-	
+
 	// Create collection
 	err := test.removeExistingCollection(foo)
 	if err != nil {
@@ -875,7 +875,7 @@ func removeExistingCollectionTimeoutFail(
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
 
 	var req *util.MockRequest
-	
+
 	for {
 		req = next(ctx, t, requests, true)
 		if req == nil {
@@ -894,7 +894,7 @@ func removeExistingCollectionTimeoutFail(
 		}
 	}
 }
-	
+
 func TestCollectionExistingRemoveTimeoutFail(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
@@ -906,7 +906,7 @@ func TestCollectionExistingRemoveTimeoutFail(t *testing.T) {
 	mockClient := util.NewMockClient(t, removeExistingCollectionTimeoutFail)
 	test.client = mockClient
 	test.listener = util.MockListener{}
-	
+
 	// Create collection
 	err := test.removeExistingCollection(foo)
 	if err == nil {
