@@ -242,36 +242,10 @@ func createCollectionCreateReadErrorFail(
 	}
 	// Answer with a error:
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse {StatusCode: 404},
-		Err:  nil,
+		Resp: util.ArangoResponse {},
+		Err:  fmt.Errorf("error"),
 	}
 
-	// Get a normal POST request:
-	req = next(ctx, t, requests, true)
-	if req == nil {
-		return
-	}
-	if req.Method != "POST" {
-		t.Errorf("Got wrong method %s instead of POST.", req.Method)
-	}
-	// Answer with a conflict:
-	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse { StatusCode: 409, },
-		Err:  nil,
-	}
-
-	req = next(ctx, t, requests, true)
-	if req == nil {
-		return
-	}
-	if req.Method != "GET" {
-			t.Errorf("Got wrong method %s instead of GET.", req.Method)
-	}
-	// Answer with an error:
-	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse {StatusCode: 200},
-		Err:  nil,
-	}
 	// No more requests coming:
 	next(ctx, t, requests, false)
 }
