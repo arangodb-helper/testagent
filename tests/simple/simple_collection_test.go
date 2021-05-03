@@ -126,7 +126,7 @@ func createCollectionTestTimeoutFail(
 			return
 		}
 		if req.Method != "GET" {
-			t.Errorf("Got wrong method %s instead of POST.", req.Method)
+			t.Errorf("Got wrong method %s instead of GET.", req.Method)
 		}
 		// Respond with not found:
 		responses <- &util.MockResponse{
@@ -246,7 +246,7 @@ func createCollectionCreateReadErrorFail(
 		Err:  nil,
 	}
 
-	// Get a normal POST request (as preparation)
+	// Get a normal POST request:
 	req = next(ctx, t, requests, true)
 	if req == nil {
 		return
@@ -483,7 +483,6 @@ func createCollectionUnfinishedExistsFail(
 	next(ctx, t, requests, false)
 }
 
-// GO ON HERE
 func TestCollectionCreateUnfinishedExistsFail(t *testing.T) {
 	test := simpleTest{
 		SimpleConfig: config,
@@ -566,7 +565,7 @@ func createCollectionConflictLaterAttemptExistsOk(
 		return
 	}
 	if req.Method != "GET" {
-		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+		t.Errorf("Got wrong method %s instead of GET.", req.Method)
 	}
 	// respond with not found:
 	responses <- &util.MockResponse{
@@ -590,7 +589,7 @@ func createCollectionConflictLaterAttemptExistsOk(
 		return
 	}
 	if req.Method != "GET" {
-		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+		t.Errorf("Got wrong method %s instead of GET.", req.Method)
 	}
 	// return OK:
 	responses <- &util.MockResponse{
@@ -642,7 +641,7 @@ func createCollectionConflictLaterAttemptNotExistsFail(
 		return
 	}
 	if req.Method != "GET" {
-		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+		t.Errorf("Got wrong method %s instead of GET.", req.Method)
 	}
 	// let a timeout happen:
 	responses <- &util.MockResponse{
@@ -666,7 +665,7 @@ func createCollectionConflictLaterAttemptNotExistsFail(
 		return
 	}
 	if req.Method != "GET" {
-		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+		t.Errorf("Got wrong method %s instead of GET.", req.Method)
 	}
 	// let a timeout happen:
 	responses <- &util.MockResponse{
@@ -708,7 +707,7 @@ func removeExistingCollectionOk(
 		return
 	}
 	if req.Method != "DELETE" {
-		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+		t.Errorf("Got wrong method %s instead of DELETE.", req.Method)
 	}
 	path := "/_api/collection/" + foo.name
 	if req.UrlPath != path {
@@ -751,7 +750,7 @@ func removeExistingCollectionErrorFail(
 		return
 	}
 	if req.Method != "DELETE" {
-		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+		t.Errorf("Got wrong method %s instead of DELETE.", req.Method)
 	}
 	path := "/_api/collection/" + foo.name
 	if req.UrlPath != path {
@@ -794,7 +793,7 @@ func removeExistingCollectionMissingFirstFail(
 		return
 	}
 	if req.Method != "DELETE" {
-		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+		t.Errorf("Got wrong method %s instead of DELETE.", req.Method)
 	}
 	path := "/_api/collection/" + foo.name
 	if req.UrlPath != path {
@@ -837,7 +836,7 @@ func removeExistingCollectionMissingLaterOk(
 		return
 	}
 	if req.Method != "DELETE" {
-		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+		t.Errorf("Got wrong method %s instead of DELETE.", req.Method)
 	}
 	path := "/_api/collection/" + foo.name
 	if req.UrlPath != path {
@@ -852,7 +851,7 @@ func removeExistingCollectionMissingLaterOk(
 		return
 	}
 	if req.Method != "DELETE" {
-		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+		t.Errorf("Got wrong method %s instead of DELETE.", req.Method)
 	}
 	if req.UrlPath != path {
 		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
@@ -897,7 +896,7 @@ func removeExistingCollectionTimeoutFail(
 			return
 		}
 		if req.Method != "DELETE" {
-			t.Errorf("Got wrong method %s instead of POST.", req.Method)
+			t.Errorf("Got wrong method %s instead of DELETE.", req.Method)
 		}
 		path := "/_api/collection/" + foo.name
 		if req.UrlPath != path {
@@ -911,6 +910,8 @@ func removeExistingCollectionTimeoutFail(
 }
 
 func TestCollectionExistingRemoveTimeoutFail(t *testing.T) {
+	ReadTimeout = 5 // to speed up timeout failure, needs to be longer than
+	// operationTimeout*4, which is 4
 	test := simpleTest{
 		SimpleConfig: config,
 		reportDir:    ".",
