@@ -79,12 +79,12 @@ func (t *simpleTest) importDocuments(c *collection) error {
 								t.importCounter.failed++
 								t.reportFailure(
 									test.NewFailure(
-										"Failed to import documents in collection '%s': incomplete import of only %d documents, details: %v",
+										"Failed to import documents in collection '%s': incomplete import of only %.0f documents, details: %v",
 										c.name, cint, details))
 								return maskAny(fmt.Errorf("Failed to import documents in collection '%s': incomplete import", c.name))
 							} else { // details missing although error
 								t.reportFailure(test.NewFailure(
-									"Failed to import documents in collection '%s': incomplete import of only %d documents no details(!!!)",
+									"Failed to import documents in collection '%s': incomplete import of only %.0f documents no details(!!!)",
 									c.name, cint))
 								return maskAny(fmt.Errorf("Failed to import documents in collection '%s': incomplete import", c.name))
 							}

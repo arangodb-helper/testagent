@@ -21,7 +21,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 	//operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
 	// For now, we increase the timeout to 5 minutes, since the cluster-internal
 	// timeout is 4 minutes:
-	operationTimeout := time.Minute
+	operationTimeout := t.OperationTimeout
 	testTimeout := time.Now().Add(operationTimeout * 5)
 
 	backoff := time.Millisecond * 250
@@ -91,7 +91,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 
 			t.log.Infof("Checking existence of collection '%s' ...", c.name)
 			exists, checkErr := t.collectionExists(c)
-			t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
+			t.log.Infof("... got result %v and error %v", exists, checkErr)
 
 			if checkErr == nil {
 				if exists {
@@ -112,6 +112,8 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 						return maskAny(fmt.Errorf("Failed to create collection '%s' rechecked and failed existence", c.name))
 					}
 				}
+			} else {
+				return maskAny(checkErr)
 			}
 		}
 
@@ -206,7 +208,7 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 // collectionExists tries to fetch information about the collection to see if it exists.
 func (t *simpleTest) collectionExists(c *collection) (bool, error) {
 
-	operationTimeout := t.OperationTimeout / 4
+	operationTimeout := time.Duration(ReadTimeout) * time.Second
 	timeout := time.Now().Add(operationTimeout)
 
 	i := 0
