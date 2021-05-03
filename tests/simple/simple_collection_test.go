@@ -264,7 +264,7 @@ func TestCollectionCreateReadErrorFail(t *testing.T) {
 
 	// Create collection
 	err := test.createCollection(foo, 9, 2)
-	if err != nil {
+	if err == nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
 	}
 	mockClient.Shutdown()
