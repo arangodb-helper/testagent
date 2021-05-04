@@ -42,6 +42,7 @@ func (t *simpleTest) importDocuments(c *collection) error {
 	q := url.Values{}
 	q.Set("collection", c.name)
 	q.Set("waitForSync", "true")
+	q.Set("details", "true")
 
 	backoff := time.Millisecond * 250
 	i := 0
@@ -75,21 +76,19 @@ func (t *simpleTest) importDocuments(c *collection) error {
 				if created, ok := v["created"]; ok {
 					if cint, ok := created.(float64); ok {
 						if cint != ndocs {
+							// We do not create a failure here, since some chaos can
+							// always prevent an import from going through. However,
+							// this incident will be logged and the half-imported
+							// collection will by left in the database for later
+							// inspecting.
 							if details, ok := v["details"]; ok {
 								t.importCounter.failed++
-								t.reportFailure(
-									test.NewFailure(
-										"Failed to import documents in collection '%s': incomplete import of only %.0f documents, details: %v",
-										c.name, cint, details))
-								return maskAny(fmt.Errorf("Failed to import documents in collection '%s': incomplete import", c.name))
+								return maskAny(fmt.Errorf("Failed to import documents in collection '%s': incomplete import, details: %v", c.name, details))
 							} else { // details missing although error
-								t.reportFailure(test.NewFailure(
-									"Failed to import documents in collection '%s': incomplete import of only %.0f documents no details(!!!)",
-									c.name, cint))
-								return maskAny(fmt.Errorf("Failed to import documents in collection '%s': incomplete import", c.name))
+								return maskAny(fmt.Errorf("Failed to import documents in collection '%s': incomplete import, no details", c.name))
 							}
 						} // no import off
-					} else { // cint not int64 convertible
+					} else { // cint not float64 convertible
 						t.reportFailure(test.NewFailure(
 							"Failed to import documents in collection '%s': invalid response on import, cannot convert import count %T %+v",
 							c.name, created, created))
