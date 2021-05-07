@@ -11,6 +11,7 @@ import (
 var (
 	foo *collection = &collection {
 		name: "foo",
+		existingDocs: map[string]UserDocument{},
 	}
 )
 
