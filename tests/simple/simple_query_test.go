@@ -793,85 +793,85 @@ func queryPutNotFoundShortUptime(
 	// Answer with a normal good response: created.
 	// Answer with a normal good response: created.
 	json.Unmarshal([]byte(`{
-  "result": [
-    {
-      "_key": "13360",
-      "_id": "foo/13360",
-      "_rev": "_cTyP566---",
-      "i": 3
-    },
-    {
-      "_key": "13365",
-      "_id": "foo/13365",
-      "_rev": "_cTyP57----",
-      "i": 8
-    },
-    {
-      "_key": "13367",
-      "_id": "foo/13367",
-      "_rev": "_cTyP57---A",
-      "i": 10
-    },
-    {
-      "_key": "13368",
-      "_id": "foo/13368",
-      "_rev": "_cTyP57---B",
-      "i": 11
-    },
-    {
-      "_key": "13372",
-      "_id": "foo/13372",
-      "_rev": "_cTyP57---C",
-      "i": 15
-    },
-    {
-      "_key": "13373",
-      "_id": "foo/13373",
-      "_rev": "_cTyP57C---",
-      "i": 16
-    },
-    {
-      "_key": "13374",
-      "_id": "foo/13374",
-      "_rev": "_cTyP57C--_",
-      "i": 17
-    },
-    {
-      "_key": "13376",
-      "_id": "foo/13376",
-      "_rev": "_cTyP57C--A",
-      "i": 19
-    },
-    {
-      "_key": "13377",
-      "_id": "foo/13377",
-      "_rev": "_cTyP57C--B",
-      "i": 20
-    },
-    {
-      "_key": "13382",
-      "_id": "foo/13382",
-      "_rev": "_cTyP57C--C",
-      "i": 25
-    }
-  ],
-  "hasMore": true,
-  "cached": false,
-  "extra": {
-    "warnings": [],
-    "stats": {
-      "writesExecuted": 0,
-      "writesIgnored": 0,
-      "scannedFull": 20,
-      "scannedIndex": 0,
-      "filtered": 0,
-      "httpRequests": 6,
-      "executionTime": 0.003913449996616691,
-      "peakMemoryUsage": 0
-    }
-  },
-  "error": false,
-  "code": 201
+	"result": [
+		{
+			"_key": "13360",
+			"_id": "foo/13360",
+			"_rev": "_cTyP566---",
+			"i": 3
+		},
+		{
+			"_key": "13365",
+			"_id": "foo/13365",
+			"_rev": "_cTyP57----",
+			"i": 8
+		},
+		{
+			"_key": "13367",
+			"_id": "foo/13367",
+			"_rev": "_cTyP57---A",
+			"i": 10
+		},
+		{
+			"_key": "13368",
+			"_id": "foo/13368",
+			"_rev": "_cTyP57---B",
+			"i": 11
+		},
+		{
+			"_key": "13372",
+			"_id": "foo/13372",
+			"_rev": "_cTyP57---C",
+			"i": 15
+		},
+		{
+			"_key": "13373",
+			"_id": "foo/13373",
+			"_rev": "_cTyP57C---",
+			"i": 16
+		},
+		{
+			"_key": "13374",
+			"_id": "foo/13374",
+			"_rev": "_cTyP57C--_",
+			"i": 17
+		},
+		{
+			"_key": "13376",
+			"_id": "foo/13376",
+			"_rev": "_cTyP57C--A",
+			"i": 19
+		},
+		{
+			"_key": "13377",
+			"_id": "foo/13377",
+			"_rev": "_cTyP57C--B",
+			"i": 20
+		},
+		{
+			"_key": "13382",
+			"_id": "foo/13382",
+			"_rev": "_cTyP57C--C",
+			"i": 25
+		}
+	],
+	"hasMore": true,
+	"cached": false,
+	"extra": {
+		"warnings": [],
+		"stats": {
+			"writesExecuted": 0,
+			"writesIgnored": 0,
+			"scannedFull": 20,
+			"scannedIndex": 0,
+			"filtered": 0,
+			"httpRequests": 6,
+			"executionTime": 0.003913449996616691,
+			"peakMemoryUsage": 0
+		}
+	},
+	"error": false,
+	"code": 201
 }`), &req.Result)
 	responses <- &util.MockResponse{
 		Resp: util.ArangoResponse {
@@ -970,85 +970,85 @@ func queryPutNotFoundLongUptime(
 	// Answer with a normal good response: created.
 	// Answer with a normal good response: created.
 	json.Unmarshal([]byte(`{
-  "result": [
-    {
-      "_key": "13360",
-      "_id": "foo/13360",
-      "_rev": "_cTyP566---",
-      "i": 3
-    },
-    {
-      "_key": "13365",
-      "_id": "foo/13365",
-      "_rev": "_cTyP57----",
-      "i": 8
-    },
-    {
-      "_key": "13367",
-      "_id": "foo/13367",
-      "_rev": "_cTyP57---A",
-      "i": 10
-    },
-    {
-      "_key": "13368",
-      "_id": "foo/13368",
-      "_rev": "_cTyP57---B",
-      "i": 11
-    },
-    {
-      "_key": "13372",
-      "_id": "foo/13372",
-      "_rev": "_cTyP57---C",
-      "i": 15
-    },
-    {
-      "_key": "13373",
-      "_id": "foo/13373",
-      "_rev": "_cTyP57C---",
-      "i": 16
-    },
-    {
-      "_key": "13374",
-      "_id": "foo/13374",
-      "_rev": "_cTyP57C--_",
-      "i": 17
-    },
-    {
-      "_key": "13376",
-      "_id": "foo/13376",
-      "_rev": "_cTyP57C--A",
-      "i": 19
-    },
-    {
-      "_key": "13377",
-      "_id": "foo/13377",
-      "_rev": "_cTyP57C--B",
-      "i": 20
-    },
-    {
-      "_key": "13382",
-      "_id": "foo/13382",
-      "_rev": "_cTyP57C--C",
-      "i": 25
-    }
-  ],
-  "hasMore": true,
-  "cached": false,
-  "extra": {
-    "warnings": [],
-    "stats": {
-      "writesExecuted": 0,
-      "writesIgnored": 0,
-      "scannedFull": 20,
-      "scannedIndex": 0,
-      "filtered": 0,
-      "httpRequests": 6,
-      "executionTime": 0.003913449996616691,
-      "peakMemoryUsage": 0
-    }
-  },
-  "error": false,
-  "code": 201
+	"result": [
+		{
+			"_key": "13360",
+			"_id": "foo/13360",
+			"_rev": "_cTyP566---",
+			"i": 3
+		},
+		{
+			"_key": "13365",
+			"_id": "foo/13365",
+			"_rev": "_cTyP57----",
+			"i": 8
+		},
+		{
+			"_key": "13367",
+			"_id": "foo/13367",
+			"_rev": "_cTyP57---A",
+			"i": 10
+		},
+		{
+			"_key": "13368",
+			"_id": "foo/13368",
+			"_rev": "_cTyP57---B",
+			"i": 11
+		},
+		{
+			"_key": "13372",
+			"_id": "foo/13372",
+			"_rev": "_cTyP57---C",
+			"i": 15
+		},
+		{
+			"_key": "13373",
+			"_id": "foo/13373",
+			"_rev": "_cTyP57C---",
+			"i": 16
+		},
+		{
+			"_key": "13374",
+			"_id": "foo/13374",
+			"_rev": "_cTyP57C--_",
+			"i": 17
+		},
+		{
+			"_key": "13376",
+			"_id": "foo/13376",
+			"_rev": "_cTyP57C--A",
+			"i": 19
+		},
+		{
+			"_key": "13377",
+			"_id": "foo/13377",
+			"_rev": "_cTyP57C--B",
+			"i": 20
+		},
+		{
+			"_key": "13382",
+			"_id": "foo/13382",
+			"_rev": "_cTyP57C--C",
+			"i": 25
+		}
+	],
+	"hasMore": true,
+	"cached": false,
+	"extra": {
+		"warnings": [],
+		"stats": {
+			"writesExecuted": 0,
+			"writesIgnored": 0,
+			"scannedFull": 20,
+			"scannedIndex": 0,
+			"filtered": 0,
+			"httpRequests": 6,
+			"executionTime": 0.003913449996616691,
+			"peakMemoryUsage": 0
+		}
+	},
+	"error": false,
+	"code": 201
 }`), &req.Result)
 	responses <- &util.MockResponse{
 		Resp: util.ArangoResponse {
@@ -1242,85 +1242,85 @@ func queryHasMoreFalse(
 
 	// Answer with a normal good response: created.
 	json.Unmarshal([]byte(`{
-  "result": [
-    {
-      "_key": "13360",
-      "_id": "foo/13360",
-      "_rev": "_cTyP566---",
-      "i": 3
-    },
-    {
-      "_key": "13365",
-      "_id": "foo/13365",
-      "_rev": "_cTyP57----",
-      "i": 8
-    },
-    {
-      "_key": "13367",
-      "_id": "foo/13367",
-      "_rev": "_cTyP57---A",
-      "i": 10
-    },
-    {
-      "_key": "13368",
-      "_id": "foo/13368",
-      "_rev": "_cTyP57---B",
-      "i": 11
-    },
-    {
-      "_key": "13372",
-      "_id": "foo/13372",
-      "_rev": "_cTyP57---C",
-      "i": 15
-    },
-    {
-      "_key": "13373",
-      "_id": "foo/13373",
-      "_rev": "_cTyP57C---",
-      "i": 16
-    },
-    {
-      "_key": "13374",
-      "_id": "foo/13374",
-      "_rev": "_cTyP57C--_",
-      "i": 17
-    },
-    {
-      "_key": "13376",
-      "_id": "foo/13376",
-      "_rev": "_cTyP57C--A",
-      "i": 19
-    },
-    {
-      "_key": "13377",
-      "_id": "foo/13377",
-      "_rev": "_cTyP57C--B",
-      "i": 20
-    },
-    {
-      "_key": "13382",
-      "_id": "foo/13382",
-      "_rev": "_cTyP57C--C",
-      "i": 25
-    }
-  ],
-  "hasMore": false,
-  "cached": false,
-  "extra": {
-    "warnings": [],
-    "stats": {
-      "writesExecuted": 0,
-      "writesIgnored": 0,
-      "scannedFull": 20,
-      "scannedIndex": 0,
-      "filtered": 0,
-      "httpRequests": 6,
-      "executionTime": 0.003913449996616691,
-      "peakMemoryUsage": 0
-    }
-  },
-  "error": false,
-  "code": 201
+	"result": [
+		{
+			"_key": "13360",
+			"_id": "foo/13360",
+			"_rev": "_cTyP566---",
+			"i": 3
+		},
+		{
+			"_key": "13365",
+			"_id": "foo/13365",
+			"_rev": "_cTyP57----",
+			"i": 8
+		},
+		{
+			"_key": "13367",
+			"_id": "foo/13367",
+			"_rev": "_cTyP57---A",
+			"i": 10
+		},
+		{
+			"_key": "13368",
+			"_id": "foo/13368",
+			"_rev": "_cTyP57---B",
+			"i": 11
+		},
+		{
+			"_key": "13372",
+			"_id": "foo/13372",
+			"_rev": "_cTyP57---C",
+			"i": 15
+		},
+		{
+			"_key": "13373",
+			"_id": "foo/13373",
+			"_rev": "_cTyP57C---",
+			"i": 16
+		},
+		{
+			"_key": "13374",
+			"_id": "foo/13374",
+			"_rev": "_cTyP57C--_",
+			"i": 17
+		},
+		{
+			"_key": "13376",
+			"_id": "foo/13376",
+			"_rev": "_cTyP57C--A",
+			"i": 19
+		},
+		{
+			"_key": "13377",
+			"_id": "foo/13377",
+			"_rev": "_cTyP57C--B",
+			"i": 20
+		},
+		{
+			"_key": "13382",
+			"_id": "foo/13382",
+			"_rev": "_cTyP57C--C",
+			"i": 25
+		}
+	],
+	"hasMore": false,
+	"cached": false,
+	"extra": {
+		"warnings": [],
+		"stats": {
+			"writesExecuted": 0,
+			"writesIgnored": 0,
+			"scannedFull": 20,
+			"scannedIndex": 0,
+			"filtered": 0,
+			"httpRequests": 6,
+			"executionTime": 0.003913449996616691,
+			"peakMemoryUsage": 0
+		}
+	},
+	"error": false,
+	"code": 201
 }`), &req.Result)
 	json.Unmarshal([]byte(`{"hasMore": true, "id": "id0", result": {"uptime": 120}}`), req.Result)
 	responses <- &util.MockResponse{
@@ -1438,79 +1438,79 @@ func queryPutUnavailable(
 		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
 	}
 	json.Unmarshal([]byte(`{
-  "result": [
-    {
-      "_key": "13360",
-      "_id": "foo/13360",
-      "_rev": "_cTyP566---",
-      "i": 3
-    },
-    {
-      "_key": "13365",
-      "_id": "foo/13365",
-      "_rev": "_cTyP57----",
-      "i": 8
-    },
-    {
-      "_key": "13367",
-      "_id": "foo/13367",
-      "_rev": "_cTyP57---A",
-      "i": 10
-    },
-    {
-      "_key": "13368",
-      "_id": "foo/13368",
-      "_rev": "_cTyP57---B",
-      "i": 11
-    },
-    {
-      "_key": "13372",
-      "_id": "foo/13372",
-      "_rev": "_cTyP57---C",
-      "i": 15
-    },
-    {
-      "_key": "13373",
-      "_id": "foo/13373",
-      "_rev": "_cTyP57C---",
-      "i": 16
-    },
-    {
-      "_key": "13374",
-      "_id": "foo/13374",
-      "_rev": "_cTyP57C--_",
-      "i": 17
-    },
-    {
-      "_key": "13376",
-      "_id": "foo/13376",
-      "_rev": "_cTyP57C--A",
-      "i": 19
-    },
-    {
-      "_key": "13377",
-      "_id": "foo/13377",
-      "_rev": "_cTyP57C--B",
-      "i": 20
-    }
-  ],
-  "hasMore": false,
-  "cached": false,
-  "extra": {
-    "warnings": [],
-    "stats": {
-      "writesExecuted": 0,
-      "writesIgnored": 0,
-      "scannedFull": 20,
-      "scannedIndex": 0,
-      "filtered": 0,
-      "httpRequests": 6,
-      "executionTime": 0.003913449996616691,
-      "peakMemoryUsage": 0
-    }
-  },
-  "error": false,
-  "code": 201
+	"result": [
+		{
+			"_key": "13360",
+			"_id": "foo/13360",
+			"_rev": "_cTyP566---",
+			"i": 3
+		},
+		{
+			"_key": "13365",
+			"_id": "foo/13365",
+			"_rev": "_cTyP57----",
+			"i": 8
+		},
+		{
+			"_key": "13367",
+			"_id": "foo/13367",
+			"_rev": "_cTyP57---A",
+			"i": 10
+		},
+		{
+			"_key": "13368",
+			"_id": "foo/13368",
+			"_rev": "_cTyP57---B",
+			"i": 11
+		},
+		{
+			"_key": "13372",
+			"_id": "foo/13372",
+			"_rev": "_cTyP57---C",
+			"i": 15
+		},
+		{
+			"_key": "13373",
+			"_id": "foo/13373",
+			"_rev": "_cTyP57C---",
+			"i": 16
+		},
+		{
+			"_key": "13374",
+			"_id": "foo/13374",
+			"_rev": "_cTyP57C--_",
+			"i": 17
+		},
+		{
+			"_key": "13376",
+			"_id": "foo/13376",
+			"_rev": "_cTyP57C--A",
+			"i": 19
+		},
+		{
+			"_key": "13377",
+			"_id": "foo/13377",
+			"_rev": "_cTyP57C--B",
+			"i": 20
+		}
+	],
+	"hasMore": false,
+	"cached": false,
+	"extra": {
+		"warnings": [],
+		"stats": {
+			"writesExecuted": 0,
+			"writesIgnored": 0,
+			"scannedFull": 20,
+			"scannedIndex": 0,
+			"filtered": 0,
+			"httpRequests": 6,
+			"executionTime": 0.003913449996616691,
+			"peakMemoryUsage": 0
+		}
+	},
+	"error": false,
+	"code": 201
 }`), &req.Result)
 	responses <- &util.MockResponse{
 		Resp: util.ArangoResponse { StatusCode: 200, },
@@ -1687,7 +1687,7 @@ func queryLongRunningTimeout(
 			Err:  nil,
 		}
 	}
-	
+
 	// We have not responded with any count in the cursor yet, so not PUT is expected.
 	next(ctx, t, requests, false)
 }
@@ -1784,85 +1784,85 @@ func queryLongRunningHasMoreFalse(
 
 	// Answer with a normal good response: created.
 	json.Unmarshal([]byte(`{
-  "result": [
-    {
-      "_key": "13360",
-      "_id": "foo/13360",
-      "_rev": "_cTyP566---",
-      "i": 3
-    },
-    {
-      "_key": "13365",
-      "_id": "foo/13365",
-      "_rev": "_cTyP57----",
-      "i": 8
-    },
-    {
-      "_key": "13367",
-      "_id": "foo/13367",
-      "_rev": "_cTyP57---A",
-      "i": 10
-    },
-    {
-      "_key": "13368",
-      "_id": "foo/13368",
-      "_rev": "_cTyP57---B",
-      "i": 11
-    },
-    {
-      "_key": "13372",
-      "_id": "foo/13372",
-      "_rev": "_cTyP57---C",
-      "i": 15
-    },
-    {
-      "_key": "13373",
-      "_id": "foo/13373",
-      "_rev": "_cTyP57C---",
-      "i": 16
-    },
-    {
-      "_key": "13374",
-      "_id": "foo/13374",
-      "_rev": "_cTyP57C--_",
-      "i": 17
-    },
-    {
-      "_key": "13376",
-      "_id": "foo/13376",
-      "_rev": "_cTyP57C--A",
-      "i": 19
-    },
-    {
-      "_key": "13377",
-      "_id": "foo/13377",
-      "_rev": "_cTyP57C--B",
-      "i": 20
-    },
-    {
-      "_key": "13382",
-      "_id": "foo/13382",
-      "_rev": "_cTyP57C--C",
-      "i": 25
-    }
-  ],
-  "hasMore": false,
-  "cached": false,
-  "extra": {
-    "warnings": [],
-    "stats": {
-      "writesExecuted": 0,
-      "writesIgnored": 0,
-      "scannedFull": 20,
-      "scannedIndex": 0,
-      "filtered": 0,
-      "httpRequests": 6,
-      "executionTime": 0.003913449996616691,
-      "peakMemoryUsage": 0
-    }
-  },
-  "error": false,
-  "code": 201
+	"result": [
+		{
+			"_key": "13360",
+			"_id": "foo/13360",
+			"_rev": "_cTyP566---",
+			"i": 3
+		},
+		{
+			"_key": "13365",
+			"_id": "foo/13365",
+			"_rev": "_cTyP57----",
+			"i": 8
+		},
+		{
+			"_key": "13367",
+			"_id": "foo/13367",
+			"_rev": "_cTyP57---A",
+			"i": 10
+		},
+		{
+			"_key": "13368",
+			"_id": "foo/13368",
+			"_rev": "_cTyP57---B",
+			"i": 11
+		},
+		{
+			"_key": "13372",
+			"_id": "foo/13372",
+			"_rev": "_cTyP57---C",
+			"i": 15
+		},
+		{
+			"_key": "13373",
+			"_id": "foo/13373",
+			"_rev": "_cTyP57C---",
+			"i": 16
+		},
+		{
+			"_key": "13374",
+			"_id": "foo/13374",
+			"_rev": "_cTyP57C--_",
+			"i": 17
+		},
+		{
+			"_key": "13376",
+			"_id": "foo/13376",
+			"_rev": "_cTyP57C--A",
+			"i": 19
+		},
+		{
+			"_key": "13377",
+			"_id": "foo/13377",
+			"_rev": "_cTyP57C--B",
+			"i": 20
+		},
+		{
+			"_key": "13382",
+			"_id": "foo/13382",
+			"_rev": "_cTyP57C--C",
+			"i": 25
+		}
+	],
+	"hasMore": false,
+	"cached": false,
+	"extra": {
+		"warnings": [],
+		"stats": {
+			"writesExecuted": 0,
+			"writesIgnored": 0,
+			"scannedFull": 20,
+			"scannedIndex": 0,
+			"filtered": 0,
+			"httpRequests": 6,
+			"executionTime": 0.003913449996616691,
+			"peakMemoryUsage": 0
+		}
+	},
+	"error": false,
+	"code": 201
 }`), &req.Result)
 	json.Unmarshal([]byte(`{"hasMore": true, "id": "id0", result": {"uptime": 120}}`), req.Result)
 	responses <- &util.MockResponse{
@@ -1898,4 +1898,3 @@ func TestQueryLongRunningHasMoreFalse(t *testing.T) {
 	}
 	mockClient.Shutdown()
 }
-
