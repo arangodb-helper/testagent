@@ -11,6 +11,27 @@ import (
 	"github.com/arangodb-helper/testagent/tests/util"
 )
 
+var (
+	fooEmpty *collection = &collection {
+		name: "fooEmpty",
+		existingDocs: map[string]UserDocument{},
+	}
+	isSetup bool = false
+)
+
+func setup() {
+	for i := 0; i < 10; i++ {
+		doc := UserDocument{
+			Key:   foo.createNewKey(true),
+			Value: rand.Int(),
+			Name:  fmt.Sprintf("User %d", time.Now().Nanosecond()),
+			Odd:   time.Now().Nanosecond()%2 == 1,
+		}
+		foo.existingDocs[doc.Key] = doc
+	}
+	isSetup = true
+}
+
 func queryDocumentsEmptyCollection(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
@@ -24,12 +45,17 @@ func TestQueryDocumentsEmptyCollection(t *testing.T) {
 		log:          log,
 		collections:  make(map[string]*collection),
 	}
+
+	if !isSetup {
+		setup()
+	}
+
 	mockClient := util.NewMockClient(t, queryDocumentsEmptyCollection)
 	test.client = mockClient
 	test.listener = util.MockListener{}
 
 	// Create collection
-	err := test.queryDocuments(foo)
+	err := test.queryDocuments(fooEmpty)
 	if err != nil {
 		t.Errorf("Unexpected result from queryDocuments: err: %v", err)
 	}
@@ -71,14 +97,8 @@ func TestQueryDocumentsCursorFail(t *testing.T) {
 		collections:  make(map[string]*collection),
 	}
 
-	for i := 0; i < 10; i++ {
-		doc := UserDocument{
-			Key:   foo.createNewKey(true),
-			Value: rand.Int(),
-			Name:  fmt.Sprintf("User %d", time.Now().Nanosecond()),
-			Odd:   time.Now().Nanosecond()%2 == 1,
-		}
-		foo.existingDocs[doc.Key] = doc
+	if !isSetup {
+		setup()
 	}
 
 	mockClient := util.NewMockClient(t, queryDocumentsCursorFail)
@@ -146,6 +166,9 @@ func TestQueryPostUnavailable(t *testing.T) {
 		collections:  make(map[string]*collection),
 	}
 
+	if !isSetup {
+		setup()
+	}
 	mockClient := util.NewMockClient(t, queryPostUnavailable)
 	test.client = mockClient
 	test.listener = util.MockListener{}
@@ -195,6 +218,10 @@ func TestQueryPostTimeout(t *testing.T) {
 		collections:  make(map[string]*collection),
 	}
 
+	if !isSetup {
+		setup()
+	}
+
 	mockClient := util.NewMockClient(t, queryPostTimeout)
 	test.client = mockClient
 	test.listener = util.MockListener{}
@@ -240,6 +267,10 @@ func TestQueryDocumentsCursorLengthZero(t *testing.T) {
 		reportDir:    ".",
 		log:          log,
 		collections:  make(map[string]*collection),
+	}
+
+	if !isSetup {
+		setup()
 	}
 
 	mockClient := util.NewMockClient(t, queryDocumentsCursorLengthZero)
@@ -368,19 +399,13 @@ func TestQueryDocumentsCursorMasMore(t *testing.T) {
 		collections:  make(map[string]*collection),
 	}
 
+	if !isSetup {
+		setup()
+	}
+
 	mockClient := util.NewMockClient(t, queryDocumentsCursorHasMore)
 	test.client = mockClient
 	test.listener = util.MockListener{}
-
-	for i := 0; i < 10; i++ {
-		doc := UserDocument{
-			Key:   foo.createNewKey(true),
-			Value: rand.Int(),
-			Name:  fmt.Sprintf("User %d", time.Now().Nanosecond()),
-			Odd:   time.Now().Nanosecond()%2 == 1,
-		}
-		foo.existingDocs[doc.Key] = doc
-	}
 
 	// Expecting error, as count from cursor does not match.
 	err := test.queryDocuments(foo)
@@ -445,6 +470,10 @@ func TestQueryPutFail(t *testing.T) {
 		reportDir:    ".",
 		log:          log,
 		collections:  make(map[string]*collection),
+	}
+
+	if !isSetup {
+		setup()
 	}
 
 	mockClient := util.NewMockClient(t, queryPutFail)
@@ -535,6 +564,10 @@ func TestQueryUptimeFail(t *testing.T) {
 		reportDir:    ".",
 		log:          log,
 		collections:  make(map[string]*collection),
+	}
+
+	if !isSetup {
+		setup()
 	}
 
 	mockClient := util.NewMockClient(t, queryUptimeFail)
@@ -628,6 +661,10 @@ func TestQueryWrongCoordinator(t *testing.T) {
 		collections:  make(map[string]*collection),
 	}
 
+	if !isSetup {
+		setup()
+	}
+
 	mockClient := util.NewMockClient(t, queryWrongCoordinator)
 	test.client = mockClient
 	test.listener = util.MockListener{}
@@ -718,6 +755,10 @@ func TestQueryPutNotFound(t *testing.T) {
 		reportDir:    ".",
 		log:          log,
 		collections:  make(map[string]*collection),
+	}
+
+	if !isSetup {
+		setup()
 	}
 
 	mockClient := util.NewMockClient(t, queryPutNotFound)
@@ -893,14 +934,8 @@ func TestQueryPutNotFoundShortUptime(t *testing.T) {
 		collections:  make(map[string]*collection),
 	}
 
-	for i := 0; i < 10; i++ {
-		doc := UserDocument{
-			Key:   foo.createNewKey(true),
-			Value: rand.Int(),
-			Name:  fmt.Sprintf("User %d", time.Now().Nanosecond()),
-			Odd:   time.Now().Nanosecond()%2 == 1,
-		}
-		foo.existingDocs[doc.Key] = doc
+	if !isSetup {
+		setup()
 	}
 
 	mockClient := util.NewMockClient(t, queryPutNotFoundShortUptime)
@@ -1076,14 +1111,8 @@ func TestQueryPutNotFoundLongUptime(t *testing.T) {
 		collections:  make(map[string]*collection),
 	}
 
-	for i := 0; i < 10; i++ {
-		doc := UserDocument{
-			Key:   foo.createNewKey(true),
-			Value: rand.Int(),
-			Name:  fmt.Sprintf("User %d", time.Now().Nanosecond()),
-			Odd:   time.Now().Nanosecond()%2 == 1,
-		}
-		foo.existingDocs[doc.Key] = doc
+	if !isSetup {
+		setup()
 	}
 
 	mockClient := util.NewMockClient(t, queryPutNotFoundLongUptime)
@@ -1178,14 +1207,8 @@ func TestQueryPutInternalError(t *testing.T) {
 		collections:  make(map[string]*collection),
 	}
 
-	for i := 0; i < 10; i++ {
-		doc := UserDocument{
-			Key:   foo.createNewKey(true),
-			Value: rand.Int(),
-			Name:  fmt.Sprintf("User %d", time.Now().Nanosecond()),
-			Odd:   time.Now().Nanosecond()%2 == 1,
-		}
-		foo.existingDocs[doc.Key] = doc
+	if !isSetup {
+		setup()
 	}
 
 	mockClient := util.NewMockClient(t, queryPutInternalError)
@@ -1318,14 +1341,8 @@ func TestQueryHasMoreFalse(t *testing.T) {
 		collections:  make(map[string]*collection),
 	}
 
-	for i := 0; i < 10; i++ {
-		doc := UserDocument{
-			Key:   foo.createNewKey(true),
-			Value: rand.Int(),
-			Name:  fmt.Sprintf("User %d", time.Now().Nanosecond()),
-			Odd:   time.Now().Nanosecond()%2 == 1,
-		}
-		foo.existingDocs[doc.Key] = doc
+	if !isSetup {
+		setup()
 	}
 
 	mockClient := util.NewMockClient(t, queryHasMoreFalse)
@@ -1532,14 +1549,8 @@ func TestQueryPutUnavailable(t *testing.T) {
 		collections:  make(map[string]*collection),
 	}
 
-	for i := 0; i < 10; i++ {
-		doc := UserDocument{
-			Key:   foo.createNewKey(true),
-			Value: rand.Int(),
-			Name:  fmt.Sprintf("User %d", time.Now().Nanosecond()),
-			Odd:   time.Now().Nanosecond()%2 == 1,
-		}
-		foo.existingDocs[doc.Key] = doc
+	if !isSetup {
+		setup()
 	}
 
 	mockClient := util.NewMockClient(t, queryPutUnavailable)
@@ -1548,6 +1559,340 @@ func TestQueryPutUnavailable(t *testing.T) {
 
 	// Expecting error, as count from cursor does not match.
 	err := test.queryDocuments(foo)
+	if err != nil {
+		t.Errorf("Unexpected result from queryDocuments: err: %v", err)
+	}
+	mockClient.Shutdown()
+}
+
+func queryLongRunningEmptyCollection(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+	next(ctx, t, requests, false)
+}
+
+func TestQueryLongRunningEmptyCollection(t *testing.T) {
+	test := simpleTest{
+		SimpleConfig: config,
+		reportDir:    ".",
+		log:          log,
+		collections:  make(map[string]*collection),
+	}
+
+	if !isSetup {
+		setup()
+	}
+
+	mockClient := util.NewMockClient(t, queryLongRunningEmptyCollection)
+	test.client = mockClient
+	test.listener = util.MockListener{}
+
+	// Create collection
+	err := test.queryDocumentsLongRunning(fooEmpty)
+	if err != nil {
+		t.Errorf("Unexpected result from queryDocuments: err: %v", err)
+	}
+	mockClient.Shutdown()
+}
+
+func queryLongRunningPostUnavailable(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a normal POST request (as preparation)
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	path := "/_api/cursor"
+	if req.UrlPath != path {
+		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
+	}
+
+	// Answer with a normal good response: created.
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{ StatusCode: 503 },
+		Err:  nil,
+	}
+
+	// Get a normal POST request (as preparation)
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	if req.UrlPath != path {
+		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
+	}
+
+	// Answer with a normal good response: created.
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{ StatusCode: 201 },
+		Err:  nil,
+	}
+
+	// We have not responded with any count in the cursor yet, so not PUT is expected.
+	next(ctx, t, requests, false)
+}
+
+func TestQueryLongRunningPostUnavailable(t *testing.T) {
+	test := simpleTest{
+		SimpleConfig: config,
+		reportDir:    ".",
+		log:          log,
+		collections:  make(map[string]*collection),
+	}
+
+	if !isSetup {
+		setup()
+	}
+	mockClient := util.NewMockClient(t, queryLongRunningPostUnavailable)
+	test.client = mockClient
+	test.listener = util.MockListener{}
+
+	// Expecting error, as count from cursor does not match.
+	err := test.queryDocumentsLongRunning(foo)
+	if err == nil {
+		t.Errorf("Unexpected result from queryDocuments: err: %v", err)
+	}
+	mockClient.Shutdown()
+}
+
+func queryLongRunningTimeout(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	for {
+		// Get a normal POST request (as preparation)
+		req := potentialNext(ctx, t, requests)
+		if req == nil {
+			return
+		}
+		if req.Method != "POST" {
+			t.Errorf("Got wrong method %s instead of POST.", req.Method)
+		}
+		path := "/_api/cursor"
+		if req.UrlPath != path {
+			t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
+		}
+
+		// Answer with a normal good response: created.
+		responses <- &util.MockResponse{
+			Resp: util.ArangoResponse{ StatusCode: 503 },
+			Err:  nil,
+		}
+	}
+	
+	// We have not responded with any count in the cursor yet, so not PUT is expected.
+	next(ctx, t, requests, false)
+}
+
+func TestQueryLongRunningTimeout(t *testing.T) {
+	test := simpleTest{
+		SimpleConfig: config,
+		reportDir:    ".",
+		log:          log,
+		collections:  make(map[string]*collection),
+	}
+
+	if !isSetup {
+		setup()
+	}
+	mockClient := util.NewMockClient(t, queryLongRunningTimeout)
+	test.client = mockClient
+	test.listener = util.MockListener{}
+
+	// Expecting error, as count from cursor does not match.
+	err := test.queryDocumentsLongRunning(foo)
+	if err == nil {
+		t.Errorf("Unexpected result from queryDocuments: err: %v", err)
+	}
+	mockClient.Shutdown()
+}
+
+func queryLongRunningPostFail(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a normal POST request (as preparation)
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	path := "/_api/cursor"
+	if req.UrlPath != path {
+		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
+	}
+
+	// Answer with a normal good response: created.
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{ StatusCode: 307 },
+		Err:  fmt.Errorf("Fail"),
+	}
+
+	// We have not responded with any count in the cursor yet, so not PUT is expected.
+	next(ctx, t, requests, false)
+}
+
+func TestQueryLongRunningPostFail(t *testing.T) {
+	test := simpleTest{
+		SimpleConfig: config,
+		reportDir:    ".",
+		log:          log,
+		collections:  make(map[string]*collection),
+	}
+
+	if !isSetup {
+		setup()
+	}
+	mockClient := util.NewMockClient(t, queryLongRunningPostFail)
+	test.client = mockClient
+	test.listener = util.MockListener{}
+
+	// Expecting error, as count from cursor does not match.
+	err := test.queryDocumentsLongRunning(foo)
+	if err == nil {
+		t.Errorf("Unexpected result from queryDocuments: err: %v", err)
+	}
+	mockClient.Shutdown()
+}
+
+func queryLongRunningHasMoreFalse(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a normal POST request (as preparation)
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	path := "/_api/cursor"
+	if req.UrlPath != path {
+		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
+	}
+
+	// Answer with a normal good response: created.
+	json.Unmarshal([]byte(`{
+  "result": [
+    {
+      "_key": "13360",
+      "_id": "foo/13360",
+      "_rev": "_cTyP566---",
+      "i": 3
+    },
+    {
+      "_key": "13365",
+      "_id": "foo/13365",
+      "_rev": "_cTyP57----",
+      "i": 8
+    },
+    {
+      "_key": "13367",
+      "_id": "foo/13367",
+      "_rev": "_cTyP57---A",
+      "i": 10
+    },
+    {
+      "_key": "13368",
+      "_id": "foo/13368",
+      "_rev": "_cTyP57---B",
+      "i": 11
+    },
+    {
+      "_key": "13372",
+      "_id": "foo/13372",
+      "_rev": "_cTyP57---C",
+      "i": 15
+    },
+    {
+      "_key": "13373",
+      "_id": "foo/13373",
+      "_rev": "_cTyP57C---",
+      "i": 16
+    },
+    {
+      "_key": "13374",
+      "_id": "foo/13374",
+      "_rev": "_cTyP57C--_",
+      "i": 17
+    },
+    {
+      "_key": "13376",
+      "_id": "foo/13376",
+      "_rev": "_cTyP57C--A",
+      "i": 19
+    },
+    {
+      "_key": "13377",
+      "_id": "foo/13377",
+      "_rev": "_cTyP57C--B",
+      "i": 20
+    },
+    {
+      "_key": "13382",
+      "_id": "foo/13382",
+      "_rev": "_cTyP57C--C",
+      "i": 25
+    }
+  ],
+  "hasMore": false,
+  "cached": false,
+  "extra": {
+    "warnings": [],
+    "stats": {
+      "writesExecuted": 0,
+      "writesIgnored": 0,
+      "scannedFull": 20,
+      "scannedIndex": 0,
+      "filtered": 0,
+      "httpRequests": 6,
+      "executionTime": 0.003913449996616691,
+      "peakMemoryUsage": 0
+    }
+  },
+  "error": false,
+  "code": 201
+}`), &req.Result)
+	json.Unmarshal([]byte(`{"hasMore": true, "id": "id0", result": {"uptime": 120}}`), req.Result)
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse {
+			StatusCode: 201, CoordinatorURL: "https://coordinator:8529" },
+		Err:  nil,
+	}
+
+	// We have not responded with any count in the cursor yet, so not PUT is expected.
+	next(ctx, t, requests, false)
+}
+
+func TestQueryLongRunningHasMoreFalse(t *testing.T) {
+	test := simpleTest{
+		SimpleConfig: config,
+		reportDir:    ".",
+		log:          log,
+		collections:  make(map[string]*collection),
+	}
+
+	if !isSetup {
+		setup()
+	}
+
+	mockClient := util.NewMockClient(t, queryLongRunningHasMoreFalse)
+	test.client = mockClient
+	test.listener = util.MockListener{}
+
+	// Expecting error, as count from cursor does not match.
+	err := test.queryDocumentsLongRunning(foo)
 	if err != nil {
 		t.Errorf("Unexpected result from queryDocuments: err: %v", err)
 	}
