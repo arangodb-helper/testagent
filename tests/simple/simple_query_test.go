@@ -1689,7 +1689,7 @@ func queryLongRunningTimeout(
 	}
 
 	// We have not responded with any count in the cursor yet, so not PUT is expected.
-	next(ctx, t, requests, false)
+	// next(ctx, t, requests, false)
 }
 
 func TestQueryLongRunningTimeout(t *testing.T) {
