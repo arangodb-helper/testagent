@@ -76,16 +76,15 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 		// cursor. Furthermore note that we found that currently the undocumented
 		// error code 500 can happen if a dbserver suffers from some chaos
 		// during cursor creation. We can simply retry, too.
-
 		time.Sleep(backoff)
 		if backoff < time.Second*5 {
 			backoff += backoff
 		}
-
 	}
 
 	// Now continue fetching results.
 	// This may fail if (and only if) the coordinator has changed.
+
 	resultCount := len(cursorResp.Result)
 	nrTimeOuts := 0
 
@@ -106,7 +105,7 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 
 		// Wait a bit, so we increase the chance of a coordinator being
 		// restarting in between this actions (or some other chaos to happen).
-		time.Sleep(time.Second * 5)
+		time.Sleep(operationTimeout / 10)
 
 		// Fetch next results
 		getResp, err := t.client.Put(

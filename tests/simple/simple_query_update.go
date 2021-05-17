@@ -23,7 +23,7 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 		}
 		i++
 
-		t.log.Infof("Creating update AQL query for collection '%s'...", c.name)
+		t.log.Infof("Creating update (%d) AQL query for collection '%s'...", i, c.name)
 		newName := fmt.Sprintf("AQLUpdate name %s", time.Now())
 		queryReq := QueryRequest{
 			Query:     fmt.Sprintf("UPDATE \"%s\" WITH { name: \"%s\" } IN %s RETURN NEW", key, newName, c.name),
