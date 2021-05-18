@@ -54,6 +54,7 @@ type simpleTest struct {
 	readNonExistingCounter              counter
 	createCounter                       counter
 	createCollectionCounter             counter
+	createViewCounter                   counter
 	removeExistingCollectionCounter     counter
 	updateExistingCounter               counter
 	updateExistingWrongRevisionCounter  counter
