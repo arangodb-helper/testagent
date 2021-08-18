@@ -701,7 +701,6 @@ func (t *simpleTest) createAndInitCollection() error {
 		t.reportFailure(test.NewFailure("Creating collection '%s' failed: %v", c.name, err))
 		return maskAny(err)
 	}
-	t.registerCollection(c)
 	t.createCollectionCounter.succeeded++
 	t.actions++
 
@@ -710,6 +709,7 @@ func (t *simpleTest) createAndInitCollection() error {
 		t.log.Errorf("Failed to import documents: %#v", err)
 	}
 	t.actions++
+	t.registerCollection(c)
 
 	// Check imported documents
 	for k := range c.existingDocs {

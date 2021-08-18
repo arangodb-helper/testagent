@@ -8,13 +8,17 @@ import (
 	"github.com/arangodb/testAgent/service/test"
 )
 
+const (
+	ndocs = 10000
+)
+
 // createImportDocument creates a #document based import file.
 func (t *simpleTest) createImportDocument() ([]byte, []UserDocument) {
 	buf := &bytes.Buffer{}
-	docs := make([]UserDocument, 0, 10000)
+	docs := make([]UserDocument, 0, ndocs)
 	fmt.Fprintf(buf, `[ "_key", "value", "name", "odd" ]`)
 	fmt.Fprintln(buf)
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < ndocs; i++ {
 		key := fmt.Sprintf("docimp%05d", i)
 		userDoc := UserDocument{
 			Key:   key,
@@ -38,12 +42,40 @@ func (t *simpleTest) importDocuments(c *collection) error {
 	q.Set("waitForSync", "true")
 	importData, docs := t.createImportDocument()
 	t.log.Infof("Importing %d documents ('%s' - '%s') into '%s'...", len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name)
-	if _, err := t.client.Post("/_api/import", q, nil, importData, "application/x-www-form-urlencoded", nil, []int{200, 201, 202}, []int{400, 404, 409, 307}, operationTimeout, retryTimeout); err != nil {
+	var result interface{}
+	if _, err := t.client.Post("/_api/import", q, nil, importData, "application/x-www-form-urlencoded", &result, []int{200, 201, 202}, []int{400, 404, 409, 307}, operationTimeout, retryTimeout); err != nil {
 		// This is a failure
 		t.importCounter.failed++
 		t.reportFailure(test.NewFailure("Failed to import documents in collection '%s': %v", c.name, err))
 		return maskAny(err)
 	}
+
+	switch v := result.(type) {
+	case map[string]interface{}:
+		if created, ok := v["created"]; ok {
+			if cint, ok := created.(float64); ok {
+				if cint != ndocs {
+					// We do not create a failure here, since some chaos can
+					// always prevent an import from going through. However,
+					// this incident will be logged and the half-imported
+					// collection will by left in the database for later
+					// inspecting.
+					if details, ok := v["details"]; ok {
+						t.importCounter.failed++
+						return maskAny(fmt.Errorf("Failed to import documents in collection '%s': incomplete import, details: %v", c.name, details))
+					} else { // details missing although error
+						return maskAny(fmt.Errorf("Failed to import documents in collection '%s': incomplete import, no details", c.name))
+					}
+				} // no import off
+			}
+		}
+	default:
+		t.importCounter.failed++
+		t.reportFailure(
+			test.NewFailure("Failed to import documents in collection '%s': unexpected result %v", c.name, result))
+		return maskAny(fmt.Errorf("Failed to import documents in collection '%s': unexpected result %v", c.name, result))
+	}
+
 	for _, d := range docs {
 		c.existingDocs[d.Key] = d
 	}
