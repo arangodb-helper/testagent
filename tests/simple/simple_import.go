@@ -40,6 +40,7 @@ func (t *simpleTest) importDocuments(c *collection) error {
 	q := url.Values{}
 	q.Set("collection", c.name)
 	q.Set("waitForSync", "true")
+	q.Set("details", "true")
 	importData, docs := t.createImportDocument()
 	t.log.Infof("Importing %d documents ('%s' - '%s') into '%s'...", len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name)
 	var result interface{}

@@ -707,6 +707,7 @@ func (t *simpleTest) createAndInitCollection() error {
 	// Import documents
 	if err := t.importDocuments(c); err != nil {
 		t.log.Errorf("Failed to import documents: %#v", err)
+		return maskAny(err)
 	}
 	t.actions++
 	t.registerCollection(c)
