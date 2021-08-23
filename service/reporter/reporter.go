@@ -386,7 +386,6 @@ func (s *reporter) agencyDump(folder string, fileNames chan string, machines []c
 					} else {
 						fmt.Fprintf(f, "\nError fetching logs: %#v\n", e)
 						s.log.Errorf("Error fetching agent logs: %#v", e)
-						return "", maskAny(err)
 					}
 					return f.Name(), nil
 				}(); err != nil {
