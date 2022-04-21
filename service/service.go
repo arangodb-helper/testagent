@@ -1,6 +1,10 @@
 package service
 
 import (
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	chaos "github.com/arangodb-helper/testagent/service/chaos"
@@ -8,6 +12,7 @@ import (
 	"github.com/arangodb-helper/testagent/service/reporter"
 	"github.com/arangodb-helper/testagent/service/server"
 	"github.com/arangodb-helper/testagent/service/test"
+	"github.com/arangodb-helper/testagent/tests/util"
 	logging "github.com/op/go-logging"
 	"golang.org/x/sync/errgroup"
 )
@@ -69,6 +74,71 @@ func (s *Service) Run(stopChan chan struct{}, withChaos bool) error {
 	s.Logger.Info("Waiting for cluster ready")
 	if err := c.WaitUntilReady(); err != nil {
 		return maskAny(err)
+	}
+
+	type versionJSON struct {
+		Server  string `json:"server"`
+		License string `json:"license"`
+		Version string `json:"version"`
+	}
+
+	enterpriseLicense := os.Getenv("ARANGO_ENTERPRISE_LICENSE")
+	if enterpriseLicense != "" {
+		client := util.NewArangoClient(s.Logger, c)
+		hdr := make(map[string]string)
+		hdr["accept"] = "application/json"
+		var versionObj versionJSON
+		res, e := client.Get("/_api/version", nil, hdr, &versionObj, []int{200}, []int{}, 60, 1)
+
+		if e != nil || res == nil {
+			s.Logger.Errorf("Error getting version")
+			return maskAny(e[0])
+		}
+
+		// Get normalized version string with format "major.minor"
+		var normalizedVersion string
+		c := strings.Count(versionObj.Version, ".")
+		if c != 2 {
+			normalizedVersion = versionObj.Version
+		} else {
+			i := strings.LastIndex(versionObj.Version, ".")
+			normalizedVersion = versionObj.Version[:i]
+		}
+
+		// Transform version to float for more convenient comparison
+		versionFloat, err := strconv.ParseFloat(normalizedVersion, 32)
+		if err != nil {
+			s.Logger.Errorf("Version number is incorrect: %s", normalizedVersion)
+			return maskAny(e[0])
+		}
+
+		// We support license feature since 3.9
+		if versionFloat >= 3.9 {
+
+			type CursorResponse struct {
+				HasMore bool          `json:"hasMore,omitempty"`
+				ID      string        `json:"id,omitempty"`
+				Result  []interface{} `json:"result,omitempty"`
+			}
+
+			// Try to set license
+			var cursorResp CursorResponse
+			resp, err := client.Post("/_admin/license", nil, nil, enterpriseLicense, "", &cursorResp, []int{201},
+				[]int{400, 404}, 60, 1)
+
+			if err != nil || resp == nil {
+				s.Logger.Errorf("Error during license update")
+				return maskAny(e[0])
+			}
+
+			if resp[0].StatusCode != 201 {
+				return maskAny(fmt.Errorf(
+					"Recieved %d code during license update", resp[0].StatusCode))
+
+			}
+
+		}
+
 	}
 
 	// Create & start a chaos monkey
