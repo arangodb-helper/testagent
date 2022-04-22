@@ -1,18 +1,19 @@
 package service
 
 import (
-	"fmt"
+	"encoding/json"
+	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
+
+	"github.com/coreos/go-semver/semver"
 
 	chaos "github.com/arangodb-helper/testagent/service/chaos"
 	cluster "github.com/arangodb-helper/testagent/service/cluster"
 	"github.com/arangodb-helper/testagent/service/reporter"
 	"github.com/arangodb-helper/testagent/service/server"
 	"github.com/arangodb-helper/testagent/service/test"
-	"github.com/arangodb-helper/testagent/tests/util"
 	logging "github.com/op/go-logging"
 	"golang.org/x/sync/errgroup"
 )
@@ -76,69 +77,82 @@ func (s *Service) Run(stopChan chan struct{}, withChaos bool) error {
 		return maskAny(err)
 	}
 
-	type versionJSON struct {
-		Server  string `json:"server"`
-		License string `json:"license"`
-		Version string `json:"version"`
-	}
-
+	s.Logger.Debug("Try to set enterprise license") // REMOVE IT BEFORE MERGE?
 	enterpriseLicense := os.Getenv("ARANGO_ENTERPRISE_LICENSE")
 	if enterpriseLicense != "" {
-		client := util.NewArangoClient(s.Logger, c)
-		hdr := make(map[string]string)
-		hdr["accept"] = "application/json"
-		var versionObj versionJSON
-		res, e := client.Get("/_api/version", nil, hdr, &versionObj, []int{200}, []int{}, 60, 1)
+		m, _ := c.Machines()
+		host := "http://" + m[0].DBServerURL().Host
 
-		if e != nil || res == nil {
-			s.Logger.Errorf("Error getting version")
-			return maskAny(e[0])
-		}
+		// Perform request to get Arango version
+		response, err := http.Get(host + "/_api/version")
 
-		// Get normalized version string with format "major.minor"
-		var normalizedVersion string
-		c := strings.Count(versionObj.Version, ".")
-		if c != 2 {
-			normalizedVersion = versionObj.Version
-		} else {
-			i := strings.LastIndex(versionObj.Version, ".")
-			normalizedVersion = versionObj.Version[:i]
-		}
-
-		// Transform version to float for more convenient comparison
-		versionFloat, err := strconv.ParseFloat(normalizedVersion, 32)
 		if err != nil {
-			s.Logger.Errorf("Version number is incorrect: %s", normalizedVersion)
-			return maskAny(e[0])
+			s.Logger.Error("Error making request for getting version")
+			return maskAny(err)
 		}
+
+		type versionJSON struct {
+			Server  string `json:"server"`
+			License string `json:"license"`
+			Version string `json:"version"`
+		}
+
+		// Decode response to JSON
+		var versionObj versionJSON
+		if err := json.NewDecoder(response.Body).Decode(&versionObj); err != nil {
+			s.Logger.Error("Error parsing response body for version")
+			return maskAny(err)
+		}
+
+		currVersion := semver.New(versionObj.Version)
+		supportedVersion := semver.New("3.9.0")
 
 		// We support license feature since 3.9
-		if versionFloat >= 3.9 {
+		if supportedVersion.LessThan(*currVersion) {
 
-			type CursorResponse struct {
-				HasMore bool          `json:"hasMore,omitempty"`
-				ID      string        `json:"id,omitempty"`
-				Result  []interface{} `json:"result,omitempty"`
+			// Try to update license
+			client := &http.Client{}
+			req, _ := http.NewRequest("PUT", host+"/_admin/license", strings.NewReader(enterpriseLicense))
+			req.SetBasicAuth("root", "")
+			req.ContentLength = int64(len(enterpriseLicense))
+
+			// Perform request to update license
+			resp, err := client.Do(req)
+			if err != nil {
+				s.Logger.Errorf("Error making request for updating license")
+				return maskAny(err)
 			}
 
-			// Try to set license
-			var cursorResp CursorResponse
-			resp, err := client.Post("/_admin/license", nil, nil, enterpriseLicense, "", &cursorResp, []int{201},
-				[]int{400, 404}, 60, 1)
+			// If not success
+			if resp.StatusCode != 201 {
+				type errResponseJSON struct {
+					Code         int    `json:"code"`
+					Error        bool   `json:"error"`
+					ErrorMessage string `json:"errorMessage"`
+					ErrorNum     int    `json:"errorNum"`
+				}
 
-			if err != nil || resp == nil {
-				s.Logger.Errorf("Error during license update")
-				return maskAny(e[0])
+				// Decode response to JSON
+				var response errResponseJSON
+				if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+					s.Logger.Errorf("Error parsing response body for license")
+					return maskAny(err)
+				}
+
+				s.Logger.Infof("ERROR during license update: %s", response.ErrorMessage)
+				return maskAny(err)
+
+			} else {
+				s.Logger.Infof("License successfully updated")
 			}
 
-			if resp[0].StatusCode != 201 {
-				return maskAny(fmt.Errorf(
-					"Recieved %d code during license update", resp[0].StatusCode))
-
-			}
-
+		} else {
+			s.Logger.Debug("License feature is supproted since 3.9.0") // REMOVE IT BEFORE MERGE?
 		}
 
+	} else {
+		// REMOVE IT BEFORE MERGE?
+		s.Logger.Debug("Enterprise license is not specified")
 	}
 
 	// Create & start a chaos monkey
