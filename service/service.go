@@ -77,20 +77,21 @@ func (s *Service) Run(stopChan chan struct{}, withChaos bool) error {
 		return maskAny(err)
 	}
 
-	s.Logger.Debug("Try to set enterprise license") // REMOVE IT BEFORE MERGE?
+	s.Logger.Debug("Try to set enterprise license")
 	enterpriseLicense := os.Getenv("ARANGO_ENTERPRISE_LICENSE")
 	if enterpriseLicense != "" {
 		m, _ := c.Machines()
-		host := "http://" + m[0].DBServerURL().Host
+		host := "http://" + m[0].DBServerURL().Host // Get address of DBServer
 
 		// Perform request to get Arango version
 		response, err := http.Get(host + "/_api/version")
 
 		if err != nil {
-			s.Logger.Error("Error making request for getting version")
+			s.Logger.Error("ERROR making request for getting version")
 			return maskAny(err)
 		}
 
+		// Struct for getting response
 		type versionJSON struct {
 			Server  string `json:"server"`
 			License string `json:"license"`
@@ -100,12 +101,12 @@ func (s *Service) Run(stopChan chan struct{}, withChaos bool) error {
 		// Decode response to JSON
 		var versionObj versionJSON
 		if err := json.NewDecoder(response.Body).Decode(&versionObj); err != nil {
-			s.Logger.Error("Error parsing response body for version")
+			s.Logger.Error("ERROR parsing response body for version")
 			return maskAny(err)
 		}
 
-		currVersion := semver.New(versionObj.Version)
-		supportedVersion := semver.New("3.9.0")
+		currVersion := semver.New(versionObj.Version) // Get current version of ArangoDB
+		supportedVersion := semver.New("3.8.99")      // Version number to compare with
 
 		// We support license feature since 3.9
 		if supportedVersion.LessThan(*currVersion) {
@@ -119,12 +120,13 @@ func (s *Service) Run(stopChan chan struct{}, withChaos bool) error {
 			// Perform request to update license
 			resp, err := client.Do(req)
 			if err != nil {
-				s.Logger.Errorf("Error making request for updating license")
+				s.Logger.Error("ERROR making request for updating license")
 				return maskAny(err)
 			}
 
 			// If not success
 			if resp.StatusCode != 201 {
+				// Struct for getting error response
 				type errResponseJSON struct {
 					Code         int    `json:"code"`
 					Error        bool   `json:"error"`
@@ -135,23 +137,22 @@ func (s *Service) Run(stopChan chan struct{}, withChaos bool) error {
 				// Decode response to JSON
 				var response errResponseJSON
 				if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-					s.Logger.Errorf("Error parsing response body for license")
+					s.Logger.Error("ERROR parsing response body for license")
 					return maskAny(err)
 				}
 
-				s.Logger.Infof("ERROR during license update: %s", response.ErrorMessage)
+				s.Logger.Error("ERROR during license update: %s", response.ErrorMessage)
 				return maskAny(err)
 
 			} else {
-				s.Logger.Infof("License successfully updated")
+				s.Logger.Debug("License successfully updated")
 			}
 
 		} else {
-			s.Logger.Debug("License feature is supproted since 3.9.0") // REMOVE IT BEFORE MERGE?
+			s.Logger.Debug("License feature is supproted since 3.9.0")
 		}
 
 	} else {
-		// REMOVE IT BEFORE MERGE?
 		s.Logger.Debug("Enterprise license is not specified")
 	}
 
