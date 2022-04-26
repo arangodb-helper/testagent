@@ -53,8 +53,10 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 		}
 
 		createReqTime = time.Now()
+
+		// 410 remains until resolution of APM-185
 		createResp, err = t.client.Post(
-			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 500, 503},
+			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 410, 500, 503},
 			[]int{200, 202, 307, 400, 404, 409}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			createResp[0].StatusCode, createResp[0].Error_.ErrorNum, createResp[0].CoordinatorURL)
@@ -219,7 +221,7 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 		}
 		var cursorResp CursorResponse
 		resp, err := t.client.Post(
-			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 500, 503},
+			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 410, 500, 503},
 			[]int{200, 202, 400, 404, 409, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
