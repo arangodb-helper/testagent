@@ -1,7 +1,13 @@
 package service
 
 import (
+	"encoding/json"
+	"net/http"
+	"os"
+	"strings"
 	"time"
+
+	"github.com/coreos/go-semver/semver"
 
 	chaos "github.com/arangodb-helper/testagent/service/chaos"
 	cluster "github.com/arangodb-helper/testagent/service/cluster"
@@ -69,6 +75,85 @@ func (s *Service) Run(stopChan chan struct{}, withChaos bool) error {
 	s.Logger.Info("Waiting for cluster ready")
 	if err := c.WaitUntilReady(); err != nil {
 		return maskAny(err)
+	}
+
+	s.Logger.Debug("Try to set enterprise license")
+	enterpriseLicense := os.Getenv("ARANGO_ENTERPRISE_LICENSE")
+	if enterpriseLicense != "" {
+		m, _ := c.Machines()
+		host := "http://" + m[0].DBServerURL().Host // Get address of DBServer
+
+		// Perform request to get Arango version
+		response, err := http.Get(host + "/_api/version")
+
+		if err != nil {
+			s.Logger.Error("ERROR making request for getting version")
+			return maskAny(err)
+		}
+
+		// Struct for getting response
+		type versionJSON struct {
+			Server  string `json:"server"`
+			License string `json:"license"`
+			Version string `json:"version"`
+		}
+
+		// Decode response to JSON
+		var versionObj versionJSON
+		if err := json.NewDecoder(response.Body).Decode(&versionObj); err != nil {
+			s.Logger.Error("ERROR parsing response body for version")
+			return maskAny(err)
+		}
+
+		currVersion := semver.New(versionObj.Version) // Get current version of ArangoDB
+		supportedVersion := semver.New("3.8.99")      // Version number to compare with
+
+		// We support license feature since 3.9
+		if supportedVersion.LessThan(*currVersion) {
+
+			// Try to update license
+			client := &http.Client{}
+			req, _ := http.NewRequest("PUT", host+"/_admin/license", strings.NewReader(enterpriseLicense))
+			req.SetBasicAuth("root", "")
+			req.ContentLength = int64(len(enterpriseLicense))
+
+			// Perform request to update license
+			resp, err := client.Do(req)
+			if err != nil {
+				s.Logger.Error("ERROR making request for updating license")
+				return maskAny(err)
+			}
+
+			// If not success
+			if resp.StatusCode != 201 {
+				// Struct for getting error response
+				type errResponseJSON struct {
+					Code         int    `json:"code"`
+					Error        bool   `json:"error"`
+					ErrorMessage string `json:"errorMessage"`
+					ErrorNum     int    `json:"errorNum"`
+				}
+
+				// Decode response to JSON
+				var response errResponseJSON
+				if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+					s.Logger.Error("ERROR parsing response body for license")
+					return maskAny(err)
+				}
+
+				s.Logger.Error("ERROR during license update: %s", response.ErrorMessage)
+				return maskAny(err)
+
+			} else {
+				s.Logger.Debug("License successfully updated")
+			}
+
+		} else {
+			s.Logger.Debug("License feature is supproted since 3.9.0")
+		}
+
+	} else {
+		s.Logger.Debug("Enterprise license is not specified")
 	}
 
 	// Create & start a chaos monkey
