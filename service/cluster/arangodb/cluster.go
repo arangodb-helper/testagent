@@ -34,6 +34,7 @@ type ArangodbConfig struct {
 	DockerInterface     string   // Network Interface used to connect docker container to
 	Verbose             bool     // Turn on debug logging
 	Privileged          bool     // Start containers with `--privileged`
+	ReplicationVersion2 bool     // Use replication version 2
 }
 
 // arangodbClusterBuilder implements a ClusterBuilder using arangodb.

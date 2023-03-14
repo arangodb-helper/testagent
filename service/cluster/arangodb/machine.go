@@ -325,6 +325,10 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 	if c.Privileged {
 		args = append(args, "--docker.privileged")
 	}
+	if c.ReplicationVersion2 {
+		args = append(args, "--dbservers.database.default-replication-version=2")
+		args = append(args, "--coordinators.database.default-replication-version=2")
+	}
 	if c.ArangodbConfig.ArangoImage != "" {
 		args = append(args,
 			fmt.Sprintf("--docker.image=%s", c.ArangodbConfig.ArangoImage),
