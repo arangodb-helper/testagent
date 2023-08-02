@@ -114,4 +114,5 @@ export DOCKER_CERT_PATH=/path/to/cert
 - `--arango-image` Docker image containing `arangod`.
 - `--docker-endpoint` How to reach the docker host (this option can be specified multiple times to use multiple docker hosts).
 - `--docker-host-ip` IP of docker host.
-- `--docker-net-host` If set, run all containers with `--net=host`. (Make sure the testagent container itself is also started with `--net=host`)
+- `--docker-net-host` If set, run all containers with `--net=host`. (Make sure the testagent container itself is also started with `--net=host`). Network chaos is not supported with host networking.
+- `--replication-version-2` If set, use replication version 2

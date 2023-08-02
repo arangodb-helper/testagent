@@ -21,7 +21,7 @@ type TestScript interface {
 	Status() TestStatus
 
 	// Start triggers the test script to start.
-	// It should spwan actions in a go routine.
+	// It should spawn actions in a go routine.
 	Start(cluster cluster.Cluster, listener TestListener) error
 
 	// Stop any running test. This should not return until tests are actually stopped.

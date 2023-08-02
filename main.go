@@ -12,6 +12,7 @@ import (
 	service "github.com/arangodb-helper/testagent/service"
 	arangodb "github.com/arangodb-helper/testagent/service/cluster/arangodb"
 	"github.com/arangodb-helper/testagent/service/test"
+	"github.com/arangodb-helper/testagent/tests/replication2"
 	"github.com/arangodb-helper/testagent/tests/simple"
 	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
@@ -40,6 +41,7 @@ var (
 		service.ServiceConfig
 		arangodb.ArangodbConfig
 		simple.SimpleConfig
+		replication2.Replication2Config
 		logLevel string
 	}
 	maskAny = errors.WithStack
@@ -67,6 +69,13 @@ func init() {
 	f.IntVar(&appFlags.SimpleConfig.MaxCollections, "simple-max-collections", 10, "Upper limit to the number of collections created in simple test")
 	f.DurationVar(&appFlags.SimpleConfig.OperationTimeout, "simple-operation-timeout", defaultOperationTimeout, "Timeout per database operation")
 	f.DurationVar(&appFlags.SimpleConfig.RetryTimeout, "simple-retry-timeout", defaultRetryTimeout, "How long are tests retried before giving up")
+	f.IntVar(&appFlags.Replication2Config.MaxDocuments, "replication2-max-documents", 1000000, "Upper limit to the number of documents created in replication2 test")
+	f.IntVar(&appFlags.Replication2Config.BatchSize, "replication2-batch-size", 200, "Batch size for creating documents in bulk mode in replication2 test")
+	f.IntVar(&appFlags.Replication2Config.DocumentSize, "replication2-document-size", 1024, "The size of the payload field in bytes in all documents in replication2 test")
+	f.IntVar(&appFlags.Replication2Config.NumberOfShards, "replication2-shards", 10, "Number of shards in replication2 test")
+	f.IntVar(&appFlags.Replication2Config.ReplicationFactor, "replication2-replicationFactor", 3, "Replication factor in replication2 test")
+	f.DurationVar(&appFlags.Replication2Config.OperationTimeout, "replication2-operation-timeout", defaultOperationTimeout, "Timeout per database operation in replication2 test")
+	f.DurationVar(&appFlags.Replication2Config.RetryTimeout, "replication2-retry-timeout", defaultRetryTimeout, "How long are tests retried before giving up in replication2 test")
 }
 
 // handleSignal listens for termination signals and stops this process onup termination.
@@ -135,7 +144,8 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 
 	// Create tests
 	tests := []test.TestScript{
-		simple.NewSimpleTest(log, appFlags.ReportDir, appFlags.SimpleConfig),
+		replication2.NewReplication2Test(log, appFlags.ReportDir, appFlags.Replication2Config),
+		// simple.NewSimpleTest(log, appFlags.ReportDir, appFlags.SimpleConfig),
 	}
 
 	// Create service
