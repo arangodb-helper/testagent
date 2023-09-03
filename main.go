@@ -70,6 +70,7 @@ func init() {
 	f.DurationVar(&appFlags.SimpleConfig.OperationTimeout, "simple-operation-timeout", defaultOperationTimeout, "Timeout per database operation")
 	f.DurationVar(&appFlags.SimpleConfig.RetryTimeout, "simple-retry-timeout", defaultRetryTimeout, "How long are tests retried before giving up")
 	f.IntVar(&appFlags.Replication2Config.MaxDocuments, "replication2-max-documents", 1000000, "Upper limit to the number of documents created in replication2 test")
+	f.IntVar(&appFlags.Replication2Config.MaxEdges, "replication2-max-edges", 500000, "Upper limit to the number of edges created in replication2 test")
 	f.IntVar(&appFlags.Replication2Config.BatchSize, "replication2-batch-size", 200, "Batch size for creating documents in bulk mode in replication2 test")
 	f.IntVar(&appFlags.Replication2Config.DocumentSize, "replication2-document-size", 1024, "The size of the payload field in bytes in all documents in replication2 test")
 	f.IntVar(&appFlags.Replication2Config.NumberOfShards, "replication2-shards", 10, "Number of shards in replication2 test")

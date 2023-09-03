@@ -13,15 +13,23 @@ var (
 
 // createCollection creates a new collection.
 // The operation is expected to succeed.
-func (t *replication2Test) createCollection(collectionName string) error {
+func (t *replication2Test) createCollection(collectionName string, edge bool) error {
+	var colType int
+	if edge {
+		colType = 3
+	} else {
+		colType = 2
+	}
 	opts := struct {
 		Name              string `json:"name"`
 		NumberOfShards    int    `json:"numberOfShards"`
 		ReplicationFactor int    `json:"replicationFactor"`
+		Type              int    `json:"type"`
 	}{
 		Name:              collectionName,
 		NumberOfShards:    t.NumberOfShards,
 		ReplicationFactor: t.ReplicationFactor,
+		Type:              colType,
 	}
 	//operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
 	// For now, we increase the timeout to 5 minutes, since the cluster-internal

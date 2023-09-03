@@ -6,6 +6,7 @@ import (
 	stdlog "log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 
 type Replication2Config struct {
 	MaxDocuments      int
+	MaxEdges          int
 	BatchSize         int
 	DocumentSize      int
 	NumberOfShards    int
@@ -41,16 +43,25 @@ type replication2Test struct {
 	client                   util.ArangoClientInterface
 	failures                 int
 	actions                  int
-	collectionName           string
-	collectionCreated        bool
+	docCollectionName        string
+	edgeCollectionName       string
+	graphName                string
+	docCollectionCreated     bool
+	edgeCollectionCreated    bool
+	graphCreated             bool
 	numberOfDocsThisDb       int
 	numberOfCreatedDocsTotal int64
 	documentIdSeq            int64
+	collectionNameSeq        int64
 	existingDocSeeds         []int64
 	createCollectionCounter  counter
+	createGraphCounter       counter
 	dropCollectionCounter    counter
+	dropGraphCounter         counter
+	singleDocCreateCounter   counter
 	bulkCreateCounter        counter
 	readExistingCounter      counter
+	updateExistingCounter    counter
 }
 
 type counter struct {
@@ -61,14 +72,26 @@ type counter struct {
 // NewReplication2Test creates a replication2 test
 func NewReplication2Test(log *logging.Logger, reportDir string, config Replication2Config) test.TestScript {
 	return &replication2Test{
-		Replication2Config: config,
-		reportDir:          reportDir,
-		log:                log,
-		collectionCreated:  false,
-		documentIdSeq:      0,
-		existingDocSeeds:   make([]int64, config.MaxDocuments),
-		collectionName:     "replication2_docs",
+		Replication2Config:   config,
+		reportDir:            reportDir,
+		log:                  log,
+		docCollectionCreated: false,
+		documentIdSeq:        0,
+		collectionNameSeq:    0,
+		existingDocSeeds:     make([]int64, 0, config.MaxDocuments),
 	}
+}
+
+func generateCollectionName(seed int64) string {
+	return "replication2_docs_" + strconv.FormatInt(seed, 10)
+}
+
+func generateEdgeCollectionName(seed int64) string {
+	return "replication2_edges_" + strconv.FormatInt(seed, 10)
+}
+
+func generateGraphName(seed int64) string {
+	return "simple_named_graph_" + strconv.FormatInt(seed, 10)
 }
 
 // Name returns the name of the script
@@ -146,6 +169,7 @@ func (t *replication2Test) Status() test.TestStatus {
 			cc("#collections created", t.createCollectionCounter),
 			cc("#collections dropped", t.dropCollectionCounter),
 			cc("#document batches created", t.bulkCreateCounter),
+			cc("#single documents created", t.singleDocCreateCounter),
 		},
 	}
 
@@ -223,18 +247,19 @@ func (t *replication2Test) testLoop() {
 		t.paused = false
 		t.actions++
 		if plan == nil || planIndex >= len(plan) {
-			plan = []int{0, 1, 2, 3, 4, 5} // Update when more tests are added
+			plan = []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9} // Update when more tests are added
 			planIndex = 0
 		}
 
 		switch plan[planIndex] {
 		case 0:
-			// create a collection
-			if !t.collectionCreated {
-				if err := t.createCollection(t.collectionName); err != nil {
+			// create a document collection
+			if !t.docCollectionCreated {
+				t.docCollectionName = generateCollectionName(t.collectionNameSeq)
+				if err := t.createCollection(t.docCollectionName, false); err != nil {
 					t.log.Errorf("Failed to create collection: %v", err)
 				} else {
-					t.collectionCreated = true
+					t.docCollectionCreated = true
 					t.actions++
 				}
 			}
@@ -242,9 +267,9 @@ func (t *replication2Test) testLoop() {
 
 		case 1:
 			// create documents
-			if t.collectionCreated {
+			if t.docCollectionCreated {
 				for {
-					if t.numberOfDocsThisDb >= t.MaxDocuments {
+					if t.numberOfDocsThisDb >= t.MaxDocuments-t.MaxEdges {
 						break
 					}
 					var thisBatchSize int
@@ -253,23 +278,57 @@ func (t *replication2Test) testLoop() {
 					} else {
 						thisBatchSize = t.MaxDocuments - t.numberOfDocsThisDb
 					}
-					if err := t.createDocuments(thisBatchSize, t.documentIdSeq); err != nil {
-						t.log.Errorf("Failed to create documents: %#v", err)
-					} else {
-						t.numberOfDocsThisDb += thisBatchSize
-						t.numberOfCreatedDocsTotal += int64(thisBatchSize)
+
+					for i := 0; i < thisBatchSize; i++ {
+						t.createDocument()
+						t.actions++
+						t.numberOfDocsThisDb++
+						t.numberOfCreatedDocsTotal++
 					}
-					t.documentIdSeq += int64(thisBatchSize)
-					t.actions++
+
+					//FIXME: use bulk document creation here when createDocuments function is fixed
+
+					// if err := t.createDocuments(thisBatchSize, t.documentIdSeq); err != nil {
+					// 	t.log.Errorf("Failed to create documents: %#v", err)
+					// } else {
+					// 	t.numberOfDocsThisDb += thisBatchSize
+					// 	t.numberOfCreatedDocsTotal += int64(thisBatchSize)
+					// }
+					// t.documentIdSeq += int64(thisBatchSize)
+					// t.actions++
 				}
 			}
 			planIndex++
 
 		case 2:
+			// create edges
+			if t.edgeCollectionCreated {
+				for {
+					if t.numberOfDocsThisDb >= t.MaxEdges {
+						break
+					}
+					var thisBatchSize int
+					if t.BatchSize <= t.MaxEdges-t.numberOfDocsThisDb {
+						thisBatchSize = t.BatchSize
+					} else {
+						thisBatchSize = t.MaxEdges - t.numberOfDocsThisDb
+					}
+
+					for i := 0; i < thisBatchSize; i++ {
+						t.createEdge()
+						t.actions++
+						t.numberOfDocsThisDb++
+						t.numberOfCreatedDocsTotal++
+					}
+				}
+			}
+			planIndex++
+
+		case 3:
 			// read documents
-			if t.collectionCreated {
+			if t.docCollectionCreated {
 				for _, seed := range t.existingDocSeeds {
-					if err := t.readExistingDocument(t.collectionName, seed, false); err != nil {
+					if err := t.readExistingDocument(seed, false); err != nil {
 						t.log.Errorf("Failed to read document: %v", err)
 						t.readExistingCounter.failed++
 					} else {
@@ -280,24 +339,74 @@ func (t *replication2Test) testLoop() {
 			}
 			planIndex++
 
-		case 3:
-			// update documents
-			planIndex++
-
 		case 4:
-			// read documents again after update
+			// update documents
+			// if t.docCollectionCreated {
+			// 	for _, seed := range t.existingDocSeeds {
+			// 		if err := t.readExistingDocument(t.docCollectionName, seed, false); err != nil {
+			// 			t.log.Errorf("Failed to read document: %v", err)
+			// 			t.readExistingCounter.failed++
+			// 		} else {
+			// 			t.actions++
+			// 			t.readExistingCounter.succeeded++
+			// 		}
+			// 	}
+			// }
 			planIndex++
 
 		case 5:
-			// drop collection
-			if t.collectionCreated && t.numberOfDocsThisDb >= t.MaxDocuments {
-				if err := t.dropCollection(t.collectionName); err != nil {
+			// read documents again after update
+			planIndex++
+
+		case 6:
+			//create an edge collection
+			if t.docCollectionCreated && !t.edgeCollectionCreated {
+				t.edgeCollectionName = generateEdgeCollectionName(t.collectionNameSeq)
+				if err := t.createCollection(t.edgeCollectionName, true); err != nil {
+					t.log.Errorf("Failed to create collection: %v", err)
+				} else {
+					t.edgeCollectionCreated = true
+					t.actions++
+				}
+			}
+			planIndex++
+
+		case 7:
+			//create a named graph
+			if t.docCollectionCreated && t.edgeCollectionCreated {
+				t.graphName = generateGraphName(t.collectionNameSeq)
+				if err := t.createGraph(t.graphName, t.edgeCollectionName, []string{t.docCollectionName}, []string{t.docCollectionName},
+					nil, false, false, "", nil, 0, 0, 0); err != nil {
+					t.log.Errorf("Failed to create graph: %v", err)
+				} else {
+					t.graphCreated = true
+					t.actions++
+				}
+			}
+			planIndex++
+
+		case 8:
+			// drop graphs
+			if t.docCollectionCreated && t.numberOfDocsThisDb >= t.MaxDocuments {
+				if err := t.dropGraph(t.graphName, false); err != nil {
+					t.log.Errorf("Failed to drop graph: %v", err)
+				} else {
+					t.graphCreated = false
+					t.actions++
+				}
+			}
+			planIndex++
+
+		case 9:
+			// drop collections
+			if t.docCollectionCreated && t.numberOfDocsThisDb >= t.MaxDocuments && !t.graphCreated {
+				if err := t.dropCollection(t.docCollectionName); err != nil {
 					t.log.Errorf("Failed to drop collection: %v", err)
 				} else {
-					t.collectionCreated = false
+					t.docCollectionCreated = false
 					t.numberOfDocsThisDb = 0
-					t.existingDocSeeds = make([]int64, t.MaxDocuments)
-					t.dropCollectionCounter.succeeded++
+					t.existingDocSeeds = t.existingDocSeeds[:0]
+					t.collectionNameSeq++
 					t.actions++
 				}
 			}
