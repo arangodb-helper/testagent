@@ -29,39 +29,40 @@ type Replication2Config struct {
 
 type replication2Test struct {
 	Replication2Config
-	activeMutex              sync.Mutex
-	logPath                  string
-	reportDir                string
-	log                      *logging.Logger
-	cluster                  cluster.Cluster
-	listener                 test.TestListener
-	stop                     chan struct{}
-	active                   bool
-	pauseRequested           bool
-	paused                   bool
-	lastRequestErr           bool
-	client                   util.ArangoClientInterface
-	failures                 int
-	actions                  int
-	docCollectionName        string
-	edgeCollectionName       string
-	graphName                string
-	docCollectionCreated     bool
-	edgeCollectionCreated    bool
-	graphCreated             bool
-	numberOfDocsThisDb       int
-	numberOfCreatedDocsTotal int64
-	documentIdSeq            int64
-	collectionNameSeq        int64
-	existingDocSeeds         []int64
-	createCollectionCounter  counter
-	createGraphCounter       counter
-	dropCollectionCounter    counter
-	dropGraphCounter         counter
-	singleDocCreateCounter   counter
-	bulkCreateCounter        counter
-	readExistingCounter      counter
-	updateExistingCounter    counter
+	activeMutex               sync.Mutex
+	logPath                   string
+	reportDir                 string
+	log                       *logging.Logger
+	cluster                   cluster.Cluster
+	listener                  test.TestListener
+	stop                      chan struct{}
+	active                    bool
+	pauseRequested            bool
+	paused                    bool
+	lastRequestErr            bool
+	client                    util.ArangoClientInterface
+	failures                  int
+	actions                   int
+	docCollectionName         string
+	edgeCollectionName        string
+	graphName                 string
+	docCollectionCreated      bool
+	edgeCollectionCreated     bool
+	graphCreated              bool
+	numberOfDocsThisDb        int
+	numberOfCreatedDocsTotal  int64
+	documentIdSeq             int64
+	collectionNameSeq         int64
+	existingDocSeeds          []int64
+	createCollectionCounter   counter
+	createGraphCounter        counter
+	dropCollectionCounter     counter
+	dropGraphCounter          counter
+	singleDocCreateCounter    counter
+	edgeDocumentCreateCounter counter
+	bulkCreateCounter         counter
+	readExistingCounter       counter
+	updateExistingCounter     counter
 }
 
 type counter struct {

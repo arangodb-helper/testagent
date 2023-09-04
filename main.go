@@ -146,7 +146,7 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 	// Create tests
 	tests := []test.TestScript{
 		replication2.NewReplication2Test(log, appFlags.ReportDir, appFlags.Replication2Config),
-		// simple.NewSimpleTest(log, appFlags.ReportDir, appFlags.SimpleConfig),
+		simple.NewSimpleTest(log, appFlags.ReportDir, appFlags.SimpleConfig),
 	}
 
 	// Create service

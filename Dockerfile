@@ -1,5 +1,5 @@
 ARG BINNAME
-ARG GOVERSION=1.15-alpine
+ARG GOVERSION=1.18-alpine
 FROM golang:${GOVERSION} AS downloader
 
 # git is required by 'go mod'
