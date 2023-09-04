@@ -108,15 +108,15 @@ func (t *replication2Test) createGraph(graphName string,
 		url := "/_api/gharial"
 		resp, err := t.client.Post(
 			url, q, nil, opts, "", nil, []int{0, 1, 201, 202, 409, 500, 503},
-			[]int{400, 404, 307}, operationTimeout, 1)
+			[]int{400, 403, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
-		// 0, 503: recheck without erxpectations
+		// 0, 503: recheck without expectations
 		//     there: good
 		//     not there: retry
-		// 200   : good
-		// 1, 500: collection couldn't be finished.
+		// 20x   : good
+		// 1, 500: graph creation couldn't be finished.
 		//     there: failure
 		//     not there: retry
 		// 409   :
@@ -127,7 +127,7 @@ func (t *replication2Test) createGraph(graphName string,
 		//         else : failure
 
 		if err[0] == nil {
-			if resp[0].StatusCode == 200 {
+			if resp[0].StatusCode == 201 || resp[0].StatusCode == 202 {
 				success = true
 			} else {
 				if resp[0].StatusCode == 1 || resp[0].StatusCode == 500 { // connection refused or not created
@@ -270,7 +270,7 @@ func (t *replication2Test) dropGraph(graphName string, dropCollections bool) err
 
 		t.log.Infof("Removing (%d) graph '%s'...", i, graphName)
 		resp, err := t.client.Delete(
-			url, q, nil, []int{0, 1, 200, 404, 500, 503}, []int{400, 409, 307}, operationTimeout, 1)
+			url, q, nil, []int{0, 1, 201, 202, 404, 500, 503}, []int{400, 409, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
 
 		if err[0] != nil {
@@ -341,7 +341,7 @@ func (t *replication2Test) createEdge() error {
 		checkRetry := false
 		success := false
 
-		t.log.Infof("Creating edge in collection '%s' with key %s...", t.edgeCollectionName)
+		t.log.Infof("Creating edge in collection '%s'", t.edgeCollectionName)
 		resp, err := t.client.Post(url, q, nil, document, "", nil,
 			[]int{0, 1, 200, 201, 202, 409, 503}, []int{400, 404, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
@@ -356,7 +356,7 @@ func (t *replication2Test) createEdge() error {
 				success = true
 			}
 		} else { // failure
-			t.singleDocCreateCounter.failed++
+			t.edgeDocumentCreateCounter.failed++
 			t.reportFailure(
 				test.NewFailure("Failed to create edge in collection '%s'", t.edgeCollectionName, err[0]))
 			return maskAny(err[0])
@@ -370,7 +370,7 @@ func (t *replication2Test) createEdge() error {
 
 		if success {
 			t.existingDocSeeds = append(t.existingDocSeeds, seed)
-			t.singleDocCreateCounter.succeeded++
+			t.edgeDocumentCreateCounter.succeeded++
 			t.log.Infof("Creating document in '%s' succeeded", t.edgeCollectionName)
 			return nil
 		}
@@ -383,7 +383,7 @@ func (t *replication2Test) createEdge() error {
 	}
 
 	// Overall timeout :(
-	t.singleDocCreateCounter.failed++
+	t.edgeDocumentCreateCounter.failed++
 	t.reportFailure(
 		test.NewFailure("Timed out while trying to create a document in '%s'.", t.edgeCollectionName))
 	return maskAny(fmt.Errorf("Timed out while trying to create a document in '%s'.", t.edgeCollectionName))

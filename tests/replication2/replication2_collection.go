@@ -15,10 +15,13 @@ var (
 // The operation is expected to succeed.
 func (t *replication2Test) createCollection(collectionName string, edge bool) error {
 	var colType int
+	var colTypeName string
 	if edge {
 		colType = 3
+		colTypeName = "edge"
 	} else {
 		colType = 2
+		colTypeName = "document"
 	}
 	opts := struct {
 		Name              string `json:"name"`
@@ -52,8 +55,8 @@ func (t *replication2Test) createCollection(collectionName string, edge bool) er
 		shouldNotExist := false
 		shouldExist := false
 
-		t.log.Infof("Creating (%d) collection '%s' with numberOfShards=%d, replicationFactor=%d...",
-			i, collectionName, t.NumberOfShards, t.ReplicationFactor)
+		t.log.Infof("Creating (%d) collection '%s' of type '%s' with numberOfShards=%d, replicationFactor=%d...",
+			i, collectionName, colTypeName, t.NumberOfShards, t.ReplicationFactor)
 		resp, err := t.client.Post(
 			"/_api/collection", nil, nil, opts, "", nil, []int{0, 1, 200, 409, 500, 503},
 			[]int{400, 404, 307}, operationTimeout, 1)
@@ -81,6 +84,7 @@ func (t *replication2Test) createCollection(collectionName string, edge bool) er
 				if resp[0].StatusCode == 1 || resp[0].StatusCode == 500 { // connection refused or not created
 					checkRetry = true
 					shouldNotExist = true
+					t.log.Debugf("Error code: %d\nError num: %d\nError message: %s", resp[0].Error_.Code, resp[0].Error_.ErrorNum, resp[0].Error_.ErrorMessage)
 				} else if resp[0].StatusCode == 409 {
 					if i == 1 {
 						// This is a failure
@@ -133,8 +137,8 @@ func (t *replication2Test) createCollection(collectionName string, edge bool) er
 		if success {
 			t.createCollectionCounter.succeeded++
 			t.log.Infof(
-				"Creating collection '%s' with numberOfShards=%d, replicationFactor=%d succeeded",
-				collectionName, t.NumberOfShards, t.ReplicationFactor)
+				"Creating collection '%s' of type '%s' with numberOfShards=%d, replicationFactor=%d succeeded",
+				collectionName, colTypeName, t.NumberOfShards, t.ReplicationFactor)
 			return nil
 		}
 
