@@ -42,6 +42,8 @@ var (
 		arangodb.ArangodbConfig
 		simple.SimpleConfig
 		replication2.Replication2Config
+		replication2.DocColConfig
+		replication2.CommunityGraphConf
 		logLevel string
 	}
 	maskAny = errors.WithStack
@@ -69,14 +71,17 @@ func init() {
 	f.IntVar(&appFlags.SimpleConfig.MaxCollections, "simple-max-collections", 10, "Upper limit to the number of collections created in simple test")
 	f.DurationVar(&appFlags.SimpleConfig.OperationTimeout, "simple-operation-timeout", defaultOperationTimeout, "Timeout per database operation")
 	f.DurationVar(&appFlags.SimpleConfig.RetryTimeout, "simple-retry-timeout", defaultRetryTimeout, "How long are tests retried before giving up")
-	f.IntVar(&appFlags.Replication2Config.MaxDocuments, "replication2-max-documents", 1000000, "Upper limit to the number of documents created in replication2 test")
-	f.IntVar(&appFlags.Replication2Config.MaxEdges, "replication2-max-edges", 500000, "Upper limit to the number of edges created in replication2 test")
-	f.IntVar(&appFlags.Replication2Config.BatchSize, "replication2-batch-size", 200, "Batch size for creating documents in bulk mode in replication2 test")
-	f.IntVar(&appFlags.Replication2Config.DocumentSize, "replication2-document-size", 1024, "The size of the payload field in bytes in all documents in replication2 test")
-	f.IntVar(&appFlags.Replication2Config.NumberOfShards, "replication2-shards", 10, "Number of shards in replication2 test")
-	f.IntVar(&appFlags.Replication2Config.ReplicationFactor, "replication2-replicationFactor", 3, "Replication factor in replication2 test")
-	f.DurationVar(&appFlags.Replication2Config.OperationTimeout, "replication2-operation-timeout", defaultOperationTimeout, "Timeout per database operation in replication2 test")
-	f.DurationVar(&appFlags.Replication2Config.RetryTimeout, "replication2-retry-timeout", defaultRetryTimeout, "How long are tests retried before giving up in replication2 test")
+	f.IntVar(&appFlags.CommunityGraphConf.MaxEdges, "communitygraph-max-edges", 500000, "Upper limit to the number of edges created in community graph test")
+	f.IntVar(&appFlags.CommunityGraphConf.MaxVertices, "communitygraph-max-vertices", 100000, "Upper limit to the number of vertices created in community graph test")
+	f.IntVar(&appFlags.CommunityGraphConf.VertexSize, "communitygraph-vertex-size", 512, "The size of the payload field in bytes in all vertices in community graph test")
+	f.IntVar(&appFlags.CommunityGraphConf.EdgeSize, "communitygraph-edge-size", 128, "The size of the payload field in bytes in all vertices in community graph test")
+	f.IntVar(&appFlags.DocColConfig.MaxDocuments, "replication2-max-documents", 1000000, "Upper limit to the number of documents created in replication2 test")
+	f.IntVar(&appFlags.DocColConfig.BatchSize, "replication2-batch-size", 200, "Batch size for creating documents in bulk mode in replication2 test")
+	f.IntVar(&appFlags.DocColConfig.DocumentSize, "replication2-document-size", 1024, "The size of the payload field in bytes in all documents in replication2 test")
+	f.IntVar(&appFlags.Replication2Config.NumberOfShards, "replication2-shards", 10, "Number of shards in all replication2 tests")
+	f.IntVar(&appFlags.Replication2Config.ReplicationFactor, "replication2-replicationFactor", 3, "Replication factor in all replication2 tests")
+	f.DurationVar(&appFlags.Replication2Config.OperationTimeout, "replication2-operation-timeout", defaultOperationTimeout, "Timeout per database operation in all replication2 tests")
+	f.DurationVar(&appFlags.Replication2Config.RetryTimeout, "replication2-retry-timeout", defaultRetryTimeout, "How long are tests retried before giving up in all replication2 tests")
 }
 
 // handleSignal listens for termination signals and stops this process onup termination.
@@ -145,7 +150,8 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 
 	// Create tests
 	tests := []test.TestScript{
-		replication2.NewReplication2Test(log, appFlags.ReportDir, appFlags.Replication2Config),
+		replication2.NewDocColTest(log, appFlags.ReportDir, appFlags.Replication2Config, appFlags.DocColConfig),
+		replication2.NewComGraphTest(log, appFlags.ReportDir, appFlags.Replication2Config, appFlags.CommunityGraphConf),
 		simple.NewSimpleTest(log, appFlags.ReportDir, appFlags.SimpleConfig),
 	}
 

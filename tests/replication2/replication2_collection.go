@@ -13,7 +13,7 @@ var (
 
 // createCollection creates a new collection.
 // The operation is expected to succeed.
-func (t *replication2Test) createCollection(collectionName string, edge bool) error {
+func (t *Replication2Test) createCollection(collectionName string, edge bool) error {
 	var colType int
 	var colTypeName string
 	if edge {
@@ -158,7 +158,7 @@ func (t *replication2Test) createCollection(collectionName string, edge bool) er
 
 // dropCollection remove an existing collection.
 // The operation is expected to succeed.
-func (t *replication2Test) dropCollection(collectionName string) error {
+func (t *Replication2Test) dropCollection(collectionName string) error {
 
 	operationTimeout := t.OperationTimeout
 	testTimeout := time.Now().Add(t.OperationTimeout * 5)
@@ -221,7 +221,7 @@ func (t *replication2Test) dropCollection(collectionName string) error {
 
 }
 
-func (t *replication2Test) collectionExists(collectionName string) (bool, error) {
+func (t *Replication2Test) collectionExists(collectionName string) (bool, error) {
 
 	operationTimeout := time.Duration(ReadTimeout) * time.Second
 	timeout := time.Now().Add(operationTimeout)

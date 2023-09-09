@@ -19,20 +19,26 @@ type EdgeDocument struct {
 	To            string `json:"_to"`
 }
 
-func NewEdgeDocument(from string, to string, colName string) EdgeDocument {
-
+func NewEdgeDocument(from string, to string, vertexColName string, edgeSize int, seed int64) EdgeDocument {
+	randGen := rand.New(rand.NewSource(seed))
+	payloadBytes := make([]byte, edgeSize)
+	lowerBound := 32
+	upperBound := 126
+	for i := 0; i < edgeSize; i++ {
+		payloadBytes[i] = byte(randGen.Int31n(int32(upperBound-lowerBound)) + int32(lowerBound))
+	}
 	return EdgeDocument{
-		Value:         0,
+		Value:         seed,
 		UpdateCounter: 0,
-		Payload:       "",
-		From:          colName + "/" + from,
-		To:            colName + "/" + to,
+		Payload:       string(payloadBytes),
+		From:          vertexColName + "/" + from,
+		To:            vertexColName + "/" + to,
 	}
 }
 
 // createGraph creates a new graph.
 // The operation is expected to succeed.
-func (t *replication2Test) createGraph(graphName string,
+func (t *Replication2Test) createGraph(graphName string,
 	edgeCol string, fromCols []string, toCols []string, orphans []string,
 	isSmart bool, isDisjoint bool, smartGraphAttribute string,
 	satellites []string, numberOfShards int, replicatoinFactor int, writeConcern int) error {
@@ -202,7 +208,7 @@ func (t *replication2Test) createGraph(graphName string,
 	return maskAny(fmt.Errorf("Timed out while trying to create (%d) graph %s.", i, graphName))
 }
 
-func (t *replication2Test) graphExists(graphName string) (bool, error) {
+func (t *Replication2Test) graphExists(graphName string) (bool, error) {
 
 	operationTimeout := time.Duration(ReadTimeout) * time.Second
 	timeout := time.Now().Add(operationTimeout)
@@ -248,7 +254,7 @@ func (t *replication2Test) graphExists(graphName string) (bool, error) {
 
 }
 
-func (t *replication2Test) dropGraph(graphName string, dropCollections bool) error {
+func (t *Replication2Test) dropGraph(graphName string, dropCollections bool) error {
 
 	operationTimeout := t.OperationTimeout
 	testTimeout := time.Now().Add(t.OperationTimeout * 5)
@@ -314,20 +320,18 @@ func (t *replication2Test) dropGraph(graphName string, dropCollections bool) err
 
 }
 
-func (t *replication2Test) createEdge() error {
+func (t *Replication2Test) createEdge(to string, from string, edgeColName string, vertexColName string, edgeSize int) error {
 
 	operationTimeout := t.OperationTimeout
 	testTimeout := time.Now().Add(operationTimeout)
 
 	var seed = t.documentIdSeq
 	t.documentIdSeq++
-	from := strconv.FormatInt(t.existingDocSeeds[rand.Intn(len(t.existingDocSeeds))], 10)
-	to := strconv.FormatInt(t.existingDocSeeds[rand.Intn(len(t.existingDocSeeds))], 10)
-	document := NewEdgeDocument(from, to, t.docCollectionName)
+	document := NewEdgeDocument(from, to, vertexColName, edgeSize, seed)
 
 	q := url.Values{}
 	q.Set("waitForSync", "true")
-	url := fmt.Sprintf("/_api/document/%s", t.edgeCollectionName)
+	url := fmt.Sprintf("/_api/document/%s", edgeColName)
 	backoff := time.Millisecond * 250
 	i := 0
 
@@ -341,7 +345,7 @@ func (t *replication2Test) createEdge() error {
 		checkRetry := false
 		success := false
 
-		t.log.Infof("Creating edge in collection '%s'", t.edgeCollectionName)
+		t.log.Infof("Creating edge in collection '%s'", edgeColName)
 		resp, err := t.client.Post(url, q, nil, document, "", nil,
 			[]int{0, 1, 200, 201, 202, 409, 503}, []int{400, 404, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
@@ -358,20 +362,21 @@ func (t *replication2Test) createEdge() error {
 		} else { // failure
 			t.edgeDocumentCreateCounter.failed++
 			t.reportFailure(
-				test.NewFailure("Failed to create edge in collection '%s'", t.edgeCollectionName, err[0]))
+				test.NewFailure("Failed to create edge in collection '%s'", edgeColName, err[0]))
 			return maskAny(err[0])
 		}
 
 		//FIXME: implement checkretry - check if documents were still created even though we got a bad http response from coordinator
 		if checkRetry {
-			e := t.readExistingDocument(seed, false)
-			success = e == nil
+			// e := t.readExistingDocument(seed, false)
+			// success = e == nil
+			success = false
 		}
 
 		if success {
 			t.existingDocSeeds = append(t.existingDocSeeds, seed)
 			t.edgeDocumentCreateCounter.succeeded++
-			t.log.Infof("Creating document in '%s' succeeded", t.edgeCollectionName)
+			t.log.Infof("Creating document in '%s' succeeded", edgeColName)
 			return nil
 		}
 
@@ -385,6 +390,6 @@ func (t *replication2Test) createEdge() error {
 	// Overall timeout :(
 	t.edgeDocumentCreateCounter.failed++
 	t.reportFailure(
-		test.NewFailure("Timed out while trying to create a document in '%s'.", t.edgeCollectionName))
-	return maskAny(fmt.Errorf("Timed out while trying to create a document in '%s'.", t.edgeCollectionName))
+		test.NewFailure("Timed out while trying to create a document in '%s'.", edgeColName))
+	return maskAny(fmt.Errorf("Timed out while trying to create a document in '%s'.", edgeColName))
 }
