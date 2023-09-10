@@ -230,8 +230,7 @@ func (t *Replication2Test) readExistingDocument(colName string, expectedDocument
 	operationTimeout := t.OperationTimeout / 5
 	testTimeout := time.Now().Add(t.OperationTimeout)
 	key := reflect.ValueOf(expectedDocument).FieldByName("Key").String()
-	docType := reflect.TypeOf(expectedDocument)
-	result := reflect.New(docType)
+	result := reflect.New(reflect.TypeOf(expectedDocument)).Interface()
 	i := 0
 	url := fmt.Sprintf("/_api/document/%s/%s", colName, key)
 	backoff := time.Millisecond * 100
@@ -260,7 +259,7 @@ func (t *Replication2Test) readExistingDocument(colName string, expectedDocument
 			if resp[0].StatusCode == 200 {
 				// Compare document against expected document
 				if !skipExpectedValueCheck {
-					if !result.MethodByName("Equals").Call([]reflect.Value{reflect.ValueOf(expectedDocument)})[0].Interface().(bool) {
+					if !reflect.ValueOf(result).MethodByName("Equals").Call([]reflect.Value{reflect.ValueOf(expectedDocument)})[0].Interface().(bool) {
 						// This is a failure
 						t.readExistingCounter.failed++
 						t.reportFailure(test.NewFailure(

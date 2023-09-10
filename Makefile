@@ -52,6 +52,17 @@ docker: $(SOURCES) templates/templates.go
 		--build-arg COMMIT="$(COMMIT)" \
 		-f Dockerfile -t arangodb/testagent .
 
+docker-dbg: $(SOURCES) templates/templates.go
+	docker build \
+		--build-arg GOVERSION=$(GOVERSION) \
+		--build-arg GOOS="$(GOOS)" \
+		--build-arg GOARCH="$(GOARCH)" \
+		--build-arg BINNAME="$(BINNAME)" \
+		--build-arg GOTAGS="$(GOTAGS)" \
+		--build-arg VERSION="$(VERSION)" \
+		--build-arg COMMIT="$(COMMIT)" \
+		-f Dockerfile.debug -t arangodb/testagent:dbg .
+
 docker-push: docker
 ifneq ($(DOCKERNAMESPACE), arangodb)
 	docker tag arangodb/testagent $(DOCKERNAMESPACE)/testagent
