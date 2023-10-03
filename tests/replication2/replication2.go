@@ -33,9 +33,11 @@ type Replication2TestHarness struct {
 }
 
 type Replication2Counters struct {
+	createDatabaseCounter     counter
 	createCollectionCounter   counter
 	createGraphCounter        counter
 	dropCollectionCounter     counter
+	dropDatabaseCounter       counter
 	dropGraphCounter          counter
 	singleDocCreateCounter    counter
 	edgeDocumentCreateCounter counter
@@ -55,6 +57,7 @@ type Replication2TestContext struct {
 
 type Replication2Test struct {
 	Replication2TestContext
+	TestName       string
 	stop           chan struct{}
 	active         bool
 	pauseRequested bool
@@ -66,6 +69,15 @@ type Replication2Test struct {
 type counter struct {
 	succeeded int
 	failed    int
+}
+
+var (
+	ReadTimeout int = 128 // to be overwritten in unittests only
+)
+
+// Name returns the name of the script
+func (t *Replication2Test) Name() string {
+	return t.TestName
 }
 
 // Stop any running test. This should not return until tests are actually stopped.
@@ -116,7 +128,7 @@ func (t *Replication2Test) CollectLogs(w io.Writer) error {
 
 // setupLogger creates a new logger that is backed by stderr AND a file.
 func (t *Replication2Test) setupLogger(cluster cluster.Cluster) error {
-	t.logPath = filepath.Join(t.reportDir, fmt.Sprintf("replication2-%s.log", cluster.ID()))
+	t.logPath = filepath.Join(t.reportDir, fmt.Sprintf("%s-%s.log", t.Name(), cluster.ID()))
 	logFile, err := os.Create(t.logPath)
 	if err != nil {
 		return maskAny(err)

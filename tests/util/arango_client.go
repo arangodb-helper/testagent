@@ -19,8 +19,9 @@ import (
 
 func NewArangoClient(log *logging.Logger, cluster cluster.Cluster) *ArangoClient {
 	return &ArangoClient{
-		log:     log,
-		cluster: cluster,
+		log:          log,
+		cluster:      cluster,
+		databaseName: "_system",
 	}
 }
 
@@ -33,6 +34,7 @@ type ArangoClient struct {
 	log                *logging.Logger
 	cluster            cluster.Cluster
 	lastCoordinatorURL *url.URL
+	databaseName       string
 }
 
 type ArangoError struct {
@@ -51,6 +53,7 @@ type ArangoResponse struct {
 
 type ArangoClientInterface interface {
 	SetCoordinator(coordinatorURL string) error
+	UseDatabase(databaseName string)
 	Get(urlPath string, query url.Values, header map[string]string,
 		result interface{},
 		successStatusCodes, failureStatusCodes []int,
@@ -76,7 +79,13 @@ func (e ArangoError) Error() string {
 	return fmt.Sprintf("%s: (code %d, errorNum %d)", e.ErrorMessage, e.Code, e.ErrorNum)
 }
 
+func (c *ArangoClient) UseDatabase(databaseName string) {
+	c.databaseName = databaseName
+	return
+}
+
 func (c *ArangoClient) createURL(urlPath string, query url.Values) (string, url.URL, error) {
+	databasePrefix := "/_db/" + c.databaseName
 	if c.lastCoordinatorURL == nil {
 		// Pick a random machine
 		machines, err := c.cluster.Machines()
@@ -92,7 +101,7 @@ func (c *ArangoClient) createURL(urlPath string, query url.Values) (string, url.
 	}
 	lastCoordinatorURL := *c.lastCoordinatorURL
 	u := lastCoordinatorURL
-	u.Path = urlPath
+	u.Path = databasePrefix + urlPath
 	if query != nil {
 		u.RawQuery = query.Encode()
 	}

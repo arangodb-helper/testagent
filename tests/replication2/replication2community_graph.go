@@ -36,6 +36,7 @@ func NewComGraphTest(log *logging.Logger, reportDir string, rep2config Replicati
 	return &CommunityGraphTest{
 		CommunityGraphConf: config,
 		Replication2Test: Replication2Test{
+			TestName: "communityGraphTest",
 			Replication2TestContext: Replication2TestContext{
 				Replication2Config: rep2config,
 				Replication2TestHarness: Replication2TestHarness{
@@ -244,9 +245,4 @@ func (t *CommunityGraphTest) Start(cluster cluster.Cluster, listener test.TestLi
 	t.active = true
 	go t.testLoop()
 	return nil
-}
-
-// Name returns the name of the script
-func (t *CommunityGraphTest) Name() string {
-	return "communityGraphTest"
 }

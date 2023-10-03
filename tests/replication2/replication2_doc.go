@@ -197,10 +197,6 @@ func (t *Replication2Test) checkIfDocumentExists(colName string, key string) (bo
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
 		if err[0] != nil {
-			// This is a failure
-			t.reportFailure(
-				test.NewFailure(
-					"Failed to read existing document with key '%s' from collection '%s': %v", key, colName, err[0]))
 			return false, maskAny(err[0])
 		} else {
 			if resp[0].StatusCode == 200 {
@@ -216,11 +212,10 @@ func (t *Replication2Test) checkIfDocumentExists(colName string, key string) (bo
 
 	}
 
-	t.readExistingCounter.failed++
 	t.reportFailure(
 		test.NewFailure(
-			"Timed out reading existing document with key '%s' from collection '%s'", key, colName))
-	return false, maskAny(fmt.Errorf("Timed out reading existing document with key '%s' from collection '%s'", key, colName))
+			"Timed out reading document with key '%s' from collection '%s'", key, colName))
+	return false, maskAny(fmt.Errorf("Timed out reading document with key '%s' from collection '%s'", key, colName))
 }
 
 // readExistingDocument reads an existing document.
