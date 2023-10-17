@@ -1,6 +1,6 @@
 module github.com/arangodb-helper/testagent
 
-go 1.21.1
+go 1.21.3
 
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
