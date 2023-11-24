@@ -44,6 +44,7 @@ type Replication2Counters struct {
 	bulkCreateCounter         counter
 	readExistingCounter       counter
 	updateExistingCounter     counter
+	traverseGraphCounter      counter
 }
 
 type Replication2TestContext struct {

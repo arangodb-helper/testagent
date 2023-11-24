@@ -10,7 +10,7 @@ import (
 )
 
 type TestDocument struct {
-	Key string `json:"_key"`
+	Key string `json:"_key,omitempty"`
 	Rev string `json:"_rev,omitempty"`
 }
 
@@ -62,7 +62,6 @@ func (t *Replication2Test) insertDocument(colName string, document any) error {
 			return maskAny(err[0])
 		}
 
-		//FIXME: implement checkretry - check if documents were still created even though we got a bad http response from coordinator
 		if checkRetry {
 			v, e := t.checkIfDocumentExists(colName, key)
 			success = e == nil && v

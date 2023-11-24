@@ -50,10 +50,6 @@ func NewDocColTest(log *logging.Logger, reportDir string, rep2config Replication
 	}
 }
 
-func randInt(min int, max int) int {
-	return min + rand.Intn(max-min)
-}
-
 type BigDocument struct {
 	TestDocument
 	Value         int64  `json:"value"`
@@ -77,11 +73,6 @@ func generateKeyFromSeed(seed int64) string {
 }
 
 func NewBigDocument(seed int64, payloadSize int) BigDocument {
-	// rand.Seed(seed)
-	// payloadBytes := make([]byte, payloadSize)
-	// for i := 0; i < payloadSize; i++ {
-	// 	payloadBytes[i] = byte(randInt(32, 126))
-	// }
 	randGen := rand.New(rand.NewSource(seed))
 	payloadBytes := make([]byte, payloadSize)
 	lowerBound := 32
@@ -89,8 +80,10 @@ func NewBigDocument(seed int64, payloadSize int) BigDocument {
 	for i := 0; i < payloadSize; i++ {
 		payloadBytes[i] = byte(randGen.Int31n(int32(upperBound-lowerBound)) + int32(lowerBound))
 	}
+	var key string
+	key = generateKeyFromSeed(seed)
 	return BigDocument{
-		TestDocument:  TestDocument{Key: generateKeyFromSeed(seed)},
+		TestDocument:  TestDocument{Key: key},
 		Value:         seed,
 		Name:          strconv.FormatInt(seed, 10),
 		Odd:           seed%2 == 1,

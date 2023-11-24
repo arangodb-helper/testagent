@@ -2,7 +2,6 @@ package replication2
 
 import (
 	"fmt"
-	"math/rand"
 	"strconv"
 	"time"
 
@@ -136,16 +135,23 @@ func (t *CommunityGraphTest) testLoop() {
 		case 3:
 			// create edges
 			if t.edgeColCreated {
+				i := 0
 				for {
 					if t.numberOfCreatedEdges >= t.MaxEdges {
 						break
 					}
-					for i := 0; i < t.MaxEdges-t.numberOfCreatedEdges; i++ {
-						from := strconv.FormatInt(t.existingDocSeeds[rand.Intn(len(t.existingDocSeeds))], 10)
-						to := strconv.FormatInt(t.existingDocSeeds[rand.Intn(len(t.existingDocSeeds))], 10)
-						t.createEdge(from, to, t.edgeColName, t.vertexColName, t.EdgeSize)
+					idx := i
+					if len(t.existingDocSeeds) <= i+1 {
+						idx = i + 1 - len(t.existingDocSeeds)
+					}
+					from := strconv.FormatInt(t.existingDocSeeds[idx], 10)
+					to := strconv.FormatInt(t.existingDocSeeds[idx+1], 10)
+					if err := t.createEdge(from, to, t.edgeColName, t.vertexColName, t.EdgeSize); err != nil {
+						t.log.Errorf("Failed to create edge document: %v", err)
+					} else {
 						t.actions++
 						t.numberOfCreatedEdges++
+						i++
 					}
 				}
 			}
@@ -167,6 +173,25 @@ func (t *CommunityGraphTest) testLoop() {
 
 		case 5:
 			//traverse graph
+			if t.vertexColCreated && t.edgeColCreated && t.graphCreated {
+				i := 0
+				for {
+					if i >= 100 {
+						break
+					}
+					length := randInt(2, 100)
+					startIdx := randInt(0, t.numberOfCreatedEdges-1-length)
+					endIdx := startIdx + length
+					start := t.vertexColName + "/" + strconv.FormatInt(t.existingDocSeeds[startIdx], 10)
+					end := t.vertexColName + "/" + strconv.FormatInt(t.existingDocSeeds[endIdx], 10)
+					if err := t.traverseGraph(start, end, t.graphName, length); err != nil {
+						t.log.Errorf("Failed to traverse graph: %v", err)
+					} else {
+						t.actions++
+					}
+					i++
+				}
+			}
 			planIndex++
 
 		case 6:
@@ -213,6 +238,7 @@ func (t *CommunityGraphTest) Status() test.TestStatus {
 			cc("#graphs dropped", t.dropGraphCounter),
 			cc("#edges created", t.edgeDocumentCreateCounter),
 			cc("#vertex documents created", t.singleDocCreateCounter),
+			cc("#graph traversals performed", t.traverseGraphCounter),
 		},
 	}
 

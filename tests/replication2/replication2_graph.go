@@ -41,7 +41,7 @@ func NewEdgeDocument(from string, to string, vertexColName string, edgeSize int,
 func (t *Replication2Test) createGraph(graphName string,
 	edgeCol string, fromCols []string, toCols []string, orphans []string,
 	isSmart bool, isDisjoint bool, smartGraphAttribute string,
-	satellites []string, numberOfShards int, replicatoinFactor int, writeConcern int) error {
+	satellites []string, numberOfShards int, replicationFactor int, writeConcern int) error {
 	opts := struct {
 		Name            string `json:"name"`
 		EdgeDefinitions []struct {
@@ -50,15 +50,15 @@ func (t *Replication2Test) createGraph(graphName string,
 			To         []string `json:"to"`
 		} `json:"edgeDefinitions"`
 		OrphanCollections []string `json:"orphanCollections,omitempty"`
-		IsSmart           bool     `json:"isSmart"`
-		IsDisjoint        bool     `json:"isDisjoint"`
 		Options           struct {
+			IsSmart             bool     `json:"isSmart"`
+			IsDisjoint          bool     `json:"isDisjoint"`
 			SmartGraphAttribute string   `json:"smartGraphAttribute,omitempty"`
 			Satellites          []string `json:"satellites,omitempty"`
 			NumberOfShards      int      `json:"numberOfShards,omitempty"`
 			ReplicationFactor   int      `json:"replicationFactor,omitempty"`
 			WriteConcern        int      `json:"writeConcern,omitempty"`
-		}
+		} `json:"options"`
 	}{
 		Name: graphName,
 		EdgeDefinitions: []struct {
@@ -71,19 +71,21 @@ func (t *Replication2Test) createGraph(graphName string,
 			To:         toCols,
 		}},
 		OrphanCollections: orphans,
-		IsSmart:           isSmart,
-		IsDisjoint:        isDisjoint,
 		Options: struct {
+			IsSmart             bool     `json:"isSmart"`
+			IsDisjoint          bool     `json:"isDisjoint"`
 			SmartGraphAttribute string   `json:"smartGraphAttribute,omitempty"`
 			Satellites          []string `json:"satellites,omitempty"`
 			NumberOfShards      int      `json:"numberOfShards,omitempty"`
 			ReplicationFactor   int      `json:"replicationFactor,omitempty"`
 			WriteConcern        int      `json:"writeConcern,omitempty"`
 		}{
+			IsSmart:             isSmart,
+			IsDisjoint:          isDisjoint,
 			SmartGraphAttribute: smartGraphAttribute,
 			Satellites:          satellites,
 			NumberOfShards:      numberOfShards,
-			ReplicationFactor:   replicatoinFactor,
+			ReplicationFactor:   replicationFactor,
 			WriteConcern:        writeConcern,
 		},
 	}
@@ -392,4 +394,150 @@ func (t *Replication2Test) createEdge(to string, from string, edgeColName string
 	t.reportFailure(
 		test.NewFailure("Timed out while trying to create a document in '%s'.", edgeColName))
 	return maskAny(fmt.Errorf("Timed out while trying to create a document in '%s'.", edgeColName))
+}
+
+func lengthExcludingNils(arr []any) int {
+	length := 0
+	for i := 0; i < len(arr); i++ {
+		if arr[i] != nil {
+			length++
+		}
+	}
+	return length
+}
+
+func (t *CommunityGraphTest) traverseGraph(to string, from string, graphName string, expectedLength int) error {
+	operationTimeout := t.OperationTimeout * 4
+	testTimeout := time.Now().Add(time.Minute * 15)
+
+	i := 0
+	backoff := time.Millisecond * 100
+
+	for {
+
+		if time.Now().After(testTimeout) {
+			break
+		}
+		i++
+
+		t.log.Infof("Creating (%d) long running AQL query to traverse graph '%s'...", i, graphName)
+		queryReq := QueryRequest{
+			Query:     fmt.Sprintf(`FOR v, e IN OUTBOUND SHORTEST_PATH "%s" TO "%s" GRAPH "%s" RETURN e`, from, to, graphName),
+			BatchSize: expectedLength * 2,
+			Count:     false,
+		}
+		var cursorResp CursorResponse
+		resp, err := t.client.Post(
+			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 410, 500, 503},
+			[]int{200, 202, 400, 404, 409, 307}, operationTimeout, 1)
+		t.log.Infof("... got http %d - arangodb %d via %s",
+			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
+
+		if err[0] != nil {
+			// This is a failure
+			t.traverseGraphCounter.failed++
+			t.reportFailure(test.NewFailure(
+				"Failed to traverse graph '%s': %v", graphName, err[0]))
+			return maskAny(err[0])
+		}
+
+		if resp[0].StatusCode == 201 { // 0, 1, 503 just go another round
+			actualLength := lengthExcludingNils(cursorResp.Result)
+			hasMore := cursorResp.HasMore
+
+			t.log.Infof("Creating long running AQL query for collection '%s' succeeded", graphName)
+			// We should've fetched all documents, check result count
+			if !(actualLength == expectedLength && hasMore == false) {
+				t.reportFailure(test.NewFailure("Graph traversal failed: was expecting a chain of %d edges, got %d", expectedLength, actualLength))
+				t.traverseGraphCounter.failed++
+				return maskAny(fmt.Errorf("Graph traversal failed: was expecting a chain of %d edges, got %d", expectedLength, actualLength))
+			}
+			t.traverseGraphCounter.succeeded++
+			return nil
+		}
+
+		// Otherwise we fall through and simply try again.
+
+		time.Sleep(backoff)
+		if backoff < time.Second*5 {
+			backoff += backoff
+		}
+
+	}
+
+	// Overall timeout :(
+	t.traverseGraphCounter.failed++
+	t.reportFailure(
+		test.NewFailure("Timed out while trying to traverse from '%s' to '%s' in graph '%s'.", from, to, graphName))
+	return maskAny(fmt.Errorf("Timed out while trying to traverse from '%s' to '%s' in graph '%s'.", from, to, graphName))
+}
+
+func (t *Replication2Test) insertEdgeDocument(colName string, document any) error {
+
+	operationTimeout := t.OperationTimeout
+	testTimeout := time.Now().Add(operationTimeout)
+
+	q := url.Values{}
+	q.Set("waitForSync", "true")
+	q.Set("returnNew", "true")
+	url := fmt.Sprintf("/_api/document/%s", colName)
+	backoff := time.Millisecond * 250
+	i := 0
+
+	for {
+
+		i++
+		if time.Now().After(testTimeout) {
+			break
+		}
+
+		checkRetry := false
+		success := false
+
+		t.log.Infof("Creating edge document in collection '%s'...", colName)
+		resp, err := t.client.Post(url, q, nil, document, "", nil,
+			[]int{0, 1, 200, 201, 202, 409, 503}, []int{400, 404, 307}, operationTimeout, 1)
+		t.log.Infof("... got http %d - arangodb %d via %s",
+			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
+
+		if err[0] == nil { // we have a response
+			if resp[0].StatusCode == 503 || resp[0].StatusCode == 409 || resp[0].StatusCode == 0 {
+				// 0, 503 and 409 -> check if accidentally successful
+				checkRetry = true
+			} else if resp[0].StatusCode != 1 {
+				//FIXME: properly check for success
+				success = true
+			}
+		} else { // failure
+			t.singleDocCreateCounter.failed++
+			t.reportFailure(
+				test.NewFailure("Failed to create document in collection '%s'", colName, err[0]))
+			return maskAny(err[0])
+		}
+
+		//FIXME: implement edge document checking by inserting extra attribute instead of the _key
+		if checkRetry {
+			// v, e := t.checkIfDocumentExists(colName, key)
+			// success = e == nil && v
+			success = true
+		}
+
+		if success {
+			t.singleDocCreateCounter.succeeded++
+			t.log.Infof("Creating edge document in '%s' succeeded", colName)
+			return nil
+		}
+
+		time.Sleep(backoff)
+		if backoff < time.Second*5 {
+			backoff += backoff
+		}
+
+	}
+
+	// Overall timeout :(
+	t.singleDocCreateCounter.failed++
+	t.reportFailure(
+		test.NewFailure("Timed out while trying to create an edge document in collection '%s'.", colName))
+	return maskAny(fmt.Errorf("Timed out while trying to create an edge document in collection '%s'.", colName))
 }
