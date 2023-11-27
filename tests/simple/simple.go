@@ -717,7 +717,7 @@ func (t *simpleTest) createAndInitCollection() error {
 	}
 	if err := t.createCollection(c, 9, 2); err != nil {
 		t.log.Errorf("Failed to create collection: %v", err)
-		t.reportFailure(test.NewFailure("Creating collection '%s' failed: %v", c.name, err))
+		t.reportFailure(test.NewFailure(t.Name(), "Creating collection '%s' failed: %v", c.name, err))
 	}
 	t.createCollectionCounter.succeeded++
 	t.actions++

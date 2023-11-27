@@ -86,7 +86,7 @@ func (t *Replication2Test) createDatabase(databaseName string, sharding string, 
 					if i == 1 {
 						// This is a failure
 						t.createDatabaseCounter.failed++
-						t.reportFailure(test.NewFailure("Failed to create database '%s': got 409 on first attempt", databaseName))
+						t.reportFailure(test.NewFailure(t.Name(), "Failed to create database '%s': got 409 on first attempt", databaseName))
 						return maskAny(fmt.Errorf("Failed to create database '%s': got 409 on first attempt", databaseName))
 					} else {
 						shouldExist = true
@@ -97,7 +97,7 @@ func (t *Replication2Test) createDatabase(databaseName string, sharding string, 
 		} else {
 			// This is a failure
 			t.createDatabaseCounter.failed++
-			t.reportFailure(test.NewFailure("Failed to create database '%s': %v", databaseName, err[0]))
+			t.reportFailure(test.NewFailure(t.Name(), "Failed to create database '%s': %v", databaseName, err[0]))
 			return maskAny(err[0])
 		}
 
@@ -112,7 +112,7 @@ func (t *Replication2Test) createDatabase(databaseName string, sharding string, 
 					if shouldNotExist {
 						// This is a failure
 						t.createDatabaseCounter.failed++
-						t.reportFailure(test.NewFailure(
+						t.reportFailure(test.NewFailure(t.Name(),
 							"Failed to create database '%s' rechecked and failed existence", databaseName))
 						return maskAny(fmt.Errorf("Failed to create database '%s' rechecked and failed existence", databaseName))
 					}
@@ -121,7 +121,7 @@ func (t *Replication2Test) createDatabase(databaseName string, sharding string, 
 					if shouldExist {
 						// This is a failure
 						t.createDatabaseCounter.failed++
-						t.reportFailure(test.NewFailure(
+						t.reportFailure(test.NewFailure(t.Name(),
 							"Failed to create database '%s' rechecked and failed existence", databaseName))
 						return maskAny(fmt.Errorf("Failed to create database '%s' rechecked and failed existence", databaseName))
 					}
@@ -147,7 +147,7 @@ func (t *Replication2Test) createDatabase(databaseName string, sharding string, 
 
 	// Overall timeout :(
 	t.reportFailure(
-		test.NewFailure("Timed out while trying to create (%d) database %s.", i, databaseName))
+		test.NewFailure(t.Name(), "Timed out while trying to create (%d) database %s.", i, databaseName))
 	return maskAny(fmt.Errorf("Timed out while trying to create (%d) database %s.", i, databaseName))
 
 }
@@ -179,7 +179,7 @@ func (t *Replication2Test) dropDatabase(databaseName string) error {
 		if err[0] != nil {
 			// This is a failure
 			t.dropDatabaseCounter.failed++
-			t.reportFailure(test.NewFailure("Failed to drop database '%s': %v", databaseName, err[0]))
+			t.reportFailure(test.NewFailure(t.Name(), "Failed to drop database '%s': %v", databaseName, err[0]))
 			return maskAny(err[0])
 		} else if resp[0].StatusCode == 404 {
 			// Database not found.
@@ -189,7 +189,7 @@ func (t *Replication2Test) dropDatabase(databaseName string) error {
 				// Not enough attempts, this is a failure
 				t.dropDatabaseCounter.failed++
 				t.reportFailure(
-					test.NewFailure("Failed to drop database '%s': got 404 after only 1 attempt", databaseName))
+					test.NewFailure(t.Name(), "Failed to drop database '%s': got 404 after only 1 attempt", databaseName))
 				return maskAny(fmt.Errorf("Failed to drop database '%s': got 404 after only 1 attempt", databaseName))
 			} else {
 				success = true
@@ -212,7 +212,7 @@ func (t *Replication2Test) dropDatabase(databaseName string) error {
 	}
 
 	t.dropDatabaseCounter.failed++
-	t.reportFailure(test.NewFailure("Timed out (%d) while droping database '%s'", i, databaseName))
+	t.reportFailure(test.NewFailure(t.Name(), "Timed out (%d) while droping database '%s'", i, databaseName))
 	return maskAny(fmt.Errorf("Timed out (%d) while droping database '%s'", i, databaseName))
 
 }

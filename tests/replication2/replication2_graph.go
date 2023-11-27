@@ -145,7 +145,7 @@ func (t *Replication2Test) createGraph(graphName string,
 					if i == 1 {
 						// This is a failure
 						t.createGraphCounter.failed++
-						t.reportFailure(test.NewFailure("Failed to create graph '%s': got 409 on first attempt", graphName))
+						t.reportFailure(test.NewFailure(t.Name(), "Failed to create graph '%s': got 409 on first attempt", graphName))
 						return maskAny(fmt.Errorf("Failed to create graph '%s': got 409 on first attempt", graphName))
 					} else {
 						shouldExist = true
@@ -156,7 +156,7 @@ func (t *Replication2Test) createGraph(graphName string,
 		} else {
 			// This is a failure
 			t.createGraphCounter.failed++
-			t.reportFailure(test.NewFailure("Failed to create graph '%s': %v", graphName, err[0]))
+			t.reportFailure(test.NewFailure(t.Name(), "Failed to create graph '%s': %v", graphName, err[0]))
 			return maskAny(err[0])
 		}
 
@@ -171,7 +171,7 @@ func (t *Replication2Test) createGraph(graphName string,
 					if shouldNotExist {
 						// This is a failure
 						t.createGraphCounter.failed++
-						t.reportFailure(test.NewFailure(
+						t.reportFailure(test.NewFailure(t.Name(),
 							"Failed to create graph '%s' rechecked and failed existence", graphName))
 						return maskAny(fmt.Errorf("Failed to create  '%s' rechecked and failed existence", graphName))
 					}
@@ -180,7 +180,7 @@ func (t *Replication2Test) createGraph(graphName string,
 					if shouldExist {
 						// This is a failure
 						t.createGraphCounter.failed++
-						t.reportFailure(test.NewFailure(
+						t.reportFailure(test.NewFailure(t.Name(),
 							"Failed to create graph '%s' rechecked and failed existence", graphName))
 						return maskAny(fmt.Errorf("Failed to create graph '%s' rechecked and failed existence", graphName))
 					}
@@ -206,7 +206,7 @@ func (t *Replication2Test) createGraph(graphName string,
 
 	// Overall timeout :(
 	t.reportFailure(
-		test.NewFailure("Timed out while trying to create (%d) graph %s.", i, graphName))
+		test.NewFailure(t.Name(), "Timed out while trying to create (%d) graph %s.", i, graphName))
 	return maskAny(fmt.Errorf("Timed out while trying to create (%d) graph %s.", i, graphName))
 }
 
@@ -284,7 +284,7 @@ func (t *Replication2Test) dropGraph(graphName string, dropCollections bool) err
 		if err[0] != nil {
 			// This is a failure
 			t.dropGraphCounter.failed++
-			t.reportFailure(test.NewFailure("Failed to drop graph '%s': %v", graphName, err[0]))
+			t.reportFailure(test.NewFailure(t.Name(), "Failed to drop graph '%s': %v", graphName, err[0]))
 			return maskAny(err[0])
 		} else if resp[0].StatusCode == 404 {
 			// graph not found.
@@ -294,7 +294,7 @@ func (t *Replication2Test) dropGraph(graphName string, dropCollections bool) err
 				// Not enough attempts, this is a failure
 				t.dropGraphCounter.failed++
 				t.reportFailure(
-					test.NewFailure("Failed to drop graph '%s': got 404 after only 1 attempt", graphName))
+					test.NewFailure(t.Name(), "Failed to drop graph '%s': got 404 after only 1 attempt", graphName))
 				return maskAny(fmt.Errorf("Failed to drop graph '%s': got 404 after only 1 attempt", graphName))
 			} else {
 				success = true
@@ -317,7 +317,7 @@ func (t *Replication2Test) dropGraph(graphName string, dropCollections bool) err
 	}
 
 	t.dropGraphCounter.failed++
-	t.reportFailure(test.NewFailure("Timed out (%d) while droping graph '%s'", i, graphName))
+	t.reportFailure(test.NewFailure(t.Name(), "Timed out (%d) while droping graph '%s'", i, graphName))
 	return maskAny(fmt.Errorf("Timed out (%d) while droping graph '%s'", i, graphName))
 
 }
@@ -364,7 +364,7 @@ func (t *Replication2Test) createEdge(to string, from string, edgeColName string
 		} else { // failure
 			t.edgeDocumentCreateCounter.failed++
 			t.reportFailure(
-				test.NewFailure("Failed to create edge in collection '%s'", edgeColName, err[0]))
+				test.NewFailure(t.Name(), "Failed to create edge in collection '%s'", edgeColName, err[0]))
 			return maskAny(err[0])
 		}
 
@@ -392,7 +392,7 @@ func (t *Replication2Test) createEdge(to string, from string, edgeColName string
 	// Overall timeout :(
 	t.edgeDocumentCreateCounter.failed++
 	t.reportFailure(
-		test.NewFailure("Timed out while trying to create a document in '%s'.", edgeColName))
+		test.NewFailure(t.Name(), "Timed out while trying to create a document in '%s'.", edgeColName))
 	return maskAny(fmt.Errorf("Timed out while trying to create a document in '%s'.", edgeColName))
 }
 
@@ -436,7 +436,7 @@ func (t *CommunityGraphTest) traverseGraph(to string, from string, graphName str
 		if err[0] != nil {
 			// This is a failure
 			t.traverseGraphCounter.failed++
-			t.reportFailure(test.NewFailure(
+			t.reportFailure(test.NewFailure(t.Name(),
 				"Failed to traverse graph '%s': %v", graphName, err[0]))
 			return maskAny(err[0])
 		}
@@ -448,7 +448,7 @@ func (t *CommunityGraphTest) traverseGraph(to string, from string, graphName str
 			t.log.Infof("Creating long running AQL query for collection '%s' succeeded", graphName)
 			// We should've fetched all documents, check result count
 			if !(actualLength == expectedLength && hasMore == false) {
-				t.reportFailure(test.NewFailure("Graph traversal failed: was expecting a chain of %d edges, got %d", expectedLength, actualLength))
+				t.reportFailure(test.NewFailure(t.Name(), "Graph traversal failed: was expecting a chain of %d edges, got %d", expectedLength, actualLength))
 				t.traverseGraphCounter.failed++
 				return maskAny(fmt.Errorf("Graph traversal failed: was expecting a chain of %d edges, got %d", expectedLength, actualLength))
 			}
@@ -468,7 +468,7 @@ func (t *CommunityGraphTest) traverseGraph(to string, from string, graphName str
 	// Overall timeout :(
 	t.traverseGraphCounter.failed++
 	t.reportFailure(
-		test.NewFailure("Timed out while trying to traverse from '%s' to '%s' in graph '%s'.", from, to, graphName))
+		test.NewFailure(t.Name(), "Timed out while trying to traverse from '%s' to '%s' in graph '%s'.", from, to, graphName))
 	return maskAny(fmt.Errorf("Timed out while trying to traverse from '%s' to '%s' in graph '%s'.", from, to, graphName))
 }
 
@@ -511,7 +511,7 @@ func (t *Replication2Test) insertEdgeDocument(colName string, document any) erro
 		} else { // failure
 			t.singleDocCreateCounter.failed++
 			t.reportFailure(
-				test.NewFailure("Failed to create document in collection '%s'", colName, err[0]))
+				test.NewFailure(t.Name(), "Failed to create document in collection '%s'", colName, err[0]))
 			return maskAny(err[0])
 		}
 
@@ -538,6 +538,6 @@ func (t *Replication2Test) insertEdgeDocument(colName string, document any) erro
 	// Overall timeout :(
 	t.singleDocCreateCounter.failed++
 	t.reportFailure(
-		test.NewFailure("Timed out while trying to create an edge document in collection '%s'.", colName))
+		test.NewFailure(t.Name(), "Timed out while trying to create an edge document in collection '%s'.", colName))
 	return maskAny(fmt.Errorf("Timed out while trying to create an edge document in collection '%s'.", colName))
 }

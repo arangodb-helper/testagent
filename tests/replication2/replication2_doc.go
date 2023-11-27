@@ -58,7 +58,7 @@ func (t *Replication2Test) insertDocument(colName string, document any) error {
 		} else { // failure
 			t.singleDocCreateCounter.failed++
 			t.reportFailure(
-				test.NewFailure("Failed to create document in collection '%s' with key %s", colName, key, err[0]))
+				test.NewFailure(t.Name(), "Failed to create document in collection '%s' with key %s", colName, key, err[0]))
 			return maskAny(err[0])
 		}
 
@@ -83,7 +83,7 @@ func (t *Replication2Test) insertDocument(colName string, document any) error {
 	// Overall timeout :(
 	t.singleDocCreateCounter.failed++
 	t.reportFailure(
-		test.NewFailure("Timed out while trying to create a document in '%s with key %s'.", colName, key))
+		test.NewFailure(t.Name(), "Timed out while trying to create a document in '%s with key %s'.", colName, key))
 	return maskAny(fmt.Errorf("Timed out while trying to create a document in '%s with key'.", colName, key))
 }
 
@@ -134,7 +134,7 @@ func (t *Replication2Test) insertDocument(colName string, document any) error {
 // 		} else { // failure
 // 			t.bulkCreateCounter.failed++
 // 			t.reportFailure(
-// 				test.NewFailure("Failed to create %d documents in collection '%s'", numberOfDocuments, t.docCollectionName, err[0]))
+// 				test.NewFailure(t.Name(), "Failed to create %d documents in collection '%s'", numberOfDocuments, t.docCollectionName, err[0]))
 // 			return maskAny(err[0])
 // 		}
 
@@ -167,7 +167,7 @@ func (t *Replication2Test) insertDocument(colName string, document any) error {
 // 	// Overall timeout :(
 // 	t.bulkCreateCounter.failed++
 // 	t.reportFailure(
-// 		test.NewFailure("Timed out while trying to create %d documents in '%s'.", numberOfDocuments, t.docCollectionName))
+// 		test.NewFailure(t.Name(), "Timed out while trying to create %d documents in '%s'.", numberOfDocuments, t.docCollectionName))
 // 	return maskAny(fmt.Errorf("Timed out while trying to create %d documents in '%s'.", numberOfDocuments, t.docCollectionName))
 // }
 
@@ -256,7 +256,7 @@ func (t *Replication2Test) readExistingDocument(colName string, expectedDocument
 					if !reflect.ValueOf(result).MethodByName("Equals").Call([]reflect.Value{reflect.ValueOf(expectedDocument)})[0].Interface().(bool) {
 						// This is a failure
 						t.readExistingCounter.failed++
-						t.reportFailure(test.NewFailure(
+						t.reportFailure(test.NewFailure(t.Name(),
 							"Read existing document with key '%s' from collection '%s' returned different values: got %v expected %v",
 							key, colName, result, expectedDocument))
 						return maskAny(fmt.Errorf("Read returned invalid values"))

@@ -85,7 +85,7 @@ func (t *Replication2Test) createCollection(collectionName string, edge bool) er
 					if i == 1 {
 						// This is a failure
 						t.createCollectionCounter.failed++
-						t.reportFailure(test.NewFailure("Failed to create collection '%s': got 409 on first attempt", collectionName))
+						t.reportFailure(test.NewFailure(t.Name(), "Failed to create collection '%s': got 409 on first attempt", collectionName))
 						return maskAny(fmt.Errorf("Failed to create collection '%s': got 409 on first attempt", collectionName))
 					} else {
 						shouldExist = true
@@ -96,7 +96,7 @@ func (t *Replication2Test) createCollection(collectionName string, edge bool) er
 		} else {
 			// This is a failure
 			t.createCollectionCounter.failed++
-			t.reportFailure(test.NewFailure("Failed to create collection '%s': %v", collectionName, err[0]))
+			t.reportFailure(test.NewFailure(t.Name(), "Failed to create collection '%s': %v", collectionName, err[0]))
 			return maskAny(err[0])
 		}
 
@@ -111,7 +111,7 @@ func (t *Replication2Test) createCollection(collectionName string, edge bool) er
 					if shouldNotExist {
 						// This is a failure
 						t.createCollectionCounter.failed++
-						t.reportFailure(test.NewFailure(
+						t.reportFailure(test.NewFailure(t.Name(),
 							"Failed to create collection '%s' rechecked and failed existence", collectionName))
 						return maskAny(fmt.Errorf("Failed to create collection '%s' rechecked and failed existence", collectionName))
 					}
@@ -120,7 +120,7 @@ func (t *Replication2Test) createCollection(collectionName string, edge bool) er
 					if shouldExist {
 						// This is a failure
 						t.createCollectionCounter.failed++
-						t.reportFailure(test.NewFailure(
+						t.reportFailure(test.NewFailure(t.Name(),
 							"Failed to create collection '%s' rechecked and failed existence", collectionName))
 						return maskAny(fmt.Errorf("Failed to create collection '%s' rechecked and failed existence", collectionName))
 					}
@@ -147,7 +147,7 @@ func (t *Replication2Test) createCollection(collectionName string, edge bool) er
 
 	// Overall timeout :(
 	t.reportFailure(
-		test.NewFailure("Timed out while trying to create (%d) collection %s.", i, collectionName))
+		test.NewFailure(t.Name(), "Timed out while trying to create (%d) collection %s.", i, collectionName))
 	return maskAny(fmt.Errorf("Timed out while trying to create (%d) collection %s.", i, collectionName))
 
 }
@@ -179,7 +179,7 @@ func (t *Replication2Test) dropCollection(collectionName string) error {
 		if err[0] != nil {
 			// This is a failure
 			t.dropCollectionCounter.failed++
-			t.reportFailure(test.NewFailure("Failed to drop collection '%s': %v", collectionName, err[0]))
+			t.reportFailure(test.NewFailure(t.Name(), "Failed to drop collection '%s': %v", collectionName, err[0]))
 			return maskAny(err[0])
 		} else if resp[0].StatusCode == 404 {
 			// Collection not found.
@@ -189,7 +189,7 @@ func (t *Replication2Test) dropCollection(collectionName string) error {
 				// Not enough attempts, this is a failure
 				t.dropCollectionCounter.failed++
 				t.reportFailure(
-					test.NewFailure("Failed to drop collection '%s': got 404 after only 1 attempt", collectionName))
+					test.NewFailure(t.Name(), "Failed to drop collection '%s': got 404 after only 1 attempt", collectionName))
 				return maskAny(fmt.Errorf("Failed to drop collection '%s': got 404 after only 1 attempt", collectionName))
 			} else {
 				success = true
@@ -212,7 +212,7 @@ func (t *Replication2Test) dropCollection(collectionName string) error {
 	}
 
 	t.dropCollectionCounter.failed++
-	t.reportFailure(test.NewFailure("Timed out (%d) while droping collection '%s'", i, collectionName))
+	t.reportFailure(test.NewFailure(t.Name(), "Timed out (%d) while droping collection '%s'", i, collectionName))
 	return maskAny(fmt.Errorf("Timed out (%d) while droping collection '%s'", i, collectionName))
 
 }

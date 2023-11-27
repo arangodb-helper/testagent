@@ -2,8 +2,9 @@ package simple
 
 import (
 	"fmt"
-	"github.com/arangodb-helper/testagent/service/test"
 	"time"
+
+	"github.com/arangodb-helper/testagent/service/test"
 )
 
 // createCollection creates a new collection.
@@ -72,7 +73,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 					if i == 1 {
 						// This is a failure
 						t.createCollectionCounter.failed++
-						t.reportFailure(test.NewFailure("Failed to create collection '%s': got 409 on first attempt", c.name))
+						t.reportFailure(test.NewFailure(t.Name(), "Failed to create collection '%s': got 409 on first attempt", c.name))
 						return maskAny(fmt.Errorf("Failed to create collection '%s': got 409 on first attempt", c.name))
 					} else {
 						shouldExist = true
@@ -83,7 +84,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 		} else {
 			// This is a failure
 			t.createCollectionCounter.failed++
-			t.reportFailure(test.NewFailure("Failed to create collection '%s': %v", c.name, err[0]))
+			t.reportFailure(test.NewFailure(t.Name(), "Failed to create collection '%s': %v", c.name, err[0]))
 			return maskAny(err[0])
 		}
 
@@ -98,7 +99,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 					if shouldNotExist {
 						// This is a failure
 						t.createCollectionCounter.failed++
-						t.reportFailure(test.NewFailure(
+						t.reportFailure(test.NewFailure(t.Name(),
 							"Failed to create collection '%s' rechecked and failed existence", c.name))
 						return maskAny(fmt.Errorf("Failed to create collection '%s' rechecked and failed existence", c.name))
 					}
@@ -107,7 +108,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 					if shouldExist {
 						// This is a failure
 						t.createCollectionCounter.failed++
-						t.reportFailure(test.NewFailure(
+						t.reportFailure(test.NewFailure(t.Name(),
 							"Failed to create collection '%s' rechecked and failed existence", c.name))
 						return maskAny(fmt.Errorf("Failed to create collection '%s' rechecked and failed existence", c.name))
 					}
@@ -134,7 +135,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 
 	// Overall timeout :(
 	t.reportFailure(
-		test.NewFailure("Timed out while trying to create (%d) collection %s.", i, c.name))
+		test.NewFailure(t.Name(), "Timed out while trying to create (%d) collection %s.", i, c.name))
 	return maskAny(fmt.Errorf("Timed out while trying to create (%d) collection %s.", i, c.name))
 
 }
@@ -166,7 +167,7 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 		if err[0] != nil {
 			// This is a failure
 			t.removeExistingCollectionCounter.failed++
-			t.reportFailure(test.NewFailure("Failed to remove collection '%s': %v", c.name, err[0]))
+			t.reportFailure(test.NewFailure(t.Name(), "Failed to remove collection '%s': %v", c.name, err[0]))
 			return maskAny(err[0])
 		} else if resp[0].StatusCode == 404 {
 			// Collection not found.
@@ -176,7 +177,7 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 				// Not enough attempts, this is a failure
 				t.removeExistingCollectionCounter.failed++
 				t.reportFailure(
-					test.NewFailure("Failed to remove collection '%s': got 404 after only 1 attempt", c.name))
+					test.NewFailure(t.Name(), "Failed to remove collection '%s': got 404 after only 1 attempt", c.name))
 				return maskAny(fmt.Errorf("Failed to remove collection '%s': got 404 after only 1 attempt", c.name))
 			} else {
 				success = true
@@ -200,7 +201,7 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 	}
 
 	t.removeExistingCollectionCounter.failed++
-	t.reportFailure(test.NewFailure("Timed out (%d) while removing collection '%s'", i, c.name))
+	t.reportFailure(test.NewFailure(t.Name(), "Timed out (%d) while removing collection '%s'", i, c.name))
 	return maskAny(fmt.Errorf("Timed out (%d) while removing collection '%s'", i, c.name))
 
 }
