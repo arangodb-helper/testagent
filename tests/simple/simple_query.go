@@ -64,7 +64,7 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 		if err[0] != nil {
 			// This is a failure
 			t.queryCreateCursorCounter.failed++
-			t.reportFailure(test.NewFailure("Failed to create AQL cursor in collection '%s': %v", c.name, err[0]))
+			t.reportFailure(test.NewFailure(t.Name(), "Failed to create AQL cursor in collection '%s': %v", c.name, err[0]))
 			return maskAny(err[0])
 		} else if createResp[0].StatusCode == 201 {
 			t.queryCreateCursorCounter.succeeded++
@@ -92,7 +92,7 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 
 	for {
 		if time.Now().After(testTimeout) {
-			t.reportFailure(test.NewFailure(
+			t.reportFailure(test.NewFailure(t.Name(),
 				"Timed out while reading next AQL cursor batch in collection '%s' with same coordinator (%s)",
 				c.name, createResp[0].CoordinatorURL))
 			return maskAny(fmt.Errorf(
@@ -119,7 +119,7 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 		if err[0] != nil {
 			// This is a failure
 			t.queryNextBatchCounter.failed++
-			t.reportFailure(test.NewFailure(
+			t.reportFailure(test.NewFailure(t.Name(),
 				"Failed to read next AQL cursor batch in collection '%s': %v", c.name, err[0]))
 			t.log.Errorf(
 				"Failed to read next AQL cursor batch in collection '%s': %v", c.name, err[0])
@@ -159,7 +159,7 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 
 			// Coordinator remains the same, this is a failure.
 			t.queryNextBatchCounter.failed++
-			t.reportFailure(test.NewFailure("Failed to read next AQL cursor batch in collection '%s' with same coordinator (%s): status 404", c.name, createResp[0].CoordinatorURL))
+			t.reportFailure(test.NewFailure(t.Name(), "Failed to read next AQL cursor batch in collection '%s' with same coordinator (%s): status 404", c.name, createResp[0].CoordinatorURL))
 			return maskAny(fmt.Errorf("Status code 404"))
 		} else if getResp[0].StatusCode == 500 {
 			// A dbserver might have suffered from chaos, and then the query
@@ -183,7 +183,7 @@ func (t *simpleTest) queryDocuments(c *collection) error {
 
 	// We've fetched all documents, check result count
 	if resultCount > 10 || resultCount < 10-nrTimeOuts {
-		t.reportFailure(test.NewFailure("Number of documents was %d, expected 10", resultCount))
+		t.reportFailure(test.NewFailure(t.Name(), "Number of documents was %d, expected 10", resultCount))
 		return maskAny(fmt.Errorf("Number of documents was %d, expected 10", resultCount))
 	}
 
@@ -229,7 +229,7 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 		if err[0] != nil {
 			// This is a failure
 			t.queryLongRunningCounter.failed++
-			t.reportFailure(test.NewFailure(
+			t.reportFailure(test.NewFailure(t.Name(),
 				"Failed to create long running AQL cursor in collection '%s': %v", c.name, err[0]))
 			return maskAny(err[0])
 		}
@@ -240,7 +240,7 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 			t.log.Infof("Creating long running AQL query for collection '%s' succeeded", c.name)
 			// We should've fetched all documents, check result count
 			if resultCount != 10 {
-				t.reportFailure(test.NewFailure("Number of documents was %d, expected 10", resultCount))
+				t.reportFailure(test.NewFailure(t.Name(), "Number of documents was %d, expected 10", resultCount))
 				return maskAny(fmt.Errorf("Number of documents was %d, expected 10", resultCount))
 			}
 			return nil
@@ -255,7 +255,7 @@ func (t *simpleTest) queryDocumentsLongRunning(c *collection) error {
 
 	}
 
-	t.reportFailure(test.NewFailure(
+	t.reportFailure(test.NewFailure(t.Name(),
 		"Timed out create (%d) long running AQL cursor in collection '%s'", i, c.name))
 	return maskAny(fmt.Errorf(
 		"Timed out create (%d) long running AQL cursor in collection '%s'", i, c.name))
