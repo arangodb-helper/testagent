@@ -154,6 +154,7 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 		replication2.NewOneShardTest(log, appFlags.ReportDir, appFlags.Replication2Config, appFlags.DocColConfig),
 		replication2.NewComGraphTest(log, appFlags.ReportDir, appFlags.Replication2Config, appFlags.CommunityGraphConf),
 		replication2.NewSmartGraphTest(log, appFlags.ReportDir, appFlags.Replication2Config, appFlags.CommunityGraphConf),
+		replication2.NewEnterpriseGraphTest(log, appFlags.ReportDir, appFlags.Replication2Config, appFlags.CommunityGraphConf),
 		simple.NewSimpleTest(log, appFlags.ReportDir, appFlags.SimpleConfig),
 	}
 

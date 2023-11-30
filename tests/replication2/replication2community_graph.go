@@ -137,12 +137,9 @@ func (t *CommunityGraphTest) testLoop() {
 			if t.edgeColCreated {
 				i := 0
 				for {
-					if t.numberOfCreatedEdges >= t.MaxEdges {
-						break
-					}
 					idx := i
-					if len(t.existingDocSeeds) <= i+1 {
-						idx = i + 1 - len(t.existingDocSeeds)
+					if len(t.existingDocSeeds) <= i+2 {
+						break
 					}
 					from := strconv.FormatInt(t.existingDocSeeds[idx], 10)
 					to := strconv.FormatInt(t.existingDocSeeds[idx+1], 10)
@@ -182,9 +179,9 @@ func (t *CommunityGraphTest) testLoop() {
 					length := randInt(2, 100)
 					startIdx := randInt(0, t.numberOfCreatedEdges-1-length)
 					endIdx := startIdx + length
-					start := t.vertexColName + "/" + strconv.FormatInt(t.existingDocSeeds[startIdx], 10)
-					end := t.vertexColName + "/" + strconv.FormatInt(t.existingDocSeeds[endIdx], 10)
-					if err := t.traverseGraph(start, end, t.graphName, length); err != nil {
+					from := t.vertexColName + "/" + strconv.FormatInt(t.existingDocSeeds[startIdx], 10)
+					to := t.vertexColName + "/" + strconv.FormatInt(t.existingDocSeeds[endIdx], 10)
+					if err := t.traverseGraph(to, from, t.graphName, length); err != nil {
 						t.log.Errorf("Failed to traverse graph: %v", err)
 					} else {
 						t.actions++

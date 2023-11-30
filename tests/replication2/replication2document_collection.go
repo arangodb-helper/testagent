@@ -2,7 +2,6 @@ package replication2
 
 import (
 	"fmt"
-	"math/rand"
 	"strconv"
 	"time"
 
@@ -50,15 +49,6 @@ func NewDocColTest(log *logging.Logger, reportDir string, rep2config Replication
 	}
 }
 
-type BigDocument struct {
-	TestDocument
-	Value         int64  `json:"value"`
-	Name          string `json:"name"`
-	Odd           bool   `json:"odd"`
-	UpdateCounter int    `json:"update_counter"`
-	Payload       string `json:"payload"`
-}
-
 // Equals returns true when the value fields of `d` and `other` are the equal.
 func (d BigDocument) Equals(other BigDocument) bool {
 	return d.Value == other.Value && d.Name == other.Name && d.Odd == other.Odd && d.Payload == other.Payload
@@ -70,26 +60,6 @@ func (t *DocColTest) generateCollectionName(seed int64) string {
 
 func generateKeyFromSeed(seed int64) string {
 	return strconv.FormatInt(seed, 10)
-}
-
-func NewBigDocument(seed int64, payloadSize int) BigDocument {
-	randGen := rand.New(rand.NewSource(seed))
-	payloadBytes := make([]byte, payloadSize)
-	lowerBound := 32
-	upperBound := 126
-	for i := 0; i < payloadSize; i++ {
-		payloadBytes[i] = byte(randGen.Int31n(int32(upperBound-lowerBound)) + int32(lowerBound))
-	}
-	var key string
-	key = generateKeyFromSeed(seed)
-	return BigDocument{
-		TestDocument:  TestDocument{Key: key},
-		Value:         seed,
-		Name:          strconv.FormatInt(seed, 10),
-		Odd:           seed%2 == 1,
-		UpdateCounter: 0,
-		Payload:       string(payloadBytes),
-	}
 }
 
 func (t *DocColTest) testLoop() {

@@ -421,8 +421,10 @@ func (t *CommunityGraphTest) traverseGraph(to string, from string, graphName str
 		i++
 
 		t.log.Infof("Creating (%d) long running AQL query to traverse graph '%s'...", i, graphName)
+		query := fmt.Sprintf(`FOR v, e IN OUTBOUND SHORTEST_PATH "%s" TO "%s" GRAPH "%s" RETURN e`, from, to, graphName)
+		t.log.Debugf("Running query: %s", query)
 		queryReq := QueryRequest{
-			Query:     fmt.Sprintf(`FOR v, e IN OUTBOUND SHORTEST_PATH "%s" TO "%s" GRAPH "%s" RETURN e`, from, to, graphName),
+			Query:     query,
 			BatchSize: expectedLength * 2,
 			Count:     false,
 		}
@@ -448,9 +450,9 @@ func (t *CommunityGraphTest) traverseGraph(to string, from string, graphName str
 			t.log.Infof("Creating long running AQL query for collection '%s' succeeded", graphName)
 			// We should've fetched all documents, check result count
 			if !(actualLength == expectedLength && hasMore == false) {
-				t.reportFailure(test.NewFailure(t.Name(), "Graph traversal failed: was expecting a chain of %d edges, got %d", expectedLength, actualLength))
+				t.reportFailure(test.NewFailure(t.Name(), "Graph traversal failed: was expecting a chain of %d edges, got %d. Query: %s", expectedLength, actualLength, query))
 				t.traverseGraphCounter.failed++
-				return maskAny(fmt.Errorf("Graph traversal failed: was expecting a chain of %d edges, got %d", expectedLength, actualLength))
+				return maskAny(fmt.Errorf("Graph traversal failed: was expecting a chain of %d edges, got %d. Query: %s", expectedLength, actualLength, query))
 			}
 			t.traverseGraphCounter.succeeded++
 			return nil
