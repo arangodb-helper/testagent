@@ -44,6 +44,7 @@ type Replication2Counters struct {
 	bulkCreateCounter         counter
 	readExistingCounter       counter
 	updateExistingCounter     counter
+	replaceExistingCounter    counter
 	traverseGraphCounter      counter
 }
 
@@ -53,7 +54,7 @@ type Replication2TestContext struct {
 	Replication2Counters
 	documentIdSeq     int64
 	collectionNameSeq int64
-	existingDocSeeds  []int64
+	existingDocuments []TestDocument
 }
 
 type Replication2Test struct {

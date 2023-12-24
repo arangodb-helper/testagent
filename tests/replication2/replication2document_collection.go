@@ -13,7 +13,6 @@ import (
 
 type DocColConfig struct {
 	MaxDocuments int
-	MaxEdges     int
 	BatchSize    int
 	DocumentSize int
 }
@@ -25,6 +24,8 @@ type DocColTest struct {
 	numberOfCreatedDocsTotal int64
 	docCollectionCreated     bool
 	docCollectionName        string
+	readOffset               int
+	updateOffset             int
 }
 
 func NewDocColTest(log *logging.Logger, reportDir string, rep2config Replication2Config, config DocColConfig) test.TestScript {
@@ -39,19 +40,20 @@ func NewDocColTest(log *logging.Logger, reportDir string, rep2config Replication
 				},
 				documentIdSeq:     0,
 				collectionNameSeq: 0,
-				existingDocSeeds:  make([]int64, 0, config.MaxDocuments),
+				existingDocuments: make([]TestDocument, 0, config.MaxDocuments),
 			},
 		},
 		DocColConfig:             config,
 		numberOfExistingDocs:     0,
 		numberOfCreatedDocsTotal: 0,
 		docCollectionCreated:     false,
+		readOffset:               0,
 	}
 }
 
 // Equals returns true when the value fields of `d` and `other` are the equal.
 func (d BigDocument) Equals(other BigDocument) bool {
-	return d.Value == other.Value && d.Name == other.Name && d.Odd == other.Odd && d.Payload == other.Payload
+	return d.Value == other.Value && d.Name == other.Name && d.Odd == other.Odd && d.Payload == other.Payload && d.UpdateCounter == other.UpdateCounter
 }
 
 func (t *DocColTest) generateCollectionName(seed int64) string {
@@ -60,6 +62,83 @@ func (t *DocColTest) generateCollectionName(seed int64) string {
 
 func generateKeyFromSeed(seed int64) string {
 	return strconv.FormatInt(seed, 10)
+}
+
+func (t *DocColTest) createDocuments() {
+	if t.docCollectionCreated && t.numberOfExistingDocs < t.MaxDocuments {
+		var thisBatchSize int
+		if t.BatchSize <= t.MaxDocuments-t.numberOfExistingDocs {
+			thisBatchSize = t.BatchSize
+		} else {
+			thisBatchSize = t.MaxDocuments - t.numberOfExistingDocs
+		}
+
+		for i := 0; i < thisBatchSize; i++ {
+			seed := t.documentIdSeq
+			t.documentIdSeq++
+			document := NewBigDocument(seed, t.DocumentSize)
+			if err := t.insertDocument(t.docCollectionName, document); err != nil {
+				t.log.Errorf("Failed to create document with key '%s' in collection '%s': %v",
+					document.Key, t.docCollectionName, err)
+			} else {
+				t.actions++
+				t.existingDocuments = append(t.existingDocuments, document.TestDocument)
+				t.numberOfExistingDocs++
+				t.numberOfCreatedDocsTotal++
+			}
+		}
+	}
+}
+
+func (t *DocColTest) readDocuments() {
+	if t.docCollectionCreated && t.numberOfExistingDocs >= t.BatchSize {
+		var upperBound int = 0
+		var lowerBound int = t.readOffset
+		if t.numberOfExistingDocs-t.readOffset < t.BatchSize {
+			upperBound = t.numberOfExistingDocs
+		} else {
+			upperBound = t.readOffset + t.BatchSize
+		}
+
+		for _, testDoc := range t.existingDocuments[lowerBound:upperBound] {
+			expectedDocument := NewBigDocumentFromTestDocument(testDoc, t.DocumentSize)
+			if err := t.readExistingDocument(t.docCollectionName, expectedDocument, false); err != nil {
+				t.log.Errorf("Failed to read document: %v", err)
+			} else {
+				t.actions++
+			}
+		}
+		if upperBound == t.numberOfExistingDocs {
+			t.readOffset = 0
+		} else {
+			t.readOffset = upperBound
+		}
+	}
+}
+
+func (t *DocColTest) updateDocuments() {
+	if t.docCollectionCreated && t.numberOfExistingDocs >= t.BatchSize {
+		if t.updateOffset == t.numberOfExistingDocs {
+			t.updateOffset = 0
+		}
+		var upperBound int = 0
+		var lowerBound int = t.updateOffset
+		if t.numberOfExistingDocs-t.updateOffset < t.BatchSize {
+			upperBound = t.numberOfExistingDocs
+		} else {
+			upperBound = t.updateOffset + t.BatchSize
+		}
+		for i := lowerBound; i < upperBound; i++ {
+			oldDoc := t.existingDocuments[i]
+			if newDoc, err := t.updateExistingDocument(t.docCollectionName, oldDoc); err != nil {
+				t.log.Errorf("Failed to update document: %v", err)
+			} else {
+				t.existingDocuments[i] = *newDoc
+				t.actions++
+			}
+		}
+		t.updateOffset = upperBound
+	}
 }
 
 func (t *DocColTest) testLoop() {
@@ -82,7 +161,7 @@ func (t *DocColTest) testLoop() {
 		t.paused = false
 		t.actions++
 		if plan == nil || planIndex >= len(plan) {
-			plan = []int{0, 1, 2, 3, 4, 5} // Update when more tests are added
+			plan = []int{0, 1, 2, 3, 4} // Update when more tests are added
 			planIndex = 0
 		}
 
@@ -102,91 +181,29 @@ func (t *DocColTest) testLoop() {
 
 		case 1:
 			// create documents
-			if t.docCollectionCreated {
-				for {
-					if t.numberOfExistingDocs >= t.MaxDocuments-t.MaxEdges {
-						break
-					}
-					var thisBatchSize int
-					if t.BatchSize <= t.MaxDocuments-t.numberOfExistingDocs {
-						thisBatchSize = t.BatchSize
-					} else {
-						thisBatchSize = t.MaxDocuments - t.numberOfExistingDocs
-					}
-
-					for i := 0; i < thisBatchSize; i++ {
-						seed := t.documentIdSeq
-						t.documentIdSeq++
-						document := NewBigDocument(seed, t.DocumentSize)
-						if err := t.insertDocument(t.docCollectionName, document); err != nil {
-							t.log.Errorf("Failed to create document with key '%s' in collection '%s': %v",
-								document.Key, t.docCollectionName, err)
-						} else {
-							t.actions++
-							t.existingDocSeeds = append(t.existingDocSeeds, seed)
-							t.numberOfExistingDocs++
-							t.numberOfCreatedDocsTotal++
-						}
-					}
-
-					//FIXME: use bulk document creation here when createDocuments function is fixed
-
-					// if err := t.createDocuments(thisBatchSize, t.documentIdSeq); err != nil {
-					// 	t.log.Errorf("Failed to create documents: %#v", err)
-					// } else {
-					// 	t.numberOfExistingDocs += thisBatchSize
-					// 	t.numberOfCreatedDocsTotal += int64(thisBatchSize)
-					// }
-					// t.documentIdSeq += int64(thisBatchSize)
-					// t.actions++
-				}
-			}
+			t.createDocuments()
 			planIndex++
 
 		case 2:
 			// read documents
-			if t.docCollectionCreated {
-				for _, seed := range t.existingDocSeeds {
-					expectedDocument := NewBigDocument(seed, t.DocumentSize)
-					if err := t.readExistingDocument(t.docCollectionName, expectedDocument, false); err != nil {
-						t.log.Errorf("Failed to read document: %v", err)
-						t.readExistingCounter.failed++
-					} else {
-						t.actions++
-						t.readExistingCounter.succeeded++
-					}
-				}
-			}
+			t.readDocuments()
 			planIndex++
 
 		case 3:
 			// update documents
-			// if t.docCollectionCreated {
-			// 	for _, seed := range t.existingDocSeeds {
-			// 		if err := t.readExistingDocument(t.docCollectionName, seed, false); err != nil {
-			// 			t.log.Errorf("Failed to read document: %v", err)
-			// 			t.readExistingCounter.failed++
-			// 		} else {
-			// 			t.actions++
-			// 			t.readExistingCounter.succeeded++
-			// 		}
-			// 	}
-			// }
+			t.updateDocuments()
 			planIndex++
 
 		case 4:
-			// read documents again after update
-			planIndex++
-
-		case 5:
 			// drop collections
-			if t.docCollectionCreated && t.numberOfExistingDocs >= t.MaxDocuments {
+			if t.docCollectionCreated && t.numberOfExistingDocs >= t.MaxDocuments && t.existingDocuments[len(t.existingDocuments)-1].UpdateCounter > 10 {
 				if err := t.dropCollection(t.docCollectionName); err != nil {
 					t.log.Errorf("Failed to drop collection: %v", err)
 				} else {
 					t.docCollectionCreated = false
 					t.numberOfExistingDocs = 0
-					t.existingDocSeeds = t.existingDocSeeds[:0]
+					t.existingDocuments = t.existingDocuments[:0]
+					t.readOffset = 0
 					t.collectionNameSeq++
 					t.actions++
 				}
@@ -217,6 +234,9 @@ func (t *DocColTest) Status() test.TestStatus {
 			cc("#collections dropped", t.dropCollectionCounter),
 			cc("#document batches created", t.bulkCreateCounter),
 			cc("#single documents created", t.singleDocCreateCounter),
+			cc("#documents read", t.readExistingCounter),
+			cc("#documents updated", t.updateExistingCounter),
+			cc("#documents replaced", t.replaceExistingCounter),
 		},
 	}
 

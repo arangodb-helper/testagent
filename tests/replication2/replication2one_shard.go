@@ -31,7 +31,7 @@ func NewOneShardTest(log *logging.Logger, reportDir string, rep2config Replicati
 					},
 					documentIdSeq:     0,
 					collectionNameSeq: 0,
-					existingDocSeeds:  make([]int64, 0, config.MaxDocuments),
+					existingDocuments: make([]TestDocument, 0, config.MaxDocuments),
 				},
 			},
 			DocColConfig:             config,
@@ -72,7 +72,7 @@ func (t *OneShardTest) testLoop() {
 		t.paused = false
 		t.actions++
 		if plan == nil || planIndex >= len(plan) {
-			plan = []int{0, 1, 2, 3, 4, 5, 6} // Update when more tests are added
+			plan = []int{0, 1, 2, 3, 4, 5} // Update when more tests are added
 			planIndex = 0
 		}
 
@@ -106,85 +106,21 @@ func (t *OneShardTest) testLoop() {
 
 		case 2:
 			// create documents
-			if t.docCollectionCreated && t.isDatabaseCreated {
-				for {
-					if t.numberOfExistingDocs >= t.MaxDocuments-t.MaxEdges {
-						break
-					}
-					var thisBatchSize int
-					if t.BatchSize <= t.MaxDocuments-t.numberOfExistingDocs {
-						thisBatchSize = t.BatchSize
-					} else {
-						thisBatchSize = t.MaxDocuments - t.numberOfExistingDocs
-					}
-
-					for i := 0; i < thisBatchSize; i++ {
-						seed := t.documentIdSeq
-						t.documentIdSeq++
-						document := NewBigDocument(seed, t.DocumentSize)
-						if err := t.insertDocument(t.docCollectionName, document); err != nil {
-							t.log.Errorf("Failed to create document with key '%s' in collection '%s': %v",
-								document.Key, t.docCollectionName, err)
-						} else {
-							t.actions++
-							t.existingDocSeeds = append(t.existingDocSeeds, seed)
-							t.numberOfExistingDocs++
-							t.numberOfCreatedDocsTotal++
-						}
-					}
-
-					//FIXME: use bulk document creation here when createDocuments function is fixed
-
-					// if err := t.createDocuments(thisBatchSize, t.documentIdSeq); err != nil {
-					// 	t.log.Errorf("Failed to create documents: %#v", err)
-					// } else {
-					// 	t.numberOfExistingDocs += thisBatchSize
-					// 	t.numberOfCreatedDocsTotal += int64(thisBatchSize)
-					// }
-					// t.documentIdSeq += int64(thisBatchSize)
-					// t.actions++
-				}
-			}
+			t.DocColTest.createDocuments()
 			planIndex++
 
 		case 3:
 			// read documents
-			if t.docCollectionCreated && t.isDatabaseCreated {
-				for _, seed := range t.existingDocSeeds {
-					expectedDocument := NewBigDocument(seed, t.DocumentSize)
-					if err := t.readExistingDocument(t.docCollectionName, expectedDocument, false); err != nil {
-						t.log.Errorf("Failed to read document: %v", err)
-						t.readExistingCounter.failed++
-					} else {
-						t.actions++
-						t.readExistingCounter.succeeded++
-					}
-				}
-			}
+			t.DocColTest.readDocuments()
 			planIndex++
 
 		case 4:
-			// update documents
-			// if t.docCollectionCreated {
-			// 	for _, seed := range t.existingDocSeeds {
-			// 		if err := t.readExistingDocument(t.docCollectionName, seed, false); err != nil {
-			// 			t.log.Errorf("Failed to read document: %v", err)
-			// 			t.readExistingCounter.failed++
-			// 		} else {
-			// 			t.actions++
-			// 			t.readExistingCounter.succeeded++
-			// 		}
-			// 	}
-			// }
+			t.DocColTest.updateDocuments()
 			planIndex++
 
 		case 5:
-			// read documents again after update
-			planIndex++
-
-		case 6:
 			// drop database
-			if t.isDatabaseCreated && t.docCollectionCreated && t.numberOfExistingDocs >= t.MaxDocuments {
+			if t.docCollectionCreated && t.numberOfExistingDocs >= t.MaxDocuments && t.existingDocuments[len(t.existingDocuments)-1].UpdateCounter > 10 {
 				t.client.UseDatabase("_system")
 				if err := t.dropDatabase(t.databaseName); err != nil {
 					t.client.UseDatabase(t.databaseName)
@@ -193,7 +129,7 @@ func (t *OneShardTest) testLoop() {
 					t.isDatabaseCreated = false
 					t.docCollectionCreated = false
 					t.numberOfExistingDocs = 0
-					t.existingDocSeeds = t.existingDocSeeds[:0]
+					t.existingDocuments = t.existingDocuments[:0]
 					t.collectionNameSeq++
 					t.databaseNameSeq++
 					t.actions++
@@ -227,12 +163,14 @@ func (t *OneShardTest) Status() test.TestStatus {
 			cc("#collections dropped", t.dropCollectionCounter),
 			cc("#document batches created", t.bulkCreateCounter),
 			cc("#single documents created", t.singleDocCreateCounter),
+			cc("#documents read", t.readExistingCounter),
+			cc("#documents updated", t.updateExistingCounter),
+			cc("#documents replaced", t.replaceExistingCounter),
 		},
 	}
 
 	status.Messages = append(status.Messages,
 		fmt.Sprintf("Number of documents in the database: %d", t.numberOfExistingDocs),
-		fmt.Sprintf("Number of shards in the collection: %d", t.NumberOfShards),
 	)
 
 	return status

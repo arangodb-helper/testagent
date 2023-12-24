@@ -39,7 +39,7 @@ func (t *simpleTest) readExistingDocument(
 			// This is a failure
 			t.readExistingCounter.failed++
 			t.reportFailure(
-				test.NewFailure(
+				test.NewFailure(t.Name(),
 					"Failed to read existing document '%s' (%s) in collection '%s': %v", key, ifMatchStatus, c.name, err[0]))
 			return "", maskAny(err[0])
 		} else {
@@ -73,7 +73,7 @@ func (t *simpleTest) readExistingDocument(
 
 	t.readExistingCounter.failed++
 	t.reportFailure(
-		test.NewFailure(
+		test.NewFailure(t.Name(),
 			t.Name(), "Timed out (%d) reading existing document '%s' from %s", i, key, c.name))
 	return "", maskAny(fmt.Errorf("Timed out (%d) reading existing document '%s' from %s", i, key, c.name))
 
@@ -111,7 +111,7 @@ func (t *simpleTest) readExistingDocumentWrongRevision(
 			// This is a failure
 			t.readExistingWrongRevisionCounter.failed++
 			t.reportFailure(
-				test.NewFailure(
+				test.NewFailure(t.Name(),
 					"Failed to read existing document '%s' wrong revision in collection '%s': %v",
 					key, collectionName, err[0]))
 			return maskAny(err[0])
