@@ -11,12 +11,11 @@ import (
 )
 
 type EdgeDocument struct {
-	Rev           string `json:"_rev,omitempty"`
-	Value         int64  `json:"value"`
-	UpdateCounter int    `json:"update_counter"`
-	Payload       string `json:"payload"`
-	From          string `json:"_from"`
-	To            string `json:"_to"`
+	TestDocument
+	Value   int64  `json:"value"`
+	Payload string `json:"payload"`
+	From    string `json:"_from"`
+	To      string `json:"_to"`
 }
 
 func NewEdgeDocument(from string, to string, vertexColName string, edgeSize int, seed int64) EdgeDocument {
@@ -28,11 +27,11 @@ func NewEdgeDocument(from string, to string, vertexColName string, edgeSize int,
 		payloadBytes[i] = byte(randGen.Int31n(int32(upperBound-lowerBound)) + int32(lowerBound))
 	}
 	return EdgeDocument{
-		Value:         seed,
-		UpdateCounter: 0,
-		Payload:       string(payloadBytes),
-		From:          vertexColName + "/" + from,
-		To:            vertexColName + "/" + to,
+		TestDocument: TestDocument{UpdateCounter: 0},
+		Value:        seed,
+		Payload:      string(payloadBytes),
+		From:         vertexColName + "/" + from,
+		To:           vertexColName + "/" + to,
 	}
 }
 
@@ -322,7 +321,7 @@ func (t *Replication2Test) dropGraph(graphName string, dropCollections bool) err
 
 }
 
-func (t *Replication2Test) createEdge(to string, from string, edgeColName string, vertexColName string, edgeSize int) error {
+func (t *GraphTest) createEdge(to string, from string, edgeColName string, vertexColName string, edgeSize int) error {
 
 	operationTimeout := t.OperationTimeout
 	testTimeout := time.Now().Add(operationTimeout)
@@ -376,7 +375,7 @@ func (t *Replication2Test) createEdge(to string, from string, edgeColName string
 		}
 
 		if success {
-			t.existingDocSeeds = append(t.existingDocSeeds, seed)
+			t.existingEdgeDocuments = append(t.existingEdgeDocuments, document.TestDocument)
 			t.edgeDocumentCreateCounter.succeeded++
 			t.log.Infof("Creating document in '%s' succeeded", edgeColName)
 			return nil
@@ -406,7 +405,7 @@ func lengthExcludingNils(arr []any) int {
 	return length
 }
 
-func (t *CommunityGraphTest) traverseGraph(to string, from string, graphName string, expectedLength int) error {
+func (t *GraphTest) traverseGraph(to string, from string, graphName string, expectedLength int) error {
 	operationTimeout := t.OperationTimeout * 4
 	testTimeout := time.Now().Add(time.Minute * 15)
 

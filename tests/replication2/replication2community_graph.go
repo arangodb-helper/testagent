@@ -1,7 +1,6 @@
 package replication2
 
 import (
-	"fmt"
 	"strconv"
 	"time"
 
@@ -11,54 +10,26 @@ import (
 	logging "github.com/op/go-logging"
 )
 
-type CommunityGraphConf struct {
-	MaxEdges    int
-	MaxVertices int
-	VertexSize  int
-	EdgeSize    int
-}
-
 type CommunityGraphTest struct {
-	Replication2Test
-	CommunityGraphConf
-	graphCreated            bool
-	edgeColCreated          bool
-	vertexColCreated        bool
-	vertexColName           string
-	edgeColName             string
-	graphName               string
-	numberOfCreatedVertices int
-	numberOfCreatedEdges    int
+	GraphTest
 }
 
-func NewComGraphTest(log *logging.Logger, reportDir string, rep2config Replication2Config, config CommunityGraphConf) test.TestScript {
+func NewComGraphTest(log *logging.Logger, reportDir string, rep2config Replication2Config, config GraphTestConf) test.TestScript {
 	return &CommunityGraphTest{
-		CommunityGraphConf: config,
-		Replication2Test: Replication2Test{
-			TestName: "communityGraphTest",
-			Replication2TestContext: Replication2TestContext{
-				Replication2Config: rep2config,
-				Replication2TestHarness: Replication2TestHarness{
-					reportDir: reportDir,
-					log:       log,
-				},
-				documentIdSeq:     0,
-				collectionNameSeq: 0,
-			},
-		},
+		NewGraphTest("communityGraphTest", log, reportDir, rep2config, config),
 	}
 }
 
 func (t *CommunityGraphTest) generateVertexCollectionName(seed int64) string {
-	return "replication2_vertices_" + strconv.FormatInt(seed, 10)
+	return "community_vertices_" + strconv.FormatInt(seed, 10)
 }
 
 func (t *CommunityGraphTest) generateEdgeCollectionName(seed int64) string {
-	return "replication2_edges_" + strconv.FormatInt(seed, 10)
+	return "community_edges_" + strconv.FormatInt(seed, 10)
 }
 
 func (t *CommunityGraphTest) generateGraphName(seed int64) string {
-	return "simple_named_graph_" + strconv.FormatInt(seed, 10)
+	return "community_graph_" + strconv.FormatInt(seed, 10)
 }
 
 func (t *CommunityGraphTest) testLoop() {
@@ -81,12 +52,14 @@ func (t *CommunityGraphTest) testLoop() {
 		t.paused = false
 		t.actions++
 		if plan == nil || planIndex >= len(plan) {
-			plan = []int{0, 1, 2, 3, 4, 5, 6} // Update when more tests are added
+			plan = []int{0, 1, 2, 3, 4} // Update when more tests are added
 			planIndex = 0
 		}
 
 		switch plan[planIndex] {
 		case 0:
+			//create graph and underlying collections
+
 			// create a vertex collection
 			if !t.vertexColCreated {
 				t.vertexColName = t.generateVertexCollectionName(t.collectionNameSeq)
@@ -97,29 +70,6 @@ func (t *CommunityGraphTest) testLoop() {
 					t.actions++
 				}
 			}
-			planIndex++
-
-		case 1:
-			// create vertex documents
-			if t.vertexColCreated {
-				for {
-					if t.numberOfCreatedVertices >= t.MaxVertices {
-						break
-					}
-					for i := 0; i < t.MaxVertices-t.numberOfCreatedVertices; i++ {
-						seed := t.documentIdSeq
-						t.documentIdSeq++
-						t.insertDocument(t.vertexColName, NewBigDocument(seed, t.VertexSize))
-						t.actions++
-						t.numberOfCreatedVertices++
-						t.existingDocSeeds = append(t.existingDocSeeds, seed)
-					}
-
-				}
-			}
-			planIndex++
-
-		case 2:
 			//create an edge collection
 			if !t.edgeColCreated {
 				t.edgeColName = t.generateEdgeCollectionName(t.collectionNameSeq)
@@ -130,33 +80,8 @@ func (t *CommunityGraphTest) testLoop() {
 					t.actions++
 				}
 			}
-			planIndex++
-
-		case 3:
-			// create edges
-			if t.edgeColCreated {
-				i := 0
-				for {
-					idx := i
-					if len(t.existingDocSeeds) <= i+2 {
-						break
-					}
-					from := strconv.FormatInt(t.existingDocSeeds[idx], 10)
-					to := strconv.FormatInt(t.existingDocSeeds[idx+1], 10)
-					if err := t.createEdge(from, to, t.edgeColName, t.vertexColName, t.EdgeSize); err != nil {
-						t.log.Errorf("Failed to create edge document: %v", err)
-					} else {
-						t.actions++
-						t.numberOfCreatedEdges++
-						i++
-					}
-				}
-			}
-			planIndex++
-
-		case 4:
-			//create a named graph
-			if t.vertexColCreated && t.edgeColCreated {
+			//create named graph
+			if t.vertexColCreated && t.edgeColCreated && !t.graphCreated {
 				t.graphName = t.generateGraphName(t.collectionNameSeq)
 				if err := t.createGraph(t.graphName, t.edgeColName, []string{t.vertexColName}, []string{t.vertexColName},
 					nil, false, false, "", nil, 0, 0, 0); err != nil {
@@ -168,83 +93,31 @@ func (t *CommunityGraphTest) testLoop() {
 			}
 			planIndex++
 
-		case 5:
-			//traverse graph
-			if t.vertexColCreated && t.edgeColCreated && t.graphCreated {
-				i := 0
-				for {
-					if i >= 100 {
-						break
-					}
-					length := randInt(2, 100)
-					startIdx := randInt(0, t.numberOfCreatedEdges-1-length)
-					endIdx := startIdx + length
-					from := t.vertexColName + "/" + strconv.FormatInt(t.existingDocSeeds[startIdx], 10)
-					to := t.vertexColName + "/" + strconv.FormatInt(t.existingDocSeeds[endIdx], 10)
-					if err := t.traverseGraph(to, from, t.graphName, length); err != nil {
-						t.log.Errorf("Failed to traverse graph: %v", err)
-					} else {
-						t.actions++
-					}
-					i++
-				}
-			}
+		case 1:
+			// create vertex documents
+			t.createVertices()
 			planIndex++
 
-		case 6:
+		case 2:
+			// create edges
+			t.createEdges()
+			planIndex++
+
+		case 3:
+			//traverse graph
+			t.performGraphTraversal()
+			planIndex++
+
+		case 4:
 			// drop graph and collections
-			if t.vertexColCreated && t.edgeColCreated && t.graphCreated {
-				if err := t.dropGraph(t.graphName, true); err != nil {
-					t.log.Errorf("Failed to drop graph: %v", err)
-				} else {
-					t.graphCreated = false
-					t.vertexColCreated = false
-					t.edgeColCreated = false
-					t.collectionNameSeq++
-					t.numberOfCreatedEdges = 0
-					t.numberOfCreatedVertices = 0
-					t.existingDocSeeds = t.existingDocSeeds[:0]
-					t.actions++
-				}
+			if t.graphIsBroken || (t.vertexColCreated && t.edgeColCreated && t.graphCreated &&
+				t.MaxVertices == t.numberOfCreatedVertices) {
+				t.dropGraphAndCollections()
 			}
 			planIndex++
 		}
 		time.Sleep(time.Second * 2)
 	}
-}
-
-// Status returns the current status of the test
-func (t *CommunityGraphTest) Status() test.TestStatus {
-	cc := func(name string, c counter) test.Counter {
-		return test.Counter{
-			Name:      name,
-			Succeeded: c.succeeded,
-			Failed:    c.failed,
-		}
-	}
-
-	status := test.TestStatus{
-		Active:   t.active && !t.paused,
-		Pausing:  t.pauseRequested,
-		Failures: t.failures,
-		Actions:  t.actions,
-		Counters: []test.Counter{
-			cc("#collections created", t.createCollectionCounter),
-			cc("#collections dropped", t.dropCollectionCounter),
-			cc("#graphs created", t.createGraphCounter),
-			cc("#graphs dropped", t.dropGraphCounter),
-			cc("#edges created", t.edgeDocumentCreateCounter),
-			cc("#vertex documents created", t.singleDocCreateCounter),
-			cc("#graph traversals performed", t.traverseGraphCounter),
-		},
-	}
-
-	status.Messages = append(status.Messages,
-		fmt.Sprintf("Number of vertex documents in the database: %d", t.numberOfCreatedVertices),
-		fmt.Sprintf("Number of edge documents in the database: %d", t.numberOfCreatedEdges),
-	)
-
-	return status
 }
 
 // Start triggers the test script to start.
