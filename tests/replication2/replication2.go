@@ -46,6 +46,7 @@ type Replication2Counters struct {
 	updateExistingCounter     counter
 	replaceExistingCounter    counter
 	traverseGraphCounter      counter
+	queryCreateCursorCounter  counter
 }
 
 type Replication2TestContext struct {

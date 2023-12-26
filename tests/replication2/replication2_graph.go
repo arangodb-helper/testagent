@@ -27,11 +27,14 @@ func NewEdgeDocument(from string, to string, vertexColName string, edgeSize int,
 		payloadBytes[i] = byte(randGen.Int31n(int32(upperBound-lowerBound)) + int32(lowerBound))
 	}
 	return EdgeDocument{
-		TestDocument: TestDocument{UpdateCounter: 0},
-		Value:        seed,
-		Payload:      string(payloadBytes),
-		From:         vertexColName + "/" + from,
-		To:           vertexColName + "/" + to,
+		TestDocument: TestDocument{
+			Seed:          seed,
+			UpdateCounter: 0,
+		},
+		Value:   seed,
+		Payload: string(payloadBytes),
+		From:    vertexColName + "/" + from,
+		To:      vertexColName + "/" + to,
 	}
 }
 
@@ -357,21 +360,24 @@ func (t *GraphTest) createEdge(to string, from string, edgeColName string, verte
 				// 0, 503 and 409 -> check if accidentally successful
 				checkRetry = true
 			} else if resp[0].StatusCode != 1 {
-				//FIXME: properly check for success
+				document.Rev = resp[0].Rev
 				success = true
 			}
 		} else { // failure
 			t.edgeDocumentCreateCounter.failed++
 			t.reportFailure(
-				test.NewFailure(t.Name(), "Failed to create edge in collection '%s'", edgeColName, err[0]))
+				test.NewFailure(t.Name(), "Failed to create edge in collection '%s': %v", edgeColName, err[0]))
 			return maskAny(err[0])
 		}
 
-		//FIXME: implement checkretry - check if documents were still created even though we got a bad http response from coordinator
 		if checkRetry {
-			// e := t.readExistingDocument(seed, false)
-			// success = e == nil
-			success = false
+			edge, err := readDocumentByFakeKey(&t.Replication2Test, edgeColName, seed)
+			if err == nil && edge != nil {
+				document.TestDocument = edge.TestDocument
+				success = true
+			} else {
+				success = false
+			}
 		}
 
 		if success {

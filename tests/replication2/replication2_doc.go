@@ -1,6 +1,7 @@
 package replication2
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/url"
@@ -9,10 +10,11 @@ import (
 	"time"
 
 	"github.com/arangodb-helper/testagent/service/test"
+	"github.com/arangodb-helper/testagent/tests/util"
 )
 
 type TestDocument struct {
-	Seed          int64
+	Seed          int64  `json:"seed,omitempty"`
 	Key           string `json:"_key,omitempty"`
 	Rev           string `json:"_rev,omitempty"`
 	UpdateCounter int    `json:"update_counter"`
@@ -516,6 +518,72 @@ func readDocument(t *Replication2Test, colName string, key string, rev string, s
 	t.log.Errorf("Timed out while trying to read(%d) document %s in %s.", i, key, colName)
 	return nil, maskAny(fmt.Errorf("Timed out while trying to read(%d) document %s in %s.", i, key, colName))
 
+}
+
+// readDocumentByFakeKey finds a single edge document by a custom unique field "seed"
+func readDocumentByFakeKey(t *Replication2Test, colName string, seed int64) (*EdgeDocument, error) {
+	operationTimeout := t.OperationTimeout
+	testTimeout := time.Now().Add(operationTimeout * 5)
+	backoff := time.Millisecond * 250
+	i := 0
+
+	var err []error
+	var createResp []util.ArangoResponse
+	var cursorResp CursorResponse
+
+	for {
+
+		if time.Now().After(testTimeout) {
+			break
+		}
+		i++
+
+		t.log.Infof("Creating (%d) AQL query cursor for '%s'...", i, colName)
+		queryReq := QueryRequest{
+			Query:     fmt.Sprintf("FOR edge IN %s FILTER edge.seed==%d RETURN edge", colName, seed),
+			BatchSize: 1,
+			Count:     false,
+		}
+
+		createResp, err = t.client.Post(
+			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 410, 500, 503},
+			[]int{200, 202, 307, 400, 404, 409}, operationTimeout, 1)
+		t.log.Infof("... got http %d - arangodb %d via %s",
+			createResp[0].StatusCode, createResp[0].Error_.ErrorNum, createResp[0].CoordinatorURL)
+
+		if err[0] != nil {
+			// This is a failure
+			t.queryCreateCursorCounter.failed++
+			t.reportFailure(test.NewFailure(t.Name(), "Failed to create AQL cursor in collection '%s': %v", colName, err[0]))
+			return nil, maskAny(err[0])
+		} else if len(cursorResp.Result) == 0 {
+			return nil, nil
+		} else if len(cursorResp.Result) > 1 {
+			return nil, errors.New("More than 1 document found!")
+		} else if createResp[0].StatusCode == 201 && len(cursorResp.Result) == 1 {
+			t.queryCreateCursorCounter.succeeded++
+			t.log.Infof("Creating AQL cursor for collection '%s' succeeded", colName)
+			edge := cursorResp.Result[0].(EdgeDocument)
+			return &edge, nil
+		}
+
+		// Otherwise we fall through and simply try again. Note that if an
+		// attempt times out it is OK to simply retry, even if the old one
+		// eventually gets through, we can then simply work with the new
+		// cursor. Furthermore note that we found that currently the undocumented
+		// error code 500 can happen if a dbserver suffers from some chaos
+		// during cursor creation. We can simply retry, too.
+		time.Sleep(backoff)
+		if backoff < time.Second*5 {
+			backoff += backoff
+		}
+	}
+	t.reportFailure(test.NewFailure(t.Name(),
+		"Timed out while reading next AQL cursor batch in collection '%s' with same coordinator (%s)",
+		colName, createResp[0].CoordinatorURL))
+	return nil, maskAny(fmt.Errorf(
+		"Timed out while reading next AQL cursor batch in collection '%s' with same coordinator (%s)",
+		colName, createResp[0].CoordinatorURL))
 }
 
 // createRandomIfMatchHeader creates a request header with one of the following (randomly chosen):
