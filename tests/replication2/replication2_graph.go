@@ -373,7 +373,7 @@ func (t *GraphTest) createEdge(to string, from string, edgeColName string, verte
 		if checkRetry {
 			edge, err := readDocumentByFakeKey(&t.Replication2Test, edgeColName, seed)
 			if err == nil && edge != nil {
-				document.TestDocument = edge.TestDocument
+				document.TestDocument = *edge
 				success = true
 			} else {
 				success = false

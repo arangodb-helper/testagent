@@ -520,8 +520,8 @@ func readDocument(t *Replication2Test, colName string, key string, rev string, s
 
 }
 
-// readDocumentByFakeKey finds a single edge document by a custom unique field "seed"
-func readDocumentByFakeKey(t *Replication2Test, colName string, seed int64) (*EdgeDocument, error) {
+// readDocumentByFakeKey finds a single document by a custom unique field "seed"
+func readDocumentByFakeKey(t *Replication2Test, colName string, seed int64) (*TestDocument, error) {
 	operationTimeout := t.OperationTimeout
 	testTimeout := time.Now().Add(operationTimeout * 5)
 	backoff := time.Millisecond * 250
@@ -559,12 +559,18 @@ func readDocumentByFakeKey(t *Replication2Test, colName string, seed int64) (*Ed
 		} else if len(cursorResp.Result) == 0 {
 			return nil, nil
 		} else if len(cursorResp.Result) > 1 {
-			return nil, errors.New("More than 1 document found!")
+			return nil, errors.New("more than 1 document found")
 		} else if createResp[0].StatusCode == 201 && len(cursorResp.Result) == 1 {
 			t.queryCreateCursorCounter.succeeded++
 			t.log.Infof("Creating AQL cursor for collection '%s' succeeded", colName)
-			edge := cursorResp.Result[0].(EdgeDocument)
-			return &edge, nil
+			docMap := cursorResp.Result[0].(map[string]interface{})
+			doc := TestDocument{
+				Key:           docMap["_key"].(string),
+				Rev:           docMap["_rev"].(string),
+				Seed:          int64(docMap["seed"].(float64)),
+				UpdateCounter: int(docMap["update_counter"].(float64)),
+			}
+			return &doc, nil
 		}
 
 		// Otherwise we fall through and simply try again. Note that if an
