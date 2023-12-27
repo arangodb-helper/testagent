@@ -48,12 +48,14 @@ func NewGraphTest(testName string, log *logging.Logger, reportDir string, rep2co
 				collectionNameSeq: 0,
 			},
 		},
-		vertexCreationOffset: 0,
-		edgeCreationOffset:   0,
-		graphCreated:         false,
-		edgeColCreated:       false,
-		vertexColCreated:     false,
-		graphIsBroken:        false,
+		vertexCreationOffset:    0,
+		edgeCreationOffset:      0,
+		graphCreated:            false,
+		edgeColCreated:          false,
+		vertexColCreated:        false,
+		graphIsBroken:           false,
+		existingVertexDocuments: make([]TestDocument, 0, config.MaxVertices),
+		existingEdgeDocuments:   make([]TestDocument, 0, config.MaxVertices*1.5,
 	}
 }
 
