@@ -93,8 +93,7 @@ func (t *EnterpriseGraphTest) testLoop() {
 
 		case 4:
 			// drop graph and collections
-			if t.graphIsBroken || (t.vertexColCreated && t.edgeColCreated && t.graphCreated &&
-				t.MaxVertices == t.numberOfCreatedVertices) {
+			if t.graphIsBroken || (t.graphCreated && t.MaxVertices >= t.numberOfCreatedVertices) {
 				t.dropGraphAndCollections()
 			}
 			planIndex++

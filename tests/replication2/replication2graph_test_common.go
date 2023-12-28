@@ -174,6 +174,8 @@ func (t *GraphTest) dropGraphAndCollections() {
 		t.numberOfCreatedVertices = 0
 		t.existingVertexDocuments = t.existingVertexDocuments[:0]
 		t.existingEdgeDocuments = t.existingEdgeDocuments[:0]
+		t.edgeCreationOffset = 0
+		t.vertexCreationOffset = 0
 		t.actions++
 	}
 }
