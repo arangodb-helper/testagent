@@ -130,6 +130,8 @@ func (t *OneShardTest) testLoop() {
 					t.docCollectionCreated = false
 					t.numberOfExistingDocs = 0
 					t.existingDocuments = t.existingDocuments[:0]
+					t.readOffset = 0
+					t.updateOffset = 0
 					t.collectionNameSeq++
 					t.databaseNameSeq++
 					t.actions++
