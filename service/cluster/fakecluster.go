@@ -222,6 +222,10 @@ func (fc *FakeCluster) Destroy() error {
 	return nil
 }
 
+func (fc *FakeCluster) StartMetricsCollection() error {
+	return nil
+}
+
 func (fc *FakeCluster) Machines() ([]Machine, error) {
 	list := make([]Machine, 0, 3)
 	var i int = 0

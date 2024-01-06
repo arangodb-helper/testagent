@@ -30,6 +30,9 @@ type Cluster interface {
 	// Add adds a single machine to the cluster
 	Add() (Machine, error)
 
+	// Start collecting metrics from machines
+	StartMetricsCollection() error
+
 	// Remove the entire cluster
 	Destroy() error
 }

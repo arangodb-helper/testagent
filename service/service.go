@@ -77,6 +77,11 @@ func (s *Service) Run(stopChan chan struct{}, withChaos bool) error {
 		return maskAny(err)
 	}
 
+	// Start metrics collection
+	if err := c.StartMetricsCollection(); err != nil {
+		return maskAny(err)
+	}
+
 	s.Logger.Debug("Try to set enterprise license")
 	enterpriseLicense := os.Getenv("ARANGO_ENTERPRISE_LICENSE")
 	if enterpriseLicense != "" {

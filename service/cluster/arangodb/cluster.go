@@ -39,7 +39,8 @@ type ArangodbConfig struct {
 
 // arangodbClusterBuilder implements a ClusterBuilder using arangodb.
 type arangodbClusterBuilder struct {
-	log *logging.Logger
+	log        *logging.Logger
+	metricsDir string
 	ArangodbConfig
 }
 
@@ -48,6 +49,7 @@ type arangodbCluster struct {
 
 	mutex            sync.Mutex
 	log              *logging.Logger
+	metricsDir       string
 	dockerHosts      []*docker.DockerHost
 	id               string
 	agencySize       int
@@ -58,7 +60,7 @@ type arangodbCluster struct {
 }
 
 // NewArangodbClusterBuilder creates a new ClusterBuilder using arangodb.
-func NewArangodbClusterBuilder(log *logging.Logger, config ArangodbConfig) (cluster.ClusterBuilder, error) {
+func NewArangodbClusterBuilder(log *logging.Logger, metricsDir string, config ArangodbConfig) (cluster.ClusterBuilder, error) {
 	if config.MasterPort == 0 {
 		return nil, maskAny(fmt.Errorf("MasterPort missing"))
 	}
@@ -73,6 +75,7 @@ func NewArangodbClusterBuilder(log *logging.Logger, config ArangodbConfig) (clus
 	}
 	return &arangodbClusterBuilder{
 		log:            log,
+		metricsDir:     metricsDir,
 		ArangodbConfig: config,
 	}, nil
 }
@@ -97,6 +100,7 @@ func (cb *arangodbClusterBuilder) Create(agencySize int, forceOneShard bool) (cl
 	// Instantiate
 	c := &arangodbCluster{
 		log:              cb.log,
+		metricsDir:       cb.metricsDir,
 		ArangodbConfig:   cb.ArangodbConfig,
 		dockerHosts:      dockerHosts,
 		agencySize:       agencySize,
@@ -188,7 +192,21 @@ func (c *arangodbCluster) Add() (cluster.Machine, error) {
 		return nil, maskAny(err)
 	}
 
+	// Start metrics collection
+	if err := ma.startMetricsCollectionFromAllContainers(); err != nil {
+		return nil, maskAny(err)
+	}
+
 	return m, nil
+}
+
+func (c *arangodbCluster) StartMetricsCollection() error {
+	for _, ma := range c.machines {
+		if err := ma.startMetricsCollectionFromAllContainers(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Remove the entire cluster

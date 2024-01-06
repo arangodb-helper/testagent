@@ -19,6 +19,7 @@ import (
 	"github.com/arangodb-helper/testagent/pkg/networkblocker"
 	"github.com/arangodb-helper/testagent/pkg/retry"
 	"github.com/arangodb-helper/testagent/service/cluster"
+	"github.com/arangodb-helper/testagent/service/cluster/metrics"
 	dc "github.com/fsouza/go-dockerclient"
 	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
@@ -34,6 +35,7 @@ const (
 type arangodb struct {
 	machineID                  string
 	dockerHost                 *docker.DockerHost
+	metricsDir                 string
 	log                        *logging.Logger
 	createOptions              dc.CreateContainerOptions
 	index                      int
@@ -382,6 +384,7 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 		dockerHost:      dockerHost,
 		createOptions:   opts,
 		log:             c.log,
+		metricsDir:      c.metricsDir,
 		index:           index,
 		createdAt:       time.Now(),
 		state:           cluster.MachineStateNew,
@@ -687,4 +690,44 @@ func (m *arangodb) watchdog() {
 	}
 	go monitorLoop(func() url.URL { return m.DBServerURL() }, "dbserver", &m.lastDBServerReadyStatus)
 	go monitorLoop(func() url.URL { return m.CoordinatorURL() }, "coordinator", &m.lastCoordinatorReadyStatus)
+}
+
+func (m *arangodb) startMetricsCollectionFromAllContainers() error {
+	if err := m.startMetricsCollectionFromDbServer(); err != nil {
+		return err
+	}
+	if err := m.startMetricsCollectionFromCoordinator(); err != nil {
+		return err
+	}
+	if err := m.startMetricsCollectionFromAgent(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *arangodb) startMetricsCollectionFromCoordinator() error {
+	return m.startMetricsCollection(m.coordinatorContainerID, "COORDINATOR", m.dockerHost.IP, m.coordinatorPort)
+}
+
+func (m *arangodb) startMetricsCollectionFromDbServer() error {
+	return m.startMetricsCollection(m.dbserverContainerID, "DBSERVER", m.dockerHost.IP, m.dbserverPort)
+}
+
+func (m *arangodb) startMetricsCollectionFromAgent() error {
+	return m.startMetricsCollection(m.agentContainerID, "AGENT", m.dockerHost.IP, m.agentPort)
+}
+
+func (m *arangodb) startMetricsCollection(containerId string, role string, ip string, port int) error {
+	stats := make(chan *dc.Stats)
+	done := make(chan bool)
+	file := fmt.Sprintf("%s/%s_%s_%s_%s_%d.csv", m.metricsDir, m.machineID, containerId, role, ip, port)
+	writer := metrics.NewDockerMetricsWriter(stats, done, file)
+	go writer.Write()
+	go m.dockerHost.Client.Stats(dc.StatsOptions{
+		ID:     containerId,
+		Stream: true,
+		Stats:  stats,
+		Done:   done,
+	})
+	return nil
 }

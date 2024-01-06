@@ -144,7 +144,16 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 
 	// Create cluster builder
 	log.Debug("creating arangodb cluster builder")
-	cb, err := arangodb.NewArangodbClusterBuilder(log, appFlags.ArangodbConfig)
+	metricsDir := appFlags.ReportDir + "/metrics/"
+
+	if _, err := os.Stat(metricsDir); os.IsNotExist(err) {
+		log.Info("Metrics directory does not exist. Creating.")
+		if err := os.Mkdir(metricsDir, 0755); err != nil {
+			Exitf("Can't create metrics directory: %#v", err)
+		}
+	}
+
+	cb, err := arangodb.NewArangodbClusterBuilder(log, metricsDir, appFlags.ArangodbConfig)
 	if err != nil {
 		log.Fatalf("Failed to create cluster builder: %#v", err)
 	}
