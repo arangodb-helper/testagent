@@ -699,25 +699,27 @@ func (m *arangodb) startMetricsCollectionFromAllContainers() error {
 	if err := m.startMetricsCollectionFromCoordinator(); err != nil {
 		return err
 	}
-	if err := m.startMetricsCollectionFromAgent(); err != nil {
-		return err
+	if m.HasAgent() {
+		if err := m.startMetricsCollectionFromAgent(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 func (m *arangodb) startMetricsCollectionFromCoordinator() error {
-	return m.startMetricsCollection(m.coordinatorContainerID, "COORDINATOR", m.dockerHost.IP, m.coordinatorPort)
+	return m.startMetricsCollectionForContainer(m.coordinatorContainerID, "COORDINATOR", m.dockerHost.IP, m.coordinatorPort)
 }
 
 func (m *arangodb) startMetricsCollectionFromDbServer() error {
-	return m.startMetricsCollection(m.dbserverContainerID, "DBSERVER", m.dockerHost.IP, m.dbserverPort)
+	return m.startMetricsCollectionForContainer(m.dbserverContainerID, "DBSERVER", m.dockerHost.IP, m.dbserverPort)
 }
 
 func (m *arangodb) startMetricsCollectionFromAgent() error {
-	return m.startMetricsCollection(m.agentContainerID, "AGENT", m.dockerHost.IP, m.agentPort)
+	return m.startMetricsCollectionForContainer(m.agentContainerID, "AGENT", m.dockerHost.IP, m.agentPort)
 }
 
-func (m *arangodb) startMetricsCollection(containerId string, role string, ip string, port int) error {
+func (m *arangodb) startMetricsCollectionForContainer(containerId string, role string, ip string, port int) error {
 	stats := make(chan *dc.Stats)
 	done := make(chan bool)
 	file := fmt.Sprintf("%s/%s_%s_%s_%s_%d.csv", m.metricsDir, m.machineID, containerId, role, ip, port)
@@ -731,3 +733,18 @@ func (m *arangodb) startMetricsCollection(containerId string, role string, ip st
 	})
 	return nil
 }
+
+// func (m *arangodb) startMetricsCollectionForVolume(volumeId string) error {
+// 	stats := make(chan *dc.Stats)
+// 	done := make(chan bool)
+// 	file := fmt.Sprintf("%s/volume_%s_%s.csv", m.metricsDir, m.machineID, volumeId)
+// 	writer := metrics.NewDockerMetricsWriter(stats, done, file)
+// 	go writer.Write()
+// 	go m.dockerHost.Client.Stats(dc.StatsOptions{
+// 		ID:     containerId,
+// 		Stream: true,
+// 		Stats:  stats,
+// 		Done:   done,
+// 	})
+// 	return nil
+// }
