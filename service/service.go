@@ -25,6 +25,8 @@ type ServiceConfig struct {
 	ForceOneShard  bool
 	ServerPort     int
 	ReportDir      string
+	MetricsDir     string
+	CollectMetrics bool
 	ChaosConfig    chaos.ChaosMonkeyConfig
 }
 
@@ -78,8 +80,10 @@ func (s *Service) Run(stopChan chan struct{}, withChaos bool) error {
 	}
 
 	// Start metrics collection
-	if err := c.StartMetricsCollection(); err != nil {
-		return maskAny(err)
+	if s.CollectMetrics {
+		if err := c.StartMetricsCollection(); err != nil {
+			return maskAny(err)
+		}
 	}
 
 	s.Logger.Debug("Try to set enterprise license")

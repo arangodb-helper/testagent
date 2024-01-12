@@ -59,4 +59,8 @@ ENV NETWORK_BLOCKER_IMAGE=arangodb/network-blocker:0.1.0
 ENV REPORT_DIR=/reports
 VOLUME /reports
 
+# Metrics dir 
+ENV METRICS_DIR=/metrics
+VOLUME /metrics
+
 ENTRYPOINT ["/app/testAgent"]

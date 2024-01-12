@@ -65,6 +65,8 @@ func init() {
 	f.BoolVar(&appFlags.ReplicationVersion2, "replication-version-2", false, "If set, use replication version 2")
 	f.StringVar(&appFlags.DockerInterface, "docker-interface", "docker0", "Network interface used to connect docker containers to")
 	f.StringVar(&appFlags.ReportDir, "report-dir", getEnvVar("REPORT_DIR", "."), "Directory in which failure reports will be created")
+	f.BoolVar(&appFlags.CollectMetrics, "collect-metrics", false, "If set, metrics will be collected and saved into files.")
+	f.StringVar(&appFlags.MetricsDir, "metrics-dir", getEnvVar("METRICS_DIR", "."), "Directory in which metrics will be stored")
 	f.BoolVar(&appFlags.Privileged, "privileged", false, "If set, run all containers with `--privileged`")
 	f.IntVar(&appFlags.ChaosConfig.MaxMachines, "max-machines", 10, "Upper limit to the number of machines in a cluster")
 	f.IntVar(&appFlags.SimpleConfig.MaxDocuments, "simple-max-documents", 20000, "Upper limit to the number of documents created in simple test")
@@ -144,16 +146,17 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 
 	// Create cluster builder
 	log.Debug("creating arangodb cluster builder")
-	metricsDir := appFlags.ReportDir + "/metrics/"
 
-	if _, err := os.Stat(metricsDir); os.IsNotExist(err) {
-		log.Info("Metrics directory does not exist. Creating.")
-		if err := os.Mkdir(metricsDir, 0755); err != nil {
-			Exitf("Can't create metrics directory: %#v", err)
+	if appFlags.CollectMetrics {
+		if _, err := os.Stat(appFlags.MetricsDir); os.IsNotExist(err) {
+			log.Info("Metrics directory does not exist. Creating: %s", appFlags.MetricsDir)
+			if err := os.Mkdir(appFlags.MetricsDir, 0755); err != nil {
+				Exitf("Can't create metrics directory: %#v", err)
+			}
 		}
 	}
 
-	cb, err := arangodb.NewArangodbClusterBuilder(log, metricsDir, appFlags.ArangodbConfig)
+	cb, err := arangodb.NewArangodbClusterBuilder(log, appFlags.MetricsDir, appFlags.CollectMetrics, appFlags.ArangodbConfig)
 	if err != nil {
 		log.Fatalf("Failed to create cluster builder: %#v", err)
 	}

@@ -35,6 +35,7 @@ const (
 type arangodb struct {
 	machineID                  string
 	dockerHost                 *docker.DockerHost
+	collectMetrics             bool
 	metricsDir                 string
 	log                        *logging.Logger
 	createOptions              dc.CreateContainerOptions
@@ -151,6 +152,11 @@ func (m *arangodb) RestartAgent() error {
 	if err := m.dockerHost.Client.StopContainer(m.agentContainerID, stopContainerTimeout); err != nil {
 		return maskAny(err)
 	}
+	if m.collectMetrics {
+		if err := m.startMetricsCollectionFromAgent(); err != nil {
+			return maskAny(err)
+		}
+	}
 	return nil
 }
 
@@ -161,6 +167,11 @@ func (m *arangodb) RestartDBServer() error {
 	}
 	if err := m.dockerHost.Client.StopContainer(m.dbserverContainerID, stopContainerTimeout); err != nil {
 		return maskAny(err)
+	}
+	if m.collectMetrics {
+		if err := m.startMetricsCollectionFromDbServer(); err != nil {
+			return maskAny(err)
+		}
 	}
 	return nil
 }
@@ -173,6 +184,11 @@ func (m *arangodb) RestartCoordinator() error {
 	if err := m.dockerHost.Client.StopContainer(m.coordinatorContainerID, stopContainerTimeout); err != nil {
 		return maskAny(err)
 	}
+	if m.collectMetrics {
+		if err := m.startMetricsCollectionFromCoordinator(); err != nil {
+			return maskAny(err)
+		}
+	}
 	return nil
 }
 
@@ -183,6 +199,11 @@ func (m *arangodb) KillAgent() error {
 	}
 	if err := m.dockerHost.Client.KillContainer(dc.KillContainerOptions{ID: m.agentContainerID}); err != nil {
 		return maskAny(err)
+	}
+	if m.collectMetrics {
+		if err := m.startMetricsCollectionFromAgent(); err != nil {
+			return maskAny(err)
+		}
 	}
 	return nil
 }
@@ -195,6 +216,11 @@ func (m *arangodb) KillDBServer() error {
 	if err := m.dockerHost.Client.KillContainer(dc.KillContainerOptions{ID: m.dbserverContainerID}); err != nil {
 		return maskAny(err)
 	}
+	if m.collectMetrics {
+		if err := m.startMetricsCollectionFromDbServer(); err != nil {
+			return maskAny(err)
+		}
+	}
 	return nil
 }
 
@@ -205,6 +231,11 @@ func (m *arangodb) KillCoordinator() error {
 	}
 	if err := m.dockerHost.Client.KillContainer(dc.KillContainerOptions{ID: m.coordinatorContainerID}); err != nil {
 		return maskAny(err)
+	}
+	if m.collectMetrics {
+		if err := m.startMetricsCollectionFromCoordinator(); err != nil {
+			return maskAny(err)
+		}
 	}
 	return nil
 }
@@ -234,6 +265,13 @@ func (m *arangodb) Reboot() error {
 	// Wait for servers ready
 	if err := m.waitUntilServersReady(m.log, serverReadyTimeout); err != nil {
 		return maskAny(err)
+	}
+
+	// Start metrics collection
+	if m.collectMetrics {
+		if err := m.startMetricsCollectionFromAllContainers(); err != nil {
+			return maskAny(err)
+		}
 	}
 
 	return nil
@@ -384,6 +422,7 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 		dockerHost:      dockerHost,
 		createOptions:   opts,
 		log:             c.log,
+		collectMetrics:  c.collectMetrics,
 		metricsDir:      c.metricsDir,
 		index:           index,
 		createdAt:       time.Now(),
@@ -640,6 +679,9 @@ func (m *arangodb) waitUntilServersReady(log *logging.Logger, timeout time.Durat
 	if err := g.Wait(); err != nil {
 		return maskAny(err)
 	}
+	if err := m.updateServerInfo(); err != nil {
+		return maskAny(err)
+	}
 	m.state = cluster.MachineStateReady
 	return nil
 }
@@ -708,14 +750,23 @@ func (m *arangodb) startMetricsCollectionFromAllContainers() error {
 }
 
 func (m *arangodb) startMetricsCollectionFromCoordinator() error {
+	if err := m.waitUntilServersReady(m.log, serverReadyTimeout); err != nil {
+		return maskAny(err)
+	}
 	return m.startMetricsCollectionForContainer(m.coordinatorContainerID, "COORDINATOR", m.dockerHost.IP, m.coordinatorPort)
 }
 
 func (m *arangodb) startMetricsCollectionFromDbServer() error {
+	if err := m.waitUntilServersReady(m.log, serverReadyTimeout); err != nil {
+		return maskAny(err)
+	}
 	return m.startMetricsCollectionForContainer(m.dbserverContainerID, "DBSERVER", m.dockerHost.IP, m.dbserverPort)
 }
 
 func (m *arangodb) startMetricsCollectionFromAgent() error {
+	if err := m.waitUntilServersReady(m.log, serverReadyTimeout); err != nil {
+		return maskAny(err)
+	}
 	return m.startMetricsCollectionForContainer(m.agentContainerID, "AGENT", m.dockerHost.IP, m.agentPort)
 }
 
@@ -723,7 +774,7 @@ func (m *arangodb) startMetricsCollectionForContainer(containerId string, role s
 	stats := make(chan *dc.Stats)
 	done := make(chan bool)
 	file := fmt.Sprintf("%s/%s_%s_%s_%s_%d.csv", m.metricsDir, m.machineID, containerId, role, ip, port)
-	writer := metrics.NewDockerMetricsWriter(stats, done, file)
+	writer := metrics.NewDockerMetricsWriter(stats, done, file, m.log)
 	go writer.Write()
 	go m.dockerHost.Client.Stats(dc.StatsOptions{
 		ID:     containerId,
