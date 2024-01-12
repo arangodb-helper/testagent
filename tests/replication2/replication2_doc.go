@@ -571,6 +571,8 @@ func (t *Replication2Test) updateExistingDocument(colName string, oldDoc TestDoc
 				}
 			} else if update[0].StatusCode == 0 || update[0].StatusCode == 409 || update[0].StatusCode == 503 {
 				// 0, 409, 503 -> check if not accidentally successful
+				t.log.Debugf(
+					"Got status code %d. We need to re-check if the update operation was successfull.", update[0].StatusCode)
 				checkRetry = true
 			} else if update[0].StatusCode != 1 {
 				oldDoc.Rev = update[0].Rev
@@ -590,6 +592,8 @@ func (t *Replication2Test) updateExistingDocument(colName string, oldDoc TestDoc
 		if checkRetry {
 			expected := oldDoc
 			expected.UpdateCounter = new_counter_value
+			t.log.Debugf(
+				"Checking if the update operation was successfull. Expecting document: %v", expected)
 			d, e := readDocument(t, colName, expected.Key, "", ReadTimeout, true)
 
 			if e == nil { // document does not exist
