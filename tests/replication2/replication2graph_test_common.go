@@ -187,6 +187,7 @@ func (t *GraphTest) createEdges() {
 			to := t.existingVertexDocuments[i+1].Key
 			if err := t.createEdge(to, from, t.edgeColName, t.vertexColName, t.EdgeSize); err != nil {
 				t.log.Errorf("Failed to create edge document: %v", err)
+				t.graphIsBroken = true
 			} else {
 				t.actions++
 				t.numberOfCreatedEdges++
