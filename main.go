@@ -51,6 +51,7 @@ func init() {
 	f.IntVar(&appFlags.AgencySize, "agency-size", 3, "Number of agents in the cluster")
 	f.IntVar(&appFlags.port, "port", 4200, "First port of range of ports used by the testAgent")
 	f.StringVar(&appFlags.logLevel, "log-level", "debug", "Minimum log level (debug|info|warning|error)")
+	f.IntVar(&appFlags.ServiceConfig.ChaosConfig.ChaosLevel, "chaos-level", 4, "Chaos level. Default: 4.")
 	f.StringVar(&appFlags.ArangodbImage, "arangodb-image", getEnvVar("ARANGODB_IMAGE", "arangodb/arangodb-starter"), "name of the Docker image containing arangodb (the cluster starter)")
 	f.StringVar(&appFlags.ArangoImage, "arango-image", getEnvVar("ARANGO_IMAGE", ""), "name of the Docker image containing arangod (the database)")
 	f.StringVar(&appFlags.NetworkBlockerImage, "network-blocker-image", getEnvVar("NETWORK_BLOCKER_IMAGE", ""), "name of the Docker image containing network-blocker")

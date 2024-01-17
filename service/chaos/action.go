@@ -19,12 +19,13 @@ type Action interface {
 }
 
 type chaosAction struct {
-	action    func(context.Context, *chaosAction) bool
-	name      string
-	succeeded int
-	failures  int
-	skipped   int
-	disabled  bool
+	action       func(context.Context, *chaosAction) bool
+	name         string
+	succeeded    int
+	failures     int
+	skipped      int
+	disabled     bool
+	minimumLevel int
 }
 
 func (a *chaosAction) ID() string {
