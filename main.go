@@ -81,6 +81,7 @@ func init() {
 	f.IntVar(&appFlags.DocColConfig.MaxDocuments, "replication2-max-documents", 1000000, "Upper limit to the number of documents created in replication2 test")
 	f.IntVar(&appFlags.DocColConfig.BatchSize, "replication2-batch-size", 1000, "Batch size for creating documents in bulk mode in replication2 tests")
 	f.IntVar(&appFlags.DocColConfig.DocumentSize, "replication2-document-size", 1024, "The size of the payload field in bytes in all documents in replication2 test")
+	f.IntVar(&appFlags.DocColConfig.MaxUpdates, "replication2-max-updates", 10, "Number of update operations to be performed on each document, before dropping collection.")
 	f.IntVar(&appFlags.Replication2Config.NumberOfShards, "replication2-shards", 10, "Number of shards in all replication2 tests")
 	f.IntVar(&appFlags.Replication2Config.ReplicationFactor, "replication2-replicationFactor", 3, "Replication factor in all replication2 tests")
 	f.DurationVar(&appFlags.Replication2Config.OperationTimeout, "replication2-operation-timeout", defaultOperationTimeout, "Timeout per database operation in all replication2 tests")

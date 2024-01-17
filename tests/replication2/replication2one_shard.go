@@ -120,7 +120,7 @@ func (t *OneShardTest) testLoop() {
 
 		case 5:
 			// drop database
-			if t.docCollectionCreated && t.numberOfExistingDocs >= t.MaxDocuments && t.existingDocuments[len(t.existingDocuments)-1].UpdateCounter > 10 {
+			if t.docCollectionCreated && t.numberOfExistingDocs >= t.MaxDocuments && t.existingDocuments[len(t.existingDocuments)-1].UpdateCounter > t.MaxUpdates {
 				t.client.UseDatabase("_system")
 				if err := t.dropDatabase(t.databaseName); err != nil {
 					t.client.UseDatabase(t.databaseName)

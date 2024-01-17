@@ -13,6 +13,7 @@ import (
 
 type DocColConfig struct {
 	MaxDocuments int
+	MaxUpdates   int
 	BatchSize    int
 	DocumentSize int
 }
@@ -196,7 +197,7 @@ func (t *DocColTest) testLoop() {
 
 		case 4:
 			// drop collections
-			if t.docCollectionCreated && t.numberOfExistingDocs >= t.MaxDocuments && t.existingDocuments[len(t.existingDocuments)-1].UpdateCounter > 10 {
+			if t.docCollectionCreated && t.numberOfExistingDocs >= t.MaxDocuments && t.existingDocuments[len(t.existingDocuments)-1].UpdateCounter > t.MaxUpdates {
 				if err := t.dropCollection(t.docCollectionName); err != nil {
 					t.log.Errorf("Failed to drop collection: %v", err)
 				} else {
