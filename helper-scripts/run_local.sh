@@ -25,6 +25,7 @@ docker run -it --rm -p 4200:4200 -p 4000:4000 \
        -v /tmp/testagent-metrics/:/metrics \
        $IMAGE \
        --log-level=debug \
+       --chaos-level=0 \
        --collect-metrics \
        --docker-host-ip=10.0.0.1 \
        --arango-image="$ARANGODB_IMAGE" \

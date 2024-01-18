@@ -8,6 +8,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fsouza/go-dockerclient v1.6.4
 	github.com/go-macaron/bindata v0.0.0-20200308113348-9fced76aaa6e
+	github.com/jteeuwen/go-bindata v3.0.8-0.20180305030458-6025e8de665b+incompatible // indirect
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.0.0

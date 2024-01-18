@@ -35,6 +35,7 @@ type ArangodbConfig struct {
 	Verbose             bool     // Turn on debug logging
 	Privileged          bool     // Start containers with `--privileged`
 	ReplicationVersion2 bool     // Use replication version 2
+	ChaosLevel          int      // Level of chaos to use. An integer from 0 to 4. 0 - no chaos. 4 - maximum chaos.
 }
 
 // arangodbClusterBuilder implements a ClusterBuilder using arangodb.

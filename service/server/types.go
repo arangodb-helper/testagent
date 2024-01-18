@@ -37,6 +37,7 @@ type Test struct {
 type Chaos struct {
 	Active  bool
 	State   string
+	Level   int
 	Events  []chaos.Event
 	Actions []ChaosAction
 }
@@ -121,6 +122,7 @@ func chaosFromCluster(cm chaos.ChaosMonkey, maxEvents int) Chaos {
 		chaos.Active = cm.Active()
 		chaos.State = cm.State()
 		chaos.Events = cm.GetRecentEvents(maxEvents)
+		chaos.Level = cm.Level()
 		for _, a := range cm.Actions() {
 			chaos.Actions = append(chaos.Actions, ChaosAction{
 				ID:        a.ID(),

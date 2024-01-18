@@ -2,6 +2,7 @@ package chaos
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"sync"
 	"time"
@@ -23,6 +24,12 @@ type ChaosMonkey interface {
 	// Stop introducing chaos
 	Stop()
 
+	// Set chaos level
+	SetChaosLevel(level int) error
+
+	// Get chaos level
+	Level() int
+
 	// WaitUntilInactive blocks until Active return false
 	WaitUntilInactive()
 
@@ -36,6 +43,7 @@ type ChaosMonkey interface {
 type ChaosMonkeyConfig struct {
 	MaxMachines         int  // Maximum number of machines to allow in a cluster.
 	DisableNetworkChaos bool // If set to true, no network chaos is ever introduced
+	ChaosLevel          int  // Chaos level
 }
 
 // NewChaosMonkey creates a new chaos monkey for the given cluster
@@ -46,22 +54,23 @@ func NewChaosMonkey(log *logging.Logger, cluster cluster.Cluster, config ChaosMo
 		cluster:           cluster,
 	}
 	c.actions = []*chaosAction{
-		&chaosAction{c.restartAgent, "Restart Agent", 0, 0, 0, false},
-		&chaosAction{c.restartDBServer, "Restart DBServer", 0, 0, 0, false},
-		&chaosAction{c.restartCoordinator, "Restart Coordinator", 0, 0, 0, false},
-		&chaosAction{c.killAgent, "Kill Agent", 0, 0, 0, false},
-		&chaosAction{c.killDBServer, "Kill DBServer", 0, 0, 0, false},
-		&chaosAction{c.killCoordinator, "Kill Coordinator", 0, 0, 0, false},
-		&chaosAction{c.rebootMachine, "Reboot Machine", 0, 0, 0, false},
-		&chaosAction{c.rejectAgentTraffic, "Reject Agent Traffic", 0, 0, 0, false},
-		&chaosAction{c.rejectDBServerTraffic, "Reject DBServer Traffic", 0, 0, 0, false},
-		&chaosAction{c.rejectCoordinatorTraffic, "Reject Coordinator Traffic", 0, 0, 0, false},
-		&chaosAction{c.dropAgentTraffic, "Drop Agent Traffic", 0, 0, 0, false},
-		&chaosAction{c.dropDBServerTraffic, "Drop DBServer Traffic", 0, 0, 0, false},
-		&chaosAction{c.dropCoordinatorTraffic, "Drop Coordinator Traffic", 0, 0, 0, false},
-		&chaosAction{c.addMachine, "Add New Machine", 0, 0, 0, false},
-		&chaosAction{c.removeMachine, "Remove Machine", 0, 0, 0, false},
+		&chaosAction{c.restartAgent, "Restart Agent", 0, 0, 0, true, 1},
+		&chaosAction{c.restartDBServer, "Restart DBServer", 0, 0, 0, true, 1},
+		&chaosAction{c.restartCoordinator, "Restart Coordinator", 0, 0, 0, true, 1},
+		&chaosAction{c.killAgent, "Kill Agent", 0, 0, 0, true, 2},
+		&chaosAction{c.killDBServer, "Kill DBServer", 0, 0, 0, true, 2},
+		&chaosAction{c.killCoordinator, "Kill Coordinator", 0, 0, 0, true, 2},
+		&chaosAction{c.rebootMachine, "Reboot Machine", 0, 0, 0, true, 3},
+		&chaosAction{c.addMachine, "Add New Machine", 0, 0, 0, true, 3},
+		&chaosAction{c.removeMachine, "Remove Machine", 0, 0, 0, true, 3},
+		&chaosAction{c.rejectAgentTraffic, "Reject Agent Traffic", 0, 0, 0, true, 4},
+		&chaosAction{c.rejectDBServerTraffic, "Reject DBServer Traffic", 0, 0, 0, true, 4},
+		&chaosAction{c.rejectCoordinatorTraffic, "Reject Coordinator Traffic", 0, 0, 0, true, 4},
+		&chaosAction{c.dropAgentTraffic, "Drop Agent Traffic", 0, 0, 0, true, 4},
+		&chaosAction{c.dropDBServerTraffic, "Drop DBServer Traffic", 0, 0, 0, true, 4},
+		&chaosAction{c.dropCoordinatorTraffic, "Drop Coordinator Traffic", 0, 0, 0, true, 4},
 	}
+	c.applyChaosLevel()
 	return c
 }
 
@@ -76,6 +85,11 @@ type chaosMonkey struct {
 	recentEvents []Event // Limit list of events (last event first)
 	actions      []*chaosAction
 }
+
+const (
+	chaosLevelMin = 0
+	chaosLevelMax = 4
+)
 
 // Active returns true when chaos is being introduced.
 func (c *chaosMonkey) Active() bool {
@@ -116,6 +130,28 @@ func (c *chaosMonkey) Stop() {
 		c.cancelled = true
 		cancel()
 	}
+}
+
+func (c *chaosMonkey) applyChaosLevel() {
+	for _, action := range c.actions {
+		action.disabled = action.minimumLevel > c.ChaosLevel
+	}
+}
+
+// Set chaos level
+func (c *chaosMonkey) SetChaosLevel(level int) error {
+	if level < chaosLevelMin || level > chaosLevelMax {
+		return fmt.Errorf("Level is out of range [%d, %d]", chaosLevelMin, chaosLevelMax)
+	}
+	c.log.Debugf("Setting chaos level: %d", level)
+	c.ChaosLevel = level
+	c.applyChaosLevel()
+	return nil
+}
+
+// Get chaos level
+func (c *chaosMonkey) Level() int {
+	return c.ChaosLevel
 }
 
 // WaitUntilInactive blocks until Active return false
