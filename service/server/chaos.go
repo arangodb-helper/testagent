@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"strconv"
 
 	logging "github.com/op/go-logging"
 	macaron "gopkg.in/macaron.v1"
@@ -42,6 +43,30 @@ func chaosActionDisablePage(ctx *macaron.Context, log *logging.Logger, service S
 				a.Disable()
 				break
 			}
+		}
+	}
+	ctx.Redirect("/chaos", http.StatusFound)
+}
+
+func tryGetChaosLevel(ctx *macaron.Context) (int, error) {
+	level, err := strconv.Atoi(ctx.Params("level"))
+	if err != nil {
+		return level, err
+	}
+	return level, nil
+}
+
+func chaosSetLevel(ctx *macaron.Context, log *logging.Logger, service Service) {
+	level, err := tryGetChaosLevel(ctx)
+	if err != nil {
+		ctx.Redirect("/chaos", http.StatusBadRequest)
+		return
+	}
+
+	if cm := service.ChaosMonkey(); cm != nil {
+		if err := cm.SetChaosLevel(level); err != nil {
+			ctx.Redirect("/chaos", http.StatusBadRequest)
+			return
 		}
 	}
 	ctx.Redirect("/chaos", http.StatusFound)

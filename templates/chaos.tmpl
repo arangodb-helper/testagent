@@ -11,6 +11,17 @@
         <a href="/chaos/resume" class="ui mini right floated button">Resume</a>
     {{end}}
 </p>
+<form action="/chaos/level/" method="GET" onsubmit="this.action = this.action + this.level.value;">
+  <label for="level">Chaos level:</label>
+  <select name="level" id="level">
+    <option value="0" {{if eq .Chaos.Level 0 }} selected {{end}}>0 = disable chaos</option>
+    <option value="1" {{if eq .Chaos.Level 1 }} selected {{end}}>1 = restart processes gracefully</option>
+    <option value="2" {{if eq .Chaos.Level 2 }} selected {{end}}>2 = 1 + kill processes</option>
+    <option value="3" {{if eq .Chaos.Level 3 }} selected {{end}}>3 = 2 + add/remove/restart whole machines</option>
+    <option value="4" {{if eq .Chaos.Level 4 }} selected {{end}}>4 = 3 + introduce network chaos</option>
+  </select>
+  <input type="submit" value="Set">
+</form>
 
 <h2>Statistics</h2>
 
