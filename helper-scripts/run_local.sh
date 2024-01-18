@@ -29,9 +29,10 @@ docker run -it --rm -p 4200:4200 -p 4000:4000 \
        --docker-host-ip=10.0.0.1 \
        --arango-image="$ARANGODB_IMAGE" \
        --arangodb-image="arangodb/arangodb-starter:$STARTER_VERSION" \
+       --replication-version-2 \
        --replication2-operation-timeout 3m \
        --replication2-retry-timeout 8m \
-       --replication2-document-size 8192 \
+       --replication2-document-size 256 \
        --replication2-batch-size 50 \
        --replication2-max-documents 10000 \
        --replication2-max-updates 3 \

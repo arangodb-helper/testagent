@@ -1,2 +1,2 @@
 #!/bin/bash
-make docker-dbg && IMAGE=arangodb/testagent:dbg ./run_local.sh
+make docker-dbg && IMAGE=arangodb/testagent:dbg ./helper-scripts./run_local.sh
