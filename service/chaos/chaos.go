@@ -2,6 +2,7 @@ package chaos
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"sync"
 	"time"
@@ -24,7 +25,7 @@ type ChaosMonkey interface {
 	Stop()
 
 	// Set chaos level
-	SetChaosLevel(level int)
+	SetChaosLevel(level int) error
 
 	// Get chaos level
 	Level() int
@@ -85,6 +86,11 @@ type chaosMonkey struct {
 	actions      []*chaosAction
 }
 
+const (
+	chaosLevelMin = 0
+	chaosLevelMax = 4
+)
+
 // Active returns true when chaos is being introduced.
 func (c *chaosMonkey) Active() bool {
 	return c.active
@@ -127,16 +133,20 @@ func (c *chaosMonkey) Stop() {
 }
 
 func (c *chaosMonkey) applyChaosLevel() {
-	for i := 0; i < len(c.actions); i++ {
-		c.actions[i].disabled = c.actions[i].minimumLevel > c.ChaosLevel
+	for _, action := range c.actions {
+		action.disabled = action.minimumLevel > c.ChaosLevel
 	}
 }
 
 // Set chaos level
-func (c *chaosMonkey) SetChaosLevel(level int) {
+func (c *chaosMonkey) SetChaosLevel(level int) error {
+	if level < chaosLevelMin || level > chaosLevelMax {
+		return fmt.Errorf("Level is out of range [%d, %d]", chaosLevelMin, chaosLevelMax)
+	}
 	c.log.Debugf("Setting chaos level: %d", level)
 	c.ChaosLevel = level
 	c.applyChaosLevel()
+	return nil
 }
 
 // Get chaos level

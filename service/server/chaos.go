@@ -48,23 +48,28 @@ func chaosActionDisablePage(ctx *macaron.Context, log *logging.Logger, service S
 	ctx.Redirect("/chaos", http.StatusFound)
 }
 
-func chaosSetLevel(ctx *macaron.Context, log *logging.Logger, service Service) {
-	invalidValue := false
+func tryGetChaosLevel(ctx *macaron.Context) (int, error) {
 	level, err := strconv.Atoi(ctx.Params("level"))
 	if err != nil {
-		invalidValue = true
+		return level, err
 	}
-	if !(level >= 0 && level <= 4) {
-		invalidValue = true
-	}
-	if cm := service.ChaosMonkey(); cm != nil {
-		cm.SetChaosLevel(level)
-	}
-	if invalidValue {
+	return level, nil
+}
+
+func chaosSetLevel(ctx *macaron.Context, log *logging.Logger, service Service) {
+	level, err := tryGetChaosLevel(ctx)
+	if err != nil {
 		ctx.Redirect("/chaos", http.StatusBadRequest)
-	} else {
-		ctx.Redirect("/chaos", http.StatusFound)
+		return
 	}
+
+	if cm := service.ChaosMonkey(); cm != nil {
+		if err := cm.SetChaosLevel(level); err != nil {
+			ctx.Redirect("/chaos", http.StatusBadRequest)
+			return
+		}
+	}
+	ctx.Redirect("/chaos", http.StatusFound)
 }
 
 func chaosPage(ctx *macaron.Context, log *logging.Logger, service Service) {
