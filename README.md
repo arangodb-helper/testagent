@@ -110,6 +110,7 @@ export DOCKER_CERT_PATH=/path/to/cert
 - `--agency-size number` Set the size of the agency for the new cluster.
 - `--port` Set the first port used by the test agent (first of a range of ports). 
 - `--log-level` Adjust log level (debug|info|warning|error)
+- `--chaos-level` Chaos level. Allowed values: 0-4. 0 = no chaos. 4 = maximum chaos. Default: 4.
 - `--arangodb-image` Docker image containing `arangodb`. The image must exists in the local docker host.
 - `--arango-image` Docker image containing `arangod`.
 - `--docker-endpoint` How to reach the docker host (this option can be specified multiple times to use multiple docker hosts).
