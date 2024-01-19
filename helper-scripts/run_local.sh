@@ -10,7 +10,7 @@ fi
 
 if test -z "$ARANGODB_IMAGE"; then
     # ARANGODB_IMAGE=arangodb:3.11.6
-    ARANGODB_IMAGE=arangodb/enterprise-preview:devel-nightly-amd64
+    ARANGODB_IMAGE=arangodb/enterprise-test:devel-nightly-amd64
 fi
 
 docker pull $ARANGODB_IMAGE
@@ -18,7 +18,7 @@ docker pull $ARANGODB_IMAGE
 docker run -it --rm -p 4200:4200 -p 4000:4000 \
        --name testagent \
        -v /var/run/docker.sock:/var/run/docker.sock \
-       -v /vitaly/projects/testagent/certdir:/certdir \
+       -v /tmp/testagent-certdir:/certdir \
        -e DOCKER_CERT_PATH=/certdir \
        -e DOCKER_TLS_VERIFY=1 \
        -v /tmp/testagent-reports/:/reports \
