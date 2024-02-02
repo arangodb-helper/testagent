@@ -1,4 +1,4 @@
-package replication2
+package complex
 
 import (
 	"fmt"
@@ -40,7 +40,7 @@ func NewEdgeDocument(from string, to string, vertexColName string, edgeSize int,
 
 // createGraph creates a new graph.
 // The operation is expected to succeed.
-func (t *Replication2Test) createGraph(graphName string,
+func (t *ComplextTest) createGraph(graphName string,
 	edgeCol string, fromCols []string, toCols []string, orphans []string,
 	isSmart bool, isDisjoint bool, smartGraphAttribute string,
 	satellites []string, numberOfShards int, replicationFactor int, writeConcern int) error {
@@ -212,7 +212,7 @@ func (t *Replication2Test) createGraph(graphName string,
 	return maskAny(fmt.Errorf("Timed out while trying to create (%d) graph %s.", i, graphName))
 }
 
-func (t *Replication2Test) graphExists(graphName string) (bool, error) {
+func (t *ComplextTest) graphExists(graphName string) (bool, error) {
 
 	operationTimeout := time.Duration(ReadTimeout) * time.Second
 	timeout := time.Now().Add(operationTimeout)
@@ -258,7 +258,7 @@ func (t *Replication2Test) graphExists(graphName string) (bool, error) {
 
 }
 
-func (t *Replication2Test) dropGraph(graphName string, dropCollections bool) error {
+func (t *ComplextTest) dropGraph(graphName string, dropCollections bool) error {
 
 	operationTimeout := t.OperationTimeout
 	testTimeout := time.Now().Add(t.OperationTimeout * 5)
@@ -371,7 +371,7 @@ func (t *GraphTest) createEdge(to string, from string, edgeColName string, verte
 		}
 
 		if checkRetry {
-			edge, err := readDocumentBySeed(&t.Replication2Test, edgeColName, seed)
+			edge, err := readDocumentBySeed(&t.ComplextTest, edgeColName, seed)
 			if err == nil && edge != nil {
 				document.TestDocument = *edge
 				success = true
@@ -479,7 +479,7 @@ func (t *GraphTest) traverseGraph(to string, from string, graphName string, expe
 	return maskAny(fmt.Errorf("Timed out while trying to traverse from '%s' to '%s' in graph '%s'.", from, to, graphName))
 }
 
-func (t *Replication2Test) insertEdgeDocument(colName string, document any) error {
+func (t *ComplextTest) insertEdgeDocument(colName string, document any) error {
 
 	operationTimeout := t.OperationTimeout
 	testTimeout := time.Now().Add(operationTimeout)

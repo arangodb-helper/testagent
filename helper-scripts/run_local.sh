@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if test -z "$STARTER_VERSION"; then
-    STARTER_VERSION=0.17.2
+    STARTER_VERSION=0.18.0
 fi
 
 if test -z "$IMAGE"; then
@@ -31,12 +31,12 @@ docker run -it --rm -p 4200:4200 -p 4000:4000 \
        --arango-image="$ARANGODB_IMAGE" \
        --arangodb-image="arangodb/arangodb-starter:$STARTER_VERSION" \
        --replication-version-2 \
-       --replication2-operation-timeout 3m \
-       --replication2-retry-timeout 8m \
-       --replication2-document-size 256 \
-       --replication2-batch-size 50 \
-       --replication2-max-documents 10000 \
-       --replication2-max-updates 3 \
+       --complex-operation-timeout 3m \
+       --complex-retry-timeout 8m \
+       --complex-document-size 256 \
+       --complex-batch-size 50 \
+       --complex-max-documents 10000 \
+       --complex-max-updates 3 \
        --graph-max-vertices 1000 \
        --graph-vertex-size 4096 \
        --graph-edge-size 4096 \

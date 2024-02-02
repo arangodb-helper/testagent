@@ -1,4 +1,4 @@
-package replication2
+package complex
 
 import (
 	"strconv"
@@ -14,7 +14,7 @@ type CommunityGraphTest struct {
 	GraphTest
 }
 
-func NewComGraphTest(log *logging.Logger, reportDir string, rep2config Replication2Config, config GraphTestConf) test.TestScript {
+func NewComGraphTest(log *logging.Logger, reportDir string, rep2config ComplextTestConfig, config GraphTestConf) test.TestScript {
 	return &CommunityGraphTest{
 		NewGraphTest("communityGraphTest", log, reportDir, rep2config, config),
 	}

@@ -1,4 +1,4 @@
-package replication2
+package complex
 
 import (
 	"fmt"
@@ -18,14 +18,14 @@ type OneShardTest struct {
 	isDatabaseCreated bool
 }
 
-func NewOneShardTest(log *logging.Logger, reportDir string, rep2config Replication2Config, config DocColConfig) test.TestScript {
+func NewOneShardTest(log *logging.Logger, reportDir string, rep2config ComplextTestConfig, config DocColConfig) test.TestScript {
 	return &OneShardTest{
 		DocColTest: DocColTest{
-			Replication2Test: Replication2Test{
+			ComplextTest: ComplextTest{
 				TestName: "oneShardDbTest",
-				Replication2TestContext: Replication2TestContext{
-					Replication2Config: rep2config,
-					Replication2TestHarness: Replication2TestHarness{
+				ComplextTestContext: ComplextTestContext{
+					ComplextTestConfig: rep2config,
+					ComplextTestHarness: ComplextTestHarness{
 						reportDir: reportDir,
 						log:       log,
 					},

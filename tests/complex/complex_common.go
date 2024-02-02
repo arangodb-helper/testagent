@@ -1,4 +1,4 @@
-package replication2
+package complex
 
 import (
 	"fmt"
@@ -15,14 +15,14 @@ import (
 	logging "github.com/op/go-logging"
 )
 
-type Replication2Config struct {
+type ComplextTestConfig struct {
 	NumberOfShards    int
 	ReplicationFactor int
 	OperationTimeout  time.Duration
 	RetryTimeout      time.Duration
 }
 
-type Replication2TestHarness struct {
+type ComplextTestHarness struct {
 	activeMutex sync.Mutex
 	logPath     string
 	reportDir   string
@@ -32,7 +32,7 @@ type Replication2TestHarness struct {
 	client      util.ArangoClientInterface
 }
 
-type Replication2Counters struct {
+type ComplexTestCounters struct {
 	createDatabaseCounter     counter
 	createCollectionCounter   counter
 	createGraphCounter        counter
@@ -49,17 +49,17 @@ type Replication2Counters struct {
 	queryCreateCursorCounter  counter
 }
 
-type Replication2TestContext struct {
-	Replication2Config
-	Replication2TestHarness
-	Replication2Counters
+type ComplextTestContext struct {
+	ComplextTestConfig
+	ComplextTestHarness
+	ComplexTestCounters
 	documentIdSeq     int64
 	collectionNameSeq int64
 	existingDocuments []TestDocument
 }
 
-type Replication2Test struct {
-	Replication2TestContext
+type ComplextTest struct {
+	ComplextTestContext
 	TestName       string
 	stop           chan struct{}
 	active         bool
@@ -79,12 +79,12 @@ var (
 )
 
 // Name returns the name of the script
-func (t *Replication2Test) Name() string {
+func (t *ComplextTest) Name() string {
 	return t.TestName
 }
 
 // Stop any running test. This should not return until tests are actually stopped.
-func (t *Replication2Test) Stop() error {
+func (t *ComplextTest) Stop() error {
 	t.activeMutex.Lock()
 	defer t.activeMutex.Unlock()
 
@@ -100,19 +100,19 @@ func (t *Replication2Test) Stop() error {
 }
 
 // Interrupt the tests, but be prepared to continue.
-func (t *Replication2Test) Pause() error {
+func (t *ComplextTest) Pause() error {
 	t.pauseRequested = true
 	return nil
 }
 
 // Resume running the tests, where Pause interrupted it.
-func (t *Replication2Test) Resume() error {
+func (t *ComplextTest) Resume() error {
 	t.pauseRequested = false
 	return nil
 }
 
 // CollectLogs copies all logging info to the given writer.
-func (t *Replication2Test) CollectLogs(w io.Writer) error {
+func (t *ComplextTest) CollectLogs(w io.Writer) error {
 	if logPath := t.logPath; logPath == "" {
 		// Nothing to log yet
 		return nil
@@ -130,7 +130,7 @@ func (t *Replication2Test) CollectLogs(w io.Writer) error {
 }
 
 // setupLogger creates a new logger that is backed by stderr AND a file.
-func (t *Replication2Test) setupLogger(cluster cluster.Cluster) error {
+func (t *ComplextTest) setupLogger(cluster cluster.Cluster) error {
 	t.logPath = filepath.Join(t.reportDir, fmt.Sprintf("%s-%s.log", t.Name(), cluster.ID()))
 	logFile, err := os.Create(t.logPath)
 	if err != nil {
@@ -143,7 +143,7 @@ func (t *Replication2Test) setupLogger(cluster cluster.Cluster) error {
 	return nil
 }
 
-func (t *Replication2Test) shouldStop() bool {
+func (t *ComplextTest) shouldStop() bool {
 	// Should we stop?
 	if stop := t.stop; stop != nil {
 		stop <- struct{}{}
@@ -152,7 +152,7 @@ func (t *Replication2Test) shouldStop() bool {
 	return false
 }
 
-func (t *Replication2Test) reportFailure(f test.Failure) {
+func (t *ComplextTest) reportFailure(f test.Failure) {
 	t.failures++
 	t.listener.ReportFailure(f)
 }

@@ -1,4 +1,4 @@
-package replication2
+package complex
 
 import (
 	"errors"
@@ -69,7 +69,7 @@ func NewBigDocumentFromTestDocument(testDocument TestDocument, payloadSize int) 
 	}
 }
 
-func (t *Replication2Test) insertDocument(colName string, document any) error {
+func (t *ComplextTest) insertDocument(colName string, document any) error {
 
 	operationTimeout := t.OperationTimeout
 	testTimeout := time.Now().Add(operationTimeout)
@@ -141,7 +141,7 @@ func (t *Replication2Test) insertDocument(colName string, document any) error {
 // which may return an array of errors instead of just one ArangoError object
 
 // createDocuments creates a new documents in bulk
-// func (t *Replication2Test) createDocuments(numberOfDocuments int, startValue int64) error {
+// func (t *ComplextTest) createDocuments(numberOfDocuments int, startValue int64) error {
 
 // 	operationTimeout := t.OperationTimeout
 // 	testTimeout := time.Now().Add(operationTimeout * 4)
@@ -223,7 +223,7 @@ func (t *Replication2Test) insertDocument(colName string, document any) error {
 
 // checkIfDocumentExists checks if a document with given key exists in given collection
 // The operation is expected to succeed.
-func (t *Replication2Test) checkIfDocumentExists(colName string, key string) (bool, error) {
+func (t *ComplextTest) checkIfDocumentExists(colName string, key string) (bool, error) {
 
 	operationTimeout := t.OperationTimeout / 5
 	testTimeout := time.Now().Add(t.OperationTimeout)
@@ -269,7 +269,7 @@ func (t *Replication2Test) checkIfDocumentExists(colName string, key string) (bo
 
 // readExistingDocument reads an existing document.
 // The operation is expected to succeed.
-func (t *Replication2Test) readExistingDocument(colName string, expectedDocument any, skipExpectedValueCheck bool) error {
+func (t *ComplextTest) readExistingDocument(colName string, expectedDocument any, skipExpectedValueCheck bool) error {
 
 	operationTimeout := t.OperationTimeout / 5
 	testTimeout := time.Now().Add(t.OperationTimeout)
@@ -339,7 +339,7 @@ func (t *Replication2Test) readExistingDocument(colName string, expectedDocument
 // simply returns `nil, nil`. In the good cases, `doc, nil` is returned.
 // If the function times out, an error is returned. This function does
 // not report failures.
-func readDocument(t *Replication2Test, colName string, key string, rev string, seconds int, mustExist bool) (*BigDocument, error) {
+func readDocument(t *ComplextTest, colName string, key string, rev string, seconds int, mustExist bool) (*BigDocument, error) {
 	backoff := time.Millisecond * 100
 	i := 0
 	url := fmt.Sprintf("/_api/document/%s/%s", colName, key)
@@ -395,7 +395,7 @@ func readDocument(t *Replication2Test, colName string, key string, rev string, s
 }
 
 // readDocumentBySeed finds a single document by a custom unique field "seed"
-func readDocumentBySeed(t *Replication2Test, colName string, seed int64) (*TestDocument, error) {
+func readDocumentBySeed(t *ComplextTest, colName string, seed int64) (*TestDocument, error) {
 	operationTimeout := t.OperationTimeout
 	testTimeout := time.Now().Add(operationTimeout * 5)
 	backoff := time.Millisecond * 250
@@ -495,7 +495,7 @@ func ifMatchHeader(hdr map[string]string, rev string) map[string]string {
 }
 
 // updateExistingDocument updates an existing document
-func (t *Replication2Test) updateExistingDocument(colName string, oldDoc TestDocument) (*TestDocument, error) {
+func (t *ComplextTest) updateExistingDocument(colName string, oldDoc TestDocument) (*TestDocument, error) {
 
 	operationTimeout := t.OperationTimeout
 	testTimeout := time.Now().Add(operationTimeout * 4)

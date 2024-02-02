@@ -1,4 +1,4 @@
-package replication2
+package complex
 
 type QueryRequest struct {
 	Query     string `json:"query"`

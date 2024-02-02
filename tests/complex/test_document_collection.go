@@ -1,4 +1,4 @@
-package replication2
+package complex
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ type DocColConfig struct {
 }
 
 type DocColTest struct {
-	Replication2Test
+	ComplextTest
 	DocColConfig
 	numberOfExistingDocs     int
 	numberOfCreatedDocsTotal int64
@@ -29,13 +29,13 @@ type DocColTest struct {
 	updateOffset             int
 }
 
-func NewDocColTest(log *logging.Logger, reportDir string, rep2config Replication2Config, config DocColConfig) test.TestScript {
+func NewDocColTest(log *logging.Logger, reportDir string, rep2config ComplextTestConfig, config DocColConfig) test.TestScript {
 	return &DocColTest{
-		Replication2Test: Replication2Test{
+		ComplextTest: ComplextTest{
 			TestName: "documentCollectionTest",
-			Replication2TestContext: Replication2TestContext{
-				Replication2Config: rep2config,
-				Replication2TestHarness: Replication2TestHarness{
+			ComplextTestContext: ComplextTestContext{
+				ComplextTestConfig: rep2config,
+				ComplextTestHarness: ComplextTestHarness{
 					reportDir: reportDir,
 					log:       log,
 				},
@@ -58,7 +58,7 @@ func (d BigDocument) Equals(other BigDocument) bool {
 }
 
 func (t *DocColTest) generateCollectionName(seed int64) string {
-	return "replication2_docs_" + strconv.FormatInt(seed, 10)
+	return "documents_" + strconv.FormatInt(seed, 10)
 }
 
 func generateKeyFromSeed(seed int64) string {

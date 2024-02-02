@@ -1,4 +1,4 @@
-package replication2
+package complex
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ type GraphTestConf struct {
 }
 
 type GraphTest struct {
-	Replication2Test
+	ComplextTest
 	GraphTestConf
 	graphCreated            bool
 	edgeColCreated          bool
@@ -33,14 +33,14 @@ type GraphTest struct {
 	existingVertexDocuments []TestDocument
 }
 
-func NewGraphTest(testName string, log *logging.Logger, reportDir string, rep2config Replication2Config, config GraphTestConf) GraphTest {
+func NewGraphTest(testName string, log *logging.Logger, reportDir string, rep2config ComplextTestConfig, config GraphTestConf) GraphTest {
 	return GraphTest{
 		GraphTestConf: config,
-		Replication2Test: Replication2Test{
+		ComplextTest: ComplextTest{
 			TestName: testName,
-			Replication2TestContext: Replication2TestContext{
-				Replication2Config: rep2config,
-				Replication2TestHarness: Replication2TestHarness{
+			ComplextTestContext: ComplextTestContext{
+				ComplextTestConfig: rep2config,
+				ComplextTestHarness: ComplextTestHarness{
 					reportDir: reportDir,
 					log:       log,
 				},

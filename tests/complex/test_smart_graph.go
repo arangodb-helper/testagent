@@ -1,4 +1,4 @@
-package replication2
+package complex
 
 import (
 	"strconv"
@@ -14,7 +14,7 @@ type SmartGraphTest struct {
 	GraphTest
 }
 
-func NewSmartGraphTest(log *logging.Logger, reportDir string, rep2config Replication2Config, config GraphTestConf) test.TestScript {
+func NewSmartGraphTest(log *logging.Logger, reportDir string, rep2config ComplextTestConfig, config GraphTestConf) test.TestScript {
 	return &SmartGraphTest{
 		NewGraphTest("smartGraphTest", log, reportDir, rep2config, config),
 	}
