@@ -28,6 +28,7 @@ type ServiceConfig struct {
 	MetricsDir     string
 	CollectMetrics bool
 	ChaosConfig    chaos.ChaosMonkeyConfig
+	EnableTests    []string
 }
 
 type ServiceDependencies struct {

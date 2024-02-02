@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -52,6 +53,7 @@ var (
 func init() {
 	f := cmdMain.Flags()
 	defaultDockerEndpoints := []string{"unix:///var/run/docker.sock"}
+	defaultTestList := []string{"simple", "DocColTest", "OneShardTest", "CommunityGraphTest", "SmartGraphTest", "EnterpriseGraphTest"}
 	f.IntVar(&appFlags.AgencySize, "agency-size", 3, "Number of agents in the cluster")
 	f.IntVar(&appFlags.port, "port", 4200, "First port of range of ports used by the testAgent")
 	f.StringVar(&appFlags.logLevel, "log-level", "debug", "Minimum log level (debug|info|warning|error)")
@@ -70,6 +72,7 @@ func init() {
 	f.StringVar(&appFlags.MetricsDir, "metrics-dir", getEnvVar("METRICS_DIR", "."), "Directory in which metrics will be stored")
 	f.BoolVar(&appFlags.Privileged, "privileged", false, "If set, run all containers with `--privileged`")
 	f.IntVar(&appFlags.ChaosConfig.MaxMachines, "max-machines", 10, "Upper limit to the number of machines in a cluster")
+	f.StringSliceVar(&appFlags.EnableTests, "enable-test", defaultTestList, "Enable particular test. Default: run all tests. Available tests: simple, DocColTest, OneShardTest, CommunityGraphTest, SmartGraphTest, EnterpriseGraphTest")
 	f.IntVar(&appFlags.SimpleConfig.MaxDocuments, "simple-max-documents", 20000, "Upper limit to the number of documents created in simple test")
 	f.IntVar(&appFlags.SimpleConfig.MaxCollections, "simple-max-collections", 10, "Upper limit to the number of collections created in simple test")
 	f.DurationVar(&appFlags.SimpleConfig.OperationTimeout, "simple-operation-timeout", defaultOperationTimeout, "Timeout per database operation")
@@ -164,13 +167,24 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 	}
 
 	// Create tests
-	tests := []test.TestScript{
-		complex.NewDocColTest(log, appFlags.ReportDir, appFlags.ComplextTestConfig, appFlags.DocColConfig),
-		complex.NewOneShardTest(log, appFlags.ReportDir, appFlags.ComplextTestConfig, appFlags.DocColConfig),
-		complex.NewComGraphTest(log, appFlags.ReportDir, appFlags.ComplextTestConfig, appFlags.GraphTestConf),
-		complex.NewSmartGraphTest(log, appFlags.ReportDir, appFlags.ComplextTestConfig, appFlags.GraphTestConf),
-		complex.NewEnterpriseGraphTest(log, appFlags.ReportDir, appFlags.ComplextTestConfig, appFlags.GraphTestConf),
-		simple.NewSimpleTest(log, appFlags.ReportDir, appFlags.SimpleConfig),
+	tests := []test.TestScript{}
+	if slices.Contains(appFlags.EnableTests, "simple") {
+		tests = append(tests, simple.NewSimpleTest(log, appFlags.ReportDir, appFlags.SimpleConfig))
+	}
+	if slices.Contains(appFlags.EnableTests, "DocColTest") {
+		tests = append(tests, complex.NewDocColTest(log, appFlags.ReportDir, appFlags.ComplextTestConfig, appFlags.DocColConfig))
+	}
+	if slices.Contains(appFlags.EnableTests, "OneShardTest") {
+		tests = append(tests, complex.NewOneShardTest(log, appFlags.ReportDir, appFlags.ComplextTestConfig, appFlags.DocColConfig))
+	}
+	if slices.Contains(appFlags.EnableTests, "CommunityGraphTest") {
+		tests = append(tests, complex.NewComGraphTest(log, appFlags.ReportDir, appFlags.ComplextTestConfig, appFlags.GraphTestConf))
+	}
+	if slices.Contains(appFlags.EnableTests, "SmartGraphTest") {
+		tests = append(tests, complex.NewSmartGraphTest(log, appFlags.ReportDir, appFlags.ComplextTestConfig, appFlags.GraphTestConf))
+	}
+	if slices.Contains(appFlags.EnableTests, "EnterpriseGraphTest") {
+		tests = append(tests, complex.NewEnterpriseGraphTest(log, appFlags.ReportDir, appFlags.ComplextTestConfig, appFlags.GraphTestConf))
 	}
 
 	// Create service
