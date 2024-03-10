@@ -155,28 +155,28 @@ func (m *FakeMachine) AcceptCoordinatorTraffic() error {
 }
 
 func (m *FakeMachine) CollectMachineLogs(w io.Writer) error {
-	w.Write([]byte("FakeLog\n"))
-	return nil
+	_, err := w.Write([]byte("FakeLog\n"))
+	return err
 }
 
 func (m *FakeMachine) CollectNetworkLogs(w io.Writer) error {
-	w.Write([]byte("FakeLog\n"))
-	return nil
+	_, err := w.Write([]byte("FakeLog\n"))
+	return err
 }
 
 func (m *FakeMachine) CollectAgentLogs(w io.Writer) error {
-	w.Write([]byte("FakeLog\n"))
-	return nil
+	_, err := w.Write([]byte("FakeLog\n"))
+	return err
 }
 
 func (m *FakeMachine) CollectDBServerLogs(w io.Writer) error {
-	w.Write([]byte("FakeLog\n"))
-	return nil
+	_, err := w.Write([]byte("FakeLog\n"))
+	return err
 }
 
 func (m *FakeMachine) CollectCoordinatorLogs(w io.Writer) error {
-	w.Write([]byte("FakeLog\n"))
-	return nil
+	_, err := w.Write([]byte("FakeLog\n"))
+	return err
 }
 
 func (m *FakeMachine) CollectNetworkRules() ([]string, error) {

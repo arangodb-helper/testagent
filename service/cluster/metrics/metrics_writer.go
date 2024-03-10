@@ -39,9 +39,9 @@ func (w *fileMetricsWriter) createOrOpenExistingFile() (*os.File, error) {
 		return nil, err
 	}
 	if !fileExists {
-		file.WriteString("timestamp,cpu_total_usage,cpu_usage_in_kernelmode,cpu_usage_in_usermode,system_cpu_usage,memory_usage\n")
+		_, err = file.WriteString("timestamp,cpu_total_usage,cpu_usage_in_kernelmode,cpu_usage_in_usermode,system_cpu_usage,memory_usage\n")
 	}
-	return file, nil
+	return file, err
 }
 
 func (w *fileMetricsWriter) Write() error {
