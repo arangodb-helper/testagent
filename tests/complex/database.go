@@ -78,8 +78,8 @@ func (t *ComplextTest) createDatabase(databaseName string, sharding string, repl
 			if resp[0].StatusCode == 201 {
 				success = true
 			} else {
+				checkRetry = true
 				if resp[0].StatusCode == 1 || resp[0].StatusCode == 500 { // connection refused or not created
-					checkRetry = true
 					shouldNotExist = true
 					t.log.Debugf("Error code: %d\nError num: %d\nError message: %s", resp[0].Error_.Code, resp[0].Error_.ErrorNum, resp[0].Error_.ErrorMessage)
 				} else if resp[0].StatusCode == 409 {
@@ -92,7 +92,6 @@ func (t *ComplextTest) createDatabase(databaseName string, sharding string, repl
 						shouldExist = true
 					}
 				}
-				checkRetry = true
 			}
 		} else {
 			// This is a failure
@@ -230,7 +229,7 @@ func (t *ComplextTest) databaseExists(databaseName string) (bool, error) {
 
 	i := 0
 	backoff := time.Millisecond * 250
-	url := fmt.Sprintf("/_api/database")
+	url := "/_api/database"
 
 	for {
 

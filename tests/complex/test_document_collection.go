@@ -93,7 +93,7 @@ func (t *DocColTest) createDocuments() {
 
 func (t *DocColTest) readDocuments() {
 	if t.docCollectionCreated && t.numberOfExistingDocs >= t.BatchSize {
-		var upperBound int = 0
+		var upperBound int
 		var lowerBound int = t.readOffset
 		if t.numberOfExistingDocs-t.readOffset < t.BatchSize {
 			upperBound = t.numberOfExistingDocs
@@ -122,7 +122,7 @@ func (t *DocColTest) updateDocuments() {
 		if t.updateOffset == t.numberOfExistingDocs {
 			t.updateOffset = 0
 		}
-		var upperBound int = 0
+		var upperBound int
 		var lowerBound int = t.updateOffset
 		if t.numberOfExistingDocs-t.updateOffset < t.BatchSize {
 			upperBound = t.numberOfExistingDocs

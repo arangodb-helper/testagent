@@ -81,7 +81,6 @@ func (e ArangoError) Error() string {
 
 func (c *ArangoClient) UseDatabase(databaseName string) {
 	c.databaseName = databaseName
-	return
 }
 
 func (c *ArangoClient) createURL(urlPath string, query url.Values) (string, url.URL, error) {

@@ -140,5 +140,4 @@ func (mc *MockClient) Shutdown() {
 
 func (c *MockClient) UseDatabase(databaseName string) {
 	c.databaseName = databaseName
-	return
 }

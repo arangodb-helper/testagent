@@ -77,8 +77,8 @@ func (t *ComplextTest) createCollection(collectionName string, edge bool) error 
 			if resp[0].StatusCode == 200 {
 				success = true
 			} else {
+				checkRetry = true
 				if resp[0].StatusCode == 1 || resp[0].StatusCode == 500 { // connection refused or not created
-					checkRetry = true
 					shouldNotExist = true
 					t.log.Debugf("Error code: %d\nError num: %d\nError message: %s", resp[0].Error_.Code, resp[0].Error_.ErrorNum, resp[0].Error_.ErrorMessage)
 				} else if resp[0].StatusCode == 409 {
@@ -91,7 +91,6 @@ func (t *ComplextTest) createCollection(collectionName string, edge bool) error 
 						shouldExist = true
 					}
 				}
-				checkRetry = true
 			}
 		} else {
 			// This is a failure

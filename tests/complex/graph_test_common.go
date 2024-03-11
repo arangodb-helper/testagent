@@ -61,14 +61,6 @@ func NewGraphTest(testName string, log *logging.Logger, reportDir string, rep2co
 	}
 }
 
-func minimum(x int, y int) int {
-	if x < y {
-		return x
-	} else {
-		return y
-	}
-}
-
 func minimum64(x int64, y int64) int64 {
 	if x < y {
 		return x

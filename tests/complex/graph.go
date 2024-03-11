@@ -140,8 +140,8 @@ func (t *ComplextTest) createGraph(graphName string,
 			if resp[0].StatusCode == 201 || resp[0].StatusCode == 202 {
 				success = true
 			} else {
+				checkRetry = true
 				if resp[0].StatusCode == 1 || resp[0].StatusCode == 500 { // connection refused or not created
-					checkRetry = true
 					shouldNotExist = true
 				} else if resp[0].StatusCode == 409 {
 					if i == 1 {
@@ -153,7 +153,6 @@ func (t *ComplextTest) createGraph(graphName string,
 						shouldExist = true
 					}
 				}
-				checkRetry = true
 			}
 		} else {
 			// This is a failure
@@ -454,7 +453,7 @@ func (t *GraphTest) traverseGraph(to string, from string, graphName string, expe
 
 			t.log.Infof("Creating long running AQL query for collection '%s' succeeded", graphName)
 			// We should've fetched all documents, check result count
-			if !(actualLength == expectedLength && hasMore == false) {
+			if !(actualLength == expectedLength && !hasMore) {
 				t.reportFailure(test.NewFailure(t.Name(), "Graph traversal failed: was expecting a chain of %d edges, got %d. Query: %s", expectedLength, actualLength, query))
 				t.traverseGraphCounter.failed++
 				return maskAny(fmt.Errorf("Graph traversal failed: was expecting a chain of %d edges, got %d. Query: %s", expectedLength, actualLength, query))
@@ -479,72 +478,72 @@ func (t *GraphTest) traverseGraph(to string, from string, graphName string, expe
 	return maskAny(fmt.Errorf("Timed out while trying to traverse from '%s' to '%s' in graph '%s'.", from, to, graphName))
 }
 
-func (t *ComplextTest) insertEdgeDocument(colName string, document any) error {
+// func (t *ComplextTest) insertEdgeDocument(colName string, document any) error {
 
-	operationTimeout := t.OperationTimeout
-	testTimeout := time.Now().Add(operationTimeout)
+// 	operationTimeout := t.OperationTimeout
+// 	testTimeout := time.Now().Add(operationTimeout)
 
-	q := url.Values{}
-	q.Set("waitForSync", "true")
-	q.Set("returnNew", "true")
-	url := fmt.Sprintf("/_api/document/%s", colName)
-	backoff := time.Millisecond * 250
-	i := 0
+// 	q := url.Values{}
+// 	q.Set("waitForSync", "true")
+// 	q.Set("returnNew", "true")
+// 	url := fmt.Sprintf("/_api/document/%s", colName)
+// 	backoff := time.Millisecond * 250
+// 	i := 0
 
-	for {
+// 	for {
 
-		i++
-		if time.Now().After(testTimeout) {
-			break
-		}
+// 		i++
+// 		if time.Now().After(testTimeout) {
+// 			break
+// 		}
 
-		checkRetry := false
-		success := false
+// 		checkRetry := false
+// 		success := false
 
-		t.log.Infof("Creating edge document in collection '%s'...", colName)
-		resp, err := t.client.Post(url, q, nil, document, "", nil,
-			[]int{0, 1, 200, 201, 202, 409, 503}, []int{400, 404, 307}, operationTimeout, 1)
-		t.log.Infof("... got http %d - arangodb %d via %s",
-			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
+// 		t.log.Infof("Creating edge document in collection '%s'...", colName)
+// 		resp, err := t.client.Post(url, q, nil, document, "", nil,
+// 			[]int{0, 1, 200, 201, 202, 409, 503}, []int{400, 404, 307}, operationTimeout, 1)
+// 		t.log.Infof("... got http %d - arangodb %d via %s",
+// 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
-		if err[0] == nil { // we have a response
-			if resp[0].StatusCode == 503 || resp[0].StatusCode == 409 || resp[0].StatusCode == 0 {
-				// 0, 503 and 409 -> check if accidentally successful
-				checkRetry = true
-			} else if resp[0].StatusCode != 1 {
-				//FIXME: properly check for success
-				success = true
-			}
-		} else { // failure
-			t.singleDocCreateCounter.failed++
-			t.reportFailure(
-				test.NewFailure(t.Name(), "Failed to create document in collection '%s'", colName, err[0]))
-			return maskAny(err[0])
-		}
+// 		if err[0] == nil { // we have a response
+// 			if resp[0].StatusCode == 503 || resp[0].StatusCode == 409 || resp[0].StatusCode == 0 {
+// 				// 0, 503 and 409 -> check if accidentally successful
+// 				checkRetry = true
+// 			} else if resp[0].StatusCode != 1 {
+// 				//FIXME: properly check for success
+// 				success = true
+// 			}
+// 		} else { // failure
+// 			t.singleDocCreateCounter.failed++
+// 			t.reportFailure(
+// 				test.NewFailure(t.Name(), "Failed to create document in collection '%s': %v", colName, err[0]))
+// 			return maskAny(err[0])
+// 		}
 
-		//FIXME: implement edge document checking by inserting extra attribute instead of the _key
-		if checkRetry {
-			// v, e := t.checkIfDocumentExists(colName, key)
-			// success = e == nil && v
-			success = true
-		}
+// 		//FIXME: implement edge document checking by inserting extra attribute instead of the _key
+// 		if checkRetry {
+// 			// v, e := t.checkIfDocumentExists(colName, key)
+// 			// success = e == nil && v
+// 			success = true
+// 		}
 
-		if success {
-			t.singleDocCreateCounter.succeeded++
-			t.log.Infof("Creating edge document in '%s' succeeded", colName)
-			return nil
-		}
+// 		if success {
+// 			t.singleDocCreateCounter.succeeded++
+// 			t.log.Infof("Creating edge document in '%s' succeeded", colName)
+// 			return nil
+// 		}
 
-		time.Sleep(backoff)
-		if backoff < time.Second*5 {
-			backoff += backoff
-		}
+// 		time.Sleep(backoff)
+// 		if backoff < time.Second*5 {
+// 			backoff += backoff
+// 		}
 
-	}
+// 	}
 
-	// Overall timeout :(
-	t.singleDocCreateCounter.failed++
-	t.reportFailure(
-		test.NewFailure(t.Name(), "Timed out while trying to create an edge document in collection '%s'.", colName))
-	return maskAny(fmt.Errorf("Timed out while trying to create an edge document in collection '%s'.", colName))
-}
+// 	// Overall timeout :(
+// 	t.singleDocCreateCounter.failed++
+// 	t.reportFailure(
+// 		test.NewFailure(t.Name(), "Timed out while trying to create an edge document in collection '%s'.", colName))
+// 	return maskAny(fmt.Errorf("Timed out while trying to create an edge document in collection '%s'.", colName))
+// }

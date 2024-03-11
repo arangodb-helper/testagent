@@ -22,22 +22,27 @@ func logsPage(ctx *macaron.Context, log *logging.Logger, service Service) {
 		for _, m := range machines {
 			var buf bytes.Buffer
 			if m.ID() == machineID {
+				var err error
 				switch mode {
 				case "agent":
-					m.CollectAgentLogs(&buf)
+					err = m.CollectAgentLogs(&buf)
 				case "dbserver":
-					m.CollectDBServerLogs(&buf)
+					err = m.CollectDBServerLogs(&buf)
 				case "coordinator":
-					m.CollectCoordinatorLogs(&buf)
+					err = m.CollectCoordinatorLogs(&buf)
 				case "machine":
-					m.CollectMachineLogs(&buf)
+					err = m.CollectMachineLogs(&buf)
 				case "network":
-					m.CollectNetworkLogs(&buf)
+					err = m.CollectNetworkLogs(&buf)
 				default:
 					showError(ctx, fmt.Errorf("Unknown mode '%s'", mode))
 					return
 				}
-				ctx.PlainText(http.StatusOK, buf.Bytes())
+				if err == nil {
+					ctx.PlainText(http.StatusOK, buf.Bytes())
+				} else {
+					showError(ctx, fmt.Errorf("Can't collect logs from machine %s", machineID))
+				}
 				return
 			}
 		}

@@ -108,7 +108,7 @@ func (t *ComplextTest) insertDocument(colName string, document any) error {
 		} else { // failure
 			t.singleDocCreateCounter.failed++
 			t.reportFailure(
-				test.NewFailure(t.Name(), "Failed to create document in collection '%s' with key %s", colName, key, err[0]))
+				test.NewFailure(t.Name(), "Failed to create document in collection '%s' with key %s: %v", colName, key, err[0]))
 			return maskAny(err[0])
 		}
 
@@ -134,7 +134,7 @@ func (t *ComplextTest) insertDocument(colName string, document any) error {
 	t.singleDocCreateCounter.failed++
 	t.reportFailure(
 		test.NewFailure(t.Name(), "Timed out while trying to create a document in '%s with key %s'.", colName, key))
-	return maskAny(fmt.Errorf("Timed out while trying to create a document in '%s with key'.", colName, key))
+	return maskAny(fmt.Errorf("Timed out while trying to create a document in '%s with key %s'.", colName, key))
 }
 
 //FIXME: this method currently can't work properly. we need to extend the client to support bulk requests,

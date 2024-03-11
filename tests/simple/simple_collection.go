@@ -66,8 +66,8 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 			if resp[0].StatusCode == 200 {
 				success = true
 			} else {
+				checkRetry = true
 				if resp[0].StatusCode == 1 || resp[0].StatusCode == 500 { // connection refused or not created
-					checkRetry = true
 					shouldNotExist = true
 				} else if resp[0].StatusCode == 409 {
 					if i == 1 {
@@ -79,7 +79,6 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 						shouldExist = true
 					}
 				}
-				checkRetry = true
 			}
 		} else {
 			// This is a failure
