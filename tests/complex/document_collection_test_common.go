@@ -9,7 +9,6 @@ import (
 )
 
 type DocumentCollectionTest interface {
-	testLoop()
 	createTestDatabase()
 	createTestCollection()
 	createDocuments()

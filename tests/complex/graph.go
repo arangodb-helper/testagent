@@ -410,7 +410,7 @@ func lengthExcludingNils(arr []any) int {
 	return length
 }
 
-func (t *GraphTest) traverseGraph(to string, from string, graphName string, expectedLength int) error {
+func (t *GraphTest) traverse(to string, from string, graphName string, expectedLength int) error {
 	operationTimeout := t.OperationTimeout * 4
 	testTimeout := time.Now().Add(time.Minute * 15)
 

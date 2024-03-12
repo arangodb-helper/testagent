@@ -2,10 +2,21 @@ package complex
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/arangodb-helper/testagent/service/cluster"
 	"github.com/arangodb-helper/testagent/service/test"
+	"github.com/arangodb-helper/testagent/tests/util"
 	logging "github.com/op/go-logging"
 )
+
+type GraphTestInt interface {
+	createGraphAndCollections()
+	createVertexDocs()
+	createEdgeDocs()
+	traverseGraph()
+	dropGraphAndCollections()
+}
 
 type GraphTestConf struct {
 	MaxVertices                 int64
@@ -18,6 +29,7 @@ type GraphTestConf struct {
 type GraphTest struct {
 	ComplextTest
 	GraphTestConf
+	GraphTestImpl           GraphTestInt
 	graphCreated            bool
 	edgeColCreated          bool
 	vertexColCreated        bool
@@ -107,7 +119,7 @@ func calculateShortestOutboundPathLength(from int64, to int64) int {
 	return steps
 }
 
-func (t *GraphTest) createVertices() {
+func (t *GraphTest) createVertexDocs() {
 	if t.vertexColCreated && t.numberOfCreatedVertices < t.MaxVertices && !t.graphIsBroken {
 		var thisBatchSize int
 		if int64(t.BatchSize) <= t.MaxVertices-t.numberOfCreatedVertices {
@@ -134,7 +146,7 @@ func (t *GraphTest) createVertices() {
 	}
 }
 
-func (t *GraphTest) performGraphTraversal() {
+func (t *GraphTest) traverseGraph() {
 	if t.vertexColCreated && t.edgeColCreated && t.graphCreated && !t.graphIsBroken {
 		for i := 0; i < t.TraversalOperationsPerCycle; i++ {
 			maxLength := minimum64(t.numberOfCreatedVertices-1, 100000)
@@ -144,7 +156,7 @@ func (t *GraphTest) performGraphTraversal() {
 			from := t.vertexColName + "/" + t.existingVertexDocuments[startIdx].Key
 			to := t.vertexColName + "/" + t.existingVertexDocuments[endIdx].Key
 			expectedLength := calculateShortestOutboundPathLength(startIdx, endIdx)
-			if err := t.traverseGraph(to, from, t.graphName, expectedLength); err != nil {
+			if err := t.traverse(to, from, t.graphName, expectedLength); err != nil {
 				t.log.Errorf("Failed to traverse graph: %v", err)
 			} else {
 				t.actions++
@@ -154,25 +166,27 @@ func (t *GraphTest) performGraphTraversal() {
 }
 
 func (t *GraphTest) dropGraphAndCollections() {
-	if err := t.dropGraph(t.graphName, true); err != nil {
-		t.log.Errorf("Failed to drop graph: %v", err)
-	} else {
-		t.graphCreated = false
-		t.graphIsBroken = false
-		t.vertexColCreated = false
-		t.edgeColCreated = false
-		t.collectionNameSeq++
-		t.numberOfCreatedEdges = 0
-		t.numberOfCreatedVertices = 0
-		t.existingVertexDocuments = t.existingVertexDocuments[:0]
-		t.existingEdgeDocuments = t.existingEdgeDocuments[:0]
-		t.edgeCreationOffset = 0
-		t.vertexCreationOffset = 0
-		t.actions++
+	if t.graphIsBroken || (t.graphCreated && t.MaxVertices >= t.numberOfCreatedVertices) {
+		if err := t.dropGraph(t.graphName, true); err != nil {
+			t.log.Errorf("Failed to drop graph: %v", err)
+		} else {
+			t.graphCreated = false
+			t.graphIsBroken = false
+			t.vertexColCreated = false
+			t.edgeColCreated = false
+			t.collectionNameSeq++
+			t.numberOfCreatedEdges = 0
+			t.numberOfCreatedVertices = 0
+			t.existingVertexDocuments = t.existingVertexDocuments[:0]
+			t.existingEdgeDocuments = t.existingEdgeDocuments[:0]
+			t.edgeCreationOffset = 0
+			t.vertexCreationOffset = 0
+			t.actions++
+		}
 	}
 }
 
-func (t *GraphTest) createEdges() {
+func (t *GraphTest) createEdgeDocs() {
 	if t.edgeColCreated && t.edgeCreationOffset < t.vertexCreationOffset && !t.graphIsBroken {
 		for i := t.edgeCreationOffset; i < t.vertexCreationOffset-1; i++ {
 			from := t.existingVertexDocuments[i].Key
@@ -236,4 +250,81 @@ func (t *GraphTest) Status() test.TestStatus {
 	)
 
 	return status
+}
+
+// Start triggers the test script to start.
+// It should spwan actions in a go routine.
+func (t *GraphTest) Start(cluster cluster.Cluster, listener test.TestListener) error {
+	t.activeMutex.Lock()
+	defer t.activeMutex.Unlock()
+
+	if t.active {
+		// No restart unless needed
+		return nil
+	}
+	if err := t.setupLogger(cluster); err != nil {
+		return maskAny(err)
+	}
+
+	t.cluster = cluster
+	t.listener = listener
+	t.client = util.NewArangoClient(t.log, cluster)
+
+	t.active = true
+	go t.testLoop()
+	return nil
+}
+
+func (t *GraphTest) testLoop() {
+	t.active = true
+	t.actions = 0
+	defer func() { t.active = false }()
+
+	var plan []int
+	planIndex := 0
+	for {
+		// Should we stop
+		if t.shouldStop() {
+			return
+		}
+		if t.pauseRequested {
+			t.paused = true
+			time.Sleep(time.Second * 2)
+			continue
+		}
+		t.paused = false
+		t.actions++
+		if plan == nil || planIndex >= len(plan) {
+			plan = []int{0, 1, 2, 3, 4} // Update when more tests are added
+			planIndex = 0
+		}
+
+		switch plan[planIndex] {
+		case 0:
+			//create graph and underlying collections
+			t.GraphTestImpl.createGraphAndCollections()
+			planIndex++
+
+		case 1:
+			// create vertex documents
+			t.GraphTestImpl.createVertexDocs()
+			planIndex++
+
+		case 2:
+			// create edges
+			t.GraphTestImpl.createEdgeDocs()
+			planIndex++
+
+		case 3:
+			//traverse graph
+			t.GraphTestImpl.traverseGraph()
+			planIndex++
+
+		case 4:
+			// drop graph and collections
+			t.GraphTestImpl.dropGraphAndCollections()
+			planIndex++
+		}
+		time.Sleep(time.Second * 2)
+	}
 }
