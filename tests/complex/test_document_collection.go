@@ -35,6 +35,7 @@ func NewRegularDocColTest(log *logging.Logger, reportDir string, rep2config Comp
 			readOffset:               0,
 		}}
 	docColTest.DocColTestImpl = docColTest
+	docColTest.ComplexTestImpl = docColTest
 	return docColTest
 }
 

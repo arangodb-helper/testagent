@@ -2,10 +2,6 @@ package complex
 
 import (
 	"time"
-
-	"github.com/arangodb-helper/testagent/service/cluster"
-	"github.com/arangodb-helper/testagent/service/test"
-	"github.com/arangodb-helper/testagent/tests/util"
 )
 
 type DocumentCollectionTest interface {
@@ -37,7 +33,7 @@ type DocColTest struct {
 	updateOffset             int
 }
 
-func (t *DocColTest) testLoop() {
+func (t *DocColTest) runTest() {
 	t.active = true
 	t.actions = 0
 	defer func() { t.active = false }()
@@ -99,29 +95,6 @@ func (t *DocColTest) testLoop() {
 		}
 		time.Sleep(time.Second * 2)
 	}
-}
-
-// Start triggers the test script to start.
-// It should spwan actions in a go routine.
-func (t *DocColTest) Start(cluster cluster.Cluster, listener test.TestListener) error {
-	t.activeMutex.Lock()
-	defer t.activeMutex.Unlock()
-
-	if t.active {
-		// No restart unless needed
-		return nil
-	}
-	if err := t.setupLogger(cluster); err != nil {
-		return maskAny(err)
-	}
-
-	t.cluster = cluster
-	t.listener = listener
-	t.client = util.NewArangoClient(t.log, cluster)
-
-	t.active = true
-	go t.testLoop()
-	return nil
 }
 
 func (t *DocColTest) createDocuments() {

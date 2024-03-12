@@ -16,6 +16,7 @@ func NewEnterpriseGraphTest(log *logging.Logger, reportDir string, rep2config Co
 		NewGraphTest("enterpriseGraphTest", log, reportDir, rep2config, config),
 	}}
 	entGraphTest.GraphTestImpl = entGraphTest
+	entGraphTest.ComplexTestImpl = entGraphTest
 	return entGraphTest
 }
 

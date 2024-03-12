@@ -16,6 +16,7 @@ func NewSmartGraphTest(log *logging.Logger, reportDir string, rep2config Complex
 		NewGraphTest("smartGraphTest", log, reportDir, rep2config, config),
 	}
 	smartGraph.GraphTestImpl = smartGraph
+	smartGraph.ComplexTestImpl = smartGraph
 	return smartGraph
 }
 

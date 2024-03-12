@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/arangodb-helper/testagent/service/cluster"
 	"github.com/arangodb-helper/testagent/service/test"
-	"github.com/arangodb-helper/testagent/tests/util"
 	logging "github.com/op/go-logging"
 )
 
@@ -252,30 +250,7 @@ func (t *GraphTest) Status() test.TestStatus {
 	return status
 }
 
-// Start triggers the test script to start.
-// It should spwan actions in a go routine.
-func (t *GraphTest) Start(cluster cluster.Cluster, listener test.TestListener) error {
-	t.activeMutex.Lock()
-	defer t.activeMutex.Unlock()
-
-	if t.active {
-		// No restart unless needed
-		return nil
-	}
-	if err := t.setupLogger(cluster); err != nil {
-		return maskAny(err)
-	}
-
-	t.cluster = cluster
-	t.listener = listener
-	t.client = util.NewArangoClient(t.log, cluster)
-
-	t.active = true
-	go t.testLoop()
-	return nil
-}
-
-func (t *GraphTest) testLoop() {
+func (t *GraphTest) runTest() {
 	t.active = true
 	t.actions = 0
 	defer func() { t.active = false }()

@@ -60,18 +60,23 @@ type ComplextTestContext struct {
 
 type ComplextTest struct {
 	ComplextTestContext
-	TestName       string
-	stop           chan struct{}
-	active         bool
-	pauseRequested bool
-	paused         bool
-	failures       int
-	actions        int
+	ComplexTestImpl ComplexTestInt
+	TestName        string
+	stop            chan struct{}
+	active          bool
+	pauseRequested  bool
+	paused          bool
+	failures        int
+	actions         int
 }
 
 type counter struct {
 	succeeded int
 	failed    int
+}
+
+type ComplexTestInt interface {
+	runTest()
 }
 
 var (
@@ -155,4 +160,27 @@ func (t *ComplextTest) shouldStop() bool {
 func (t *ComplextTest) reportFailure(f test.Failure) {
 	t.failures++
 	t.listener.ReportFailure(f)
+}
+
+// Start triggers the test script to start.
+// It should spwan actions in a go routine.
+func (t *ComplextTest) Start(cluster cluster.Cluster, listener test.TestListener) error {
+	t.activeMutex.Lock()
+	defer t.activeMutex.Unlock()
+
+	if t.active {
+		// No restart unless needed
+		return nil
+	}
+	if err := t.setupLogger(cluster); err != nil {
+		return maskAny(err)
+	}
+
+	t.cluster = cluster
+	t.listener = listener
+	t.client = util.NewArangoClient(t.log, cluster)
+
+	t.active = true
+	go t.ComplexTestImpl.runTest()
+	return nil
 }

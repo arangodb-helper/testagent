@@ -16,6 +16,7 @@ func NewComGraphTest(log *logging.Logger, reportDir string, rep2config ComplextT
 		NewGraphTest("communityGraphTest", log, reportDir, rep2config, config),
 	}
 	comGraphTest.GraphTestImpl = comGraphTest
+	comGraphTest.ComplexTestImpl = comGraphTest
 	return comGraphTest
 }
 

@@ -40,6 +40,7 @@ func NewOneShardTest(log *logging.Logger, reportDir string, rep2config ComplextT
 		isDatabaseCreated: false,
 	}
 	oneShardTest.DocColTestImpl = oneShardTest
+	oneShardTest.ComplexTestImpl = oneShardTest
 	return oneShardTest
 }
 
