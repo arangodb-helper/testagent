@@ -20,6 +20,7 @@ type ComplextTestConfig struct {
 	ReplicationFactor int
 	OperationTimeout  time.Duration
 	RetryTimeout      time.Duration
+	StepTimeout       time.Duration
 }
 
 type ComplextTestHarness struct {

@@ -26,6 +26,7 @@ const (
 	projectName             = "testAgent"
 	defaultOperationTimeout = time.Second * 90 // Should be 15s
 	defaultRetryTimeout     = time.Minute * 4  // Should be 1m
+	defaultStepTimeout      = time.Second * 2
 )
 
 var (
@@ -77,19 +78,20 @@ func init() {
 	f.IntVar(&appFlags.SimpleConfig.MaxCollections, "simple-max-collections", 10, "Upper limit to the number of collections created in simple test")
 	f.DurationVar(&appFlags.SimpleConfig.OperationTimeout, "simple-operation-timeout", defaultOperationTimeout, "Timeout per database operation")
 	f.DurationVar(&appFlags.SimpleConfig.RetryTimeout, "simple-retry-timeout", defaultRetryTimeout, "How long are tests retried before giving up")
-	f.Int64Var(&appFlags.GraphTestConf.MaxVertices, "graph-max-vertices", 100000, "Upper limit to the number of vertices created in all graph tests")
-	f.IntVar(&appFlags.GraphTestConf.VertexSize, "graph-vertex-size", 512, "The size of the payload field in bytes in all vertices in all graph tests")
-	f.IntVar(&appFlags.GraphTestConf.EdgeSize, "graph-edge-size", 128, "The size of the payload field in bytes in all vertices in all graph tests")
-	f.IntVar(&appFlags.GraphTestConf.TraversalOperationsPerCycle, "graph-traversal-ops", 1000, "How many traversal operations to perform in one test cycle in all graph tests")
-	f.IntVar(&appFlags.GraphTestConf.BatchSize, "graph-batch-size", 1000, "Batch size for creating documents in graph tests")
-	f.IntVar(&appFlags.DocColConfig.MaxDocuments, "doc-test-max-documents", 1000000, "Upper limit to the number of documents created in document collection tests")
-	f.IntVar(&appFlags.DocColConfig.BatchSize, "doc-test-batch-size", 1000, "Batch size for creating documents in bulk mode in document collection tests")
-	f.IntVar(&appFlags.DocColConfig.DocumentSize, "doc-test-document-size", 1024, "The size of the payload field in bytes in regular documents in document collection tests")
-	f.IntVar(&appFlags.DocColConfig.MaxUpdates, "doc-test-max-updates", 10, "Number of update operations to be performed on each document, before dropping collection, in document collection tests.")
-	f.IntVar(&appFlags.ComplextTestConfig.NumberOfShards, "complex-shards", 10, "Number of shards in in tests from the complex suite")
-	f.IntVar(&appFlags.ComplextTestConfig.ReplicationFactor, "complex-replicationFactor", 3, "Replication factor in tests from the complex suite")
-	f.DurationVar(&appFlags.ComplextTestConfig.OperationTimeout, "complex-operation-timeout", defaultOperationTimeout, "Timeout per database operation in tests from the complex suite")
-	f.DurationVar(&appFlags.ComplextTestConfig.RetryTimeout, "complex-retry-timeout", defaultRetryTimeout, "How long are tests retried before giving up in tests from the complex suite")
+	f.Int64Var(&appFlags.GraphTestConf.MaxVertices, "graph-max-vertices", 100000, "Upper limit to the number of vertices (graph tests)")
+	f.IntVar(&appFlags.GraphTestConf.VertexSize, "graph-vertex-size", 512, "The size of the payload field in bytes in all vertices (graph tests)")
+	f.IntVar(&appFlags.GraphTestConf.EdgeSize, "graph-edge-size", 128, "The size of the payload field in bytes in all vertices (graph tests)")
+	f.IntVar(&appFlags.GraphTestConf.TraversalOperationsPerCycle, "graph-traversal-ops", 1000, "How many traversal operations to perform in one test cycle (graph tests)")
+	f.IntVar(&appFlags.GraphTestConf.BatchSize, "graph-batch-size", 1000, "Batch size for creating documents (graph tests)")
+	f.IntVar(&appFlags.DocColConfig.MaxDocuments, "doc-max-documents", 1000000, "Upper limit to the number of documents created in document collection tests")
+	f.IntVar(&appFlags.DocColConfig.BatchSize, "doc-batch-size", 1000, "Batch size for creating documents in bulk mode in document collection tests")
+	f.IntVar(&appFlags.DocColConfig.DocumentSize, "doc-document-size", 1024, "The size of the payload field in bytes in regular documents in document collection tests")
+	f.IntVar(&appFlags.DocColConfig.MaxUpdates, "doc-max-updates", 10, "Number of update operations to be performed on each document, before dropping collection, in document collection tests.")
+	f.IntVar(&appFlags.ComplextTestConfig.NumberOfShards, "complex-shards", 10, "Number of shards (\"complex\" test suite)")
+	f.IntVar(&appFlags.ComplextTestConfig.ReplicationFactor, "complex-replicationFactor", 3, "Replication factor (\"complex\" test suite)")
+	f.DurationVar(&appFlags.ComplextTestConfig.OperationTimeout, "complex-operation-timeout", defaultOperationTimeout, "Timeout per database operation (\"complex\" test suite)")
+	f.DurationVar(&appFlags.ComplextTestConfig.RetryTimeout, "complex-retry-timeout", defaultRetryTimeout, "How long are tests retried before giving up (\"complex\" test suite)")
+	f.DurationVar(&appFlags.ComplextTestConfig.RetryTimeout, "complex-step-timeout", defaultStepTimeout, "Pause between test actions (\"complex\" test suite)")
 }
 
 // handleSignal listens for termination signals and stops this process onup termination.

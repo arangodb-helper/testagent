@@ -47,7 +47,7 @@ func (t *DocColTest) runTest() {
 		}
 		if t.pauseRequested {
 			t.paused = true
-			time.Sleep(time.Second * 2)
+			time.Sleep(t.StepTimeout)
 			continue
 		}
 		t.paused = false
@@ -93,7 +93,7 @@ func (t *DocColTest) runTest() {
 			t.DocColTestImpl.dropTestDatabase()
 			planIndex++
 		}
-		time.Sleep(time.Second * 2)
+		time.Sleep(t.StepTimeout)
 	}
 }
 

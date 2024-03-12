@@ -264,7 +264,7 @@ func (t *GraphTest) runTest() {
 		}
 		if t.pauseRequested {
 			t.paused = true
-			time.Sleep(time.Second * 2)
+			time.Sleep(t.StepTimeout)
 			continue
 		}
 		t.paused = false
@@ -300,6 +300,6 @@ func (t *GraphTest) runTest() {
 			t.GraphTestImpl.dropGraphAndCollections()
 			planIndex++
 		}
-		time.Sleep(time.Second * 2)
+		time.Sleep(t.StepTimeout)
 	}
 }
