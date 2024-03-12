@@ -172,7 +172,7 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 		tests = append(tests, simple.NewSimpleTest(log, appFlags.ReportDir, appFlags.SimpleConfig))
 	}
 	if slices.Contains(appFlags.EnableTests, "DocColTest") {
-		tests = append(tests, complex.NewDocColTest(log, appFlags.ReportDir, appFlags.ComplextTestConfig, appFlags.DocColConfig))
+		tests = append(tests, complex.NewRegularDocColTest(log, appFlags.ReportDir, appFlags.ComplextTestConfig, appFlags.DocColConfig))
 	}
 	if slices.Contains(appFlags.EnableTests, "OneShardTest") {
 		tests = append(tests, complex.NewOneShardTest(log, appFlags.ReportDir, appFlags.ComplextTestConfig, appFlags.DocColConfig))

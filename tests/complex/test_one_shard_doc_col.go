@@ -8,15 +8,18 @@ import (
 	logging "github.com/op/go-logging"
 )
 
-type RegularDocColTest struct {
+type OneShardTest struct {
 	DocColTest
+	databaseName      string
+	databaseNameSeq   int64
+	isDatabaseCreated bool
 }
 
-func NewRegularDocColTest(log *logging.Logger, reportDir string, rep2config ComplextTestConfig, config DocColConfig) test.TestScript {
-	docColTest := &RegularDocColTest{
+func NewOneShardTest(log *logging.Logger, reportDir string, rep2config ComplextTestConfig, config DocColConfig) test.TestScript {
+	oneShardTest := &OneShardTest{
 		DocColTest: DocColTest{
 			ComplextTest: ComplextTest{
-				TestName: "documentCollectionTest",
+				TestName: "oneShardDbTest",
 				ComplextTestContext: ComplextTestContext{
 					ComplextTestConfig: rep2config,
 					ComplextTestHarness: ComplextTestHarness{
@@ -32,26 +35,37 @@ func NewRegularDocColTest(log *logging.Logger, reportDir string, rep2config Comp
 			numberOfExistingDocs:     0,
 			numberOfCreatedDocsTotal: 0,
 			docCollectionCreated:     false,
-			readOffset:               0,
-		}}
-	docColTest.DocColTestImpl = docColTest
-	return docColTest
+		},
+		databaseNameSeq:   0,
+		isDatabaseCreated: false,
+	}
+	oneShardTest.DocColTestImpl = oneShardTest
+	return oneShardTest
 }
 
-func (t *RegularDocColTest) generateCollectionName(seed int64) string {
-	return "documents_" + strconv.FormatInt(seed, 10)
+func (t *OneShardTest) generateCollectionName(seed int64) string {
+	return "oneshard_docs_" + strconv.FormatInt(seed, 10)
 }
 
-func (t *RegularDocColTest) createTestDatabase() {
-	//we do not need to create a DB, since we use _system DB for this test
+func (t *OneShardTest) generateDatabaseName(seed int64) string {
+	return "oneshard_db_" + strconv.FormatInt(seed, 10)
 }
 
-func (t *RegularDocColTest) dropTestDatabase() {
-	//we do not need to drop a DB, since we use _system DB for this test
+func (t *OneShardTest) createTestDatabase() {
+	if !t.isDatabaseCreated {
+		t.databaseName = t.generateDatabaseName(t.databaseNameSeq)
+		if err := t.createOneShardDatabase(t.databaseName); err != nil {
+			t.log.Errorf("Failed to create database: %v", err)
+		} else {
+			t.isDatabaseCreated = true
+			t.client.UseDatabase(t.databaseName)
+			t.actions++
+		}
+	}
 }
 
-func (t *RegularDocColTest) createTestCollection() {
-	if !t.docCollectionCreated {
+func (t *OneShardTest) createTestCollection() {
+	if !t.docCollectionCreated && t.isDatabaseCreated {
 		t.docCollectionName = t.generateCollectionName(t.collectionNameSeq)
 		if err := t.createCollection(t.docCollectionName, false); err != nil {
 			t.log.Errorf("Failed to create collection: %v", err)
@@ -62,25 +76,32 @@ func (t *RegularDocColTest) createTestCollection() {
 	}
 }
 
-func (t *RegularDocColTest) dropTestCollection() {
+func (t *OneShardTest) dropTestCollection() {
+	//we do not need to drop collection becasue we will drop the database altogether
+}
+
+func (t *OneShardTest) dropTestDatabase() {
 	if t.docCollectionCreated && t.numberOfExistingDocs >= t.MaxDocuments && t.existingDocuments[len(t.existingDocuments)-1].UpdateCounter > t.MaxUpdates {
-		if err := t.dropCollection(t.docCollectionName); err != nil {
-			t.log.Errorf("Failed to drop collection: %v", err)
+		t.client.UseDatabase("_system")
+		if err := t.dropDatabase(t.databaseName); err != nil {
+			t.client.UseDatabase(t.databaseName)
+			t.log.Errorf("Failed to drop database: %v", err)
 		} else {
+			t.isDatabaseCreated = false
 			t.docCollectionCreated = false
 			t.numberOfExistingDocs = 0
 			t.existingDocuments = t.existingDocuments[:0]
+			t.readOffset = 0
 			t.updateOffset = 0
-			t.readOffset = 0
-			t.readOffset = 0
 			t.collectionNameSeq++
+			t.databaseNameSeq++
 			t.actions++
 		}
 	}
 }
 
 // Status returns the current status of the test
-func (t *RegularDocColTest) Status() test.TestStatus {
+func (t *OneShardTest) Status() test.TestStatus {
 	cc := func(name string, c counter) test.Counter {
 		return test.Counter{
 			Name:      name,
@@ -95,6 +116,8 @@ func (t *RegularDocColTest) Status() test.TestStatus {
 		Failures: t.failures,
 		Actions:  t.actions,
 		Counters: []test.Counter{
+			cc("#databases created", t.createDatabaseCounter),
+			cc("#databases dropped", t.dropDatabaseCounter),
 			cc("#collections created", t.createCollectionCounter),
 			cc("#collections dropped", t.dropCollectionCounter),
 			cc("#document batches created", t.bulkCreateCounter),
@@ -107,7 +130,6 @@ func (t *RegularDocColTest) Status() test.TestStatus {
 
 	status.Messages = append(status.Messages,
 		fmt.Sprintf("Number of documents in the database: %d", t.numberOfExistingDocs),
-		fmt.Sprintf("Number of shards in the collection: %d", t.NumberOfShards),
 	)
 
 	return status
