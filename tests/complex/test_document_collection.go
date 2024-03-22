@@ -12,13 +12,13 @@ type RegularDocColTest struct {
 	DocColTest
 }
 
-func NewRegularDocColTest(log *logging.Logger, reportDir string, rep2config ComplextTestConfig, config DocColConfig) test.TestScript {
+func NewRegularDocColTest(log *logging.Logger, reportDir string, complexTestCfg ComplextTestConfig, config DocColConfig) test.TestScript {
 	docColTest := &RegularDocColTest{
 		DocColTest: DocColTest{
 			ComplextTest: ComplextTest{
 				TestName: "documentCollectionTest",
 				ComplextTestContext: ComplextTestContext{
-					ComplextTestConfig: rep2config,
+					ComplextTestConfig: complexTestCfg,
 					ComplextTestHarness: ComplextTestHarness{
 						reportDir: reportDir,
 						log:       log,

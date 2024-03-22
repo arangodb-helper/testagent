@@ -11,9 +11,9 @@ type EnterpriseGraphTest struct {
 	SmartGraphTest
 }
 
-func NewEnterpriseGraphTest(log *logging.Logger, reportDir string, rep2config ComplextTestConfig, config GraphTestConf) test.TestScript {
+func NewEnterpriseGraphTest(log *logging.Logger, reportDir string, complexTestCfg ComplextTestConfig, config GraphTestConf) test.TestScript {
 	entGraphTest := &EnterpriseGraphTest{SmartGraphTest{
-		NewGraphTest("enterpriseGraphTest", log, reportDir, rep2config, config),
+		NewGraphTest("enterpriseGraphTest", log, reportDir, complexTestCfg, config),
 	}}
 	entGraphTest.GraphTestImpl = entGraphTest
 	entGraphTest.ComplexTestImpl = entGraphTest

@@ -43,13 +43,13 @@ type GraphTest struct {
 	existingVertexDocuments []TestDocument
 }
 
-func NewGraphTest(testName string, log *logging.Logger, reportDir string, rep2config ComplextTestConfig, config GraphTestConf) GraphTest {
+func NewGraphTest(testName string, log *logging.Logger, reportDir string, complexTestCfg ComplextTestConfig, config GraphTestConf) GraphTest {
 	return GraphTest{
 		GraphTestConf: config,
 		ComplextTest: ComplextTest{
 			TestName: testName,
 			ComplextTestContext: ComplextTestContext{
-				ComplextTestConfig: rep2config,
+				ComplextTestConfig: complexTestCfg,
 				ComplextTestHarness: ComplextTestHarness{
 					reportDir: reportDir,
 					log:       log,
@@ -164,7 +164,7 @@ func (t *GraphTest) traverseGraph() {
 }
 
 func (t *GraphTest) dropGraphAndCollections() {
-	if t.graphIsBroken || (t.graphCreated && t.MaxVertices >= t.numberOfCreatedVertices) {
+	if t.graphIsBroken || (t.graphCreated && t.MaxVertices <= t.numberOfCreatedVertices) {
 		if err := t.dropGraph(t.graphName, true); err != nil {
 			t.log.Errorf("Failed to drop graph: %v", err)
 		} else {

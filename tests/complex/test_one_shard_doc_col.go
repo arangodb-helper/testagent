@@ -15,13 +15,13 @@ type OneShardTest struct {
 	isDatabaseCreated bool
 }
 
-func NewOneShardTest(log *logging.Logger, reportDir string, rep2config ComplextTestConfig, config DocColConfig) test.TestScript {
+func NewOneShardTest(log *logging.Logger, reportDir string, complexTestCfg ComplextTestConfig, config DocColConfig) test.TestScript {
 	oneShardTest := &OneShardTest{
 		DocColTest: DocColTest{
 			ComplextTest: ComplextTest{
 				TestName: "oneShardDbTest",
 				ComplextTestContext: ComplextTestContext{
-					ComplextTestConfig: rep2config,
+					ComplextTestConfig: complexTestCfg,
 					ComplextTestHarness: ComplextTestHarness{
 						reportDir: reportDir,
 						log:       log,

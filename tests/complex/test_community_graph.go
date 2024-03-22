@@ -11,9 +11,9 @@ type CommunityGraphTest struct {
 	GraphTest
 }
 
-func NewComGraphTest(log *logging.Logger, reportDir string, rep2config ComplextTestConfig, config GraphTestConf) test.TestScript {
+func NewComGraphTest(log *logging.Logger, reportDir string, complexTestCfg ComplextTestConfig, config GraphTestConf) test.TestScript {
 	comGraphTest := &CommunityGraphTest{
-		NewGraphTest("communityGraphTest", log, reportDir, rep2config, config),
+		NewGraphTest("communityGraphTest", log, reportDir, complexTestCfg, config),
 	}
 	comGraphTest.GraphTestImpl = comGraphTest
 	comGraphTest.ComplexTestImpl = comGraphTest
