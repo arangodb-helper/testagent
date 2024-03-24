@@ -64,7 +64,7 @@ func (t *RegularDocColTest) createTestCollection() {
 }
 
 func (t *RegularDocColTest) dropTestCollection() {
-	if t.docCollectionCreated && t.numberOfExistingDocs >= t.MaxDocuments && t.existingDocuments[len(t.existingDocuments)-1].UpdateCounter > t.MaxUpdates {
+	if t.docCollectionCreated && t.numberOfExistingDocs >= t.MaxDocuments && t.existingDocuments[len(t.existingDocuments)-1].UpdateCounter >= t.MaxUpdates {
 		if err := t.dropCollection(t.docCollectionName); err != nil {
 			t.log.Errorf("Failed to drop collection: %v", err)
 		} else {

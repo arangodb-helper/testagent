@@ -82,7 +82,7 @@ func (t *OneShardTest) dropTestCollection() {
 }
 
 func (t *OneShardTest) dropTestDatabase() {
-	if t.docCollectionCreated && t.numberOfExistingDocs >= t.MaxDocuments && t.existingDocuments[len(t.existingDocuments)-1].UpdateCounter > t.MaxUpdates {
+	if t.docCollectionCreated && t.numberOfExistingDocs >= t.MaxDocuments && t.existingDocuments[len(t.existingDocuments)-1].UpdateCounter >= t.MaxUpdates {
 		t.client.UseDatabase("_system")
 		if err := t.dropDatabase(t.databaseName); err != nil {
 			t.client.UseDatabase(t.databaseName)
