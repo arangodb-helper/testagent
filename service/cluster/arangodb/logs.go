@@ -84,6 +84,7 @@ func (m *arangodb) collectContainerLogs(w io.Writer, containerID string) error {
 	return nil
 }
 
+// FIXME: if the log size is too big, calling this function may cause an OOM kill
 // collectServerLogs collects recent logs from the container with given ID and writes them to the given writer.
 func (m *arangodb) collectServerLogs(w io.Writer, server string) error {
 	addr := fmt.Sprintf("http://%s:%d/logs/%s", m.dockerHost.IP, m.arangodbPort, server)
@@ -98,7 +99,9 @@ func (m *arangodb) collectServerLogs(w io.Writer, server string) error {
 		return maskAny(fmt.Errorf("Invalid status; expected %d, got %d", http.StatusOK, resp.StatusCode))
 	}
 	defer resp.Body.Close()
-	if _, err := io.Copy(w, resp.Body); err != nil {
+	chunkSize := 1024 * 100
+	buffer := make([]byte, chunkSize)
+	if _, err := io.CopyBuffer(w, resp.Body, buffer); err != nil {
 		return maskAny(err)
 	}
 	return nil
