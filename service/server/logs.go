@@ -7,7 +7,6 @@ import (
 	"net/http"
 )
 
-// FIXME: if the log size is too big, calling this function may cause an OOM kill
 func logsPage(ctx *macaron.Context, log *logging.Logger, service Service) {
 	machineID := ctx.Params("machine")
 	mode := ctx.Params("mode")

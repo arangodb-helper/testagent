@@ -24,7 +24,7 @@ docker run -it --rm -p 4200:4200 -p 4000:4000 \
        -v /tmp/testagent-reports/:/reports \
        -v /tmp/testagent-metrics/:/metrics \
        $IMAGE \
-       --log-level=debug \
+       --log-level=info \
        --chaos-level=0 \
        --collect-metrics \
        --docker-host-ip=10.0.0.1 \
@@ -34,11 +34,11 @@ docker run -it --rm -p 4200:4200 -p 4000:4000 \
        --complex-operation-timeout 3m \
        --complex-retry-timeout 8m \
        --doc-document-size 512 \
-       --doc-batch-size 100 \
-       --doc-max-documents 400 \
+       --doc-batch-size 1000 \
+       --doc-max-documents 75000 \
        --doc-max-updates 2 \
-       --graph-max-vertices 1000 \
-       --graph-vertex-size 4096 \
-       --graph-edge-size 4096 \
-       --graph-traversal-ops 100 \
-       --graph-batch-size 50
+       --graph-max-vertices 50000 \
+       --graph-vertex-size 512 \
+       --graph-edge-size 256 \
+       --graph-traversal-ops 50 \
+       --graph-batch-size 1000

@@ -11,7 +11,7 @@ ORGPATH := github.com/arangodb-helper
 REPONAME := $(PROJECT)
 REPOPATH := $(ORGPATH)/$(REPONAME)
 
-GOVERSION := 1.21.3-alpine
+GOVERSION := 1.22.1-alpine
 
 ifndef GOOS
 	GOOS := linux
@@ -74,6 +74,10 @@ localtest:
 
 tests:
 	go test -coverprofile cover.out github.com/arangodb-helper/testagent/tests/simple -v
+	go tool cover -html=cover.out
+
+testsnew:
+	go test -coverprofile cover.out github.com/arangodb-helper/testagent/tests/complex -v
 	go tool cover -html=cover.out
 
 docker-push-version: docker
