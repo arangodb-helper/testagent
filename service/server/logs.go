@@ -1,14 +1,13 @@
 package server
 
 import (
-	"bytes"
 	"fmt"
+	"github.com/op/go-logging"
+	"gopkg.in/macaron.v1"
 	"net/http"
-
-	logging "github.com/op/go-logging"
-	macaron "gopkg.in/macaron.v1"
 )
 
+// FIXME: if the log size is too big, calling this function may cause an OOM kill
 func logsPage(ctx *macaron.Context, log *logging.Logger, service Service) {
 	machineID := ctx.Params("machine")
 	mode := ctx.Params("mode")
@@ -20,27 +19,25 @@ func logsPage(ctx *macaron.Context, log *logging.Logger, service Service) {
 			return
 		}
 		for _, m := range machines {
-			var buf bytes.Buffer
 			if m.ID() == machineID {
 				var err error
+				ctx.Status(http.StatusOK)
 				switch mode {
 				case "agent":
-					err = m.CollectAgentLogs(&buf)
+					err = m.CollectAgentLogs(ctx.Resp)
 				case "dbserver":
-					err = m.CollectDBServerLogs(&buf)
+					err = m.CollectDBServerLogs(ctx.Resp)
 				case "coordinator":
-					err = m.CollectCoordinatorLogs(&buf)
+					err = m.CollectCoordinatorLogs(ctx.Resp)
 				case "machine":
-					err = m.CollectMachineLogs(&buf)
+					err = m.CollectMachineLogs(ctx.Resp)
 				case "network":
-					err = m.CollectNetworkLogs(&buf)
+					err = m.CollectNetworkLogs(ctx.Resp)
 				default:
 					showError(ctx, fmt.Errorf("Unknown mode '%s'", mode))
 					return
 				}
-				if err == nil {
-					ctx.PlainText(http.StatusOK, buf.Bytes())
-				} else {
+				if err != nil {
 					showError(ctx, fmt.Errorf("Can't collect logs from machine %s", machineID))
 				}
 				return
