@@ -76,10 +76,6 @@ tests:
 	go test -coverprofile cover.out github.com/arangodb-helper/testagent/tests/simple -v
 	go tool cover -html=cover.out
 
-testsnew:
-	go test -coverprofile cover.out github.com/arangodb-helper/testagent/tests/complex -v
-	go tool cover -html=cover.out
-
 docker-push-version: docker
 	docker tag arangodb/testagent arangodb/testagent:$(VERSION)
 	docker push arangodb/testagent:$(VERSION)
