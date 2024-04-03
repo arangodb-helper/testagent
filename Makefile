@@ -73,7 +73,7 @@ localtest:
 	docker run -it --rm --net=host -v $(HOME)/tmp:/reports -v /var/run/docker.sock:/var/run/docker.sock arangodb/testagent --docker-net-host
 
 tests:
-	go test -coverprofile cover.out github.com/arangodb-helper/testagent/tests/simple -v
+	go test -coverprofile cover.out github.com/arangodb-helper/testagent/tests/simple github.com/arangodb-helper/testagent/tests/complex -v
 	go tool cover -html=cover.out
 
 docker-push-version: docker

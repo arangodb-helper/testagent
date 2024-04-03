@@ -7,6 +7,23 @@ import (
 	"github.com/arangodb-helper/testagent/service/test"
 )
 
+type CreateDatabaseRequestOptions struct {
+	Sharding          string `json:"sharding"`
+	ReplicationFactor int    `json:"replicationFactor"`
+	WriteConcern      int    `json:"writeConcern"`
+}
+
+type CreateDatabaseRequest struct {
+	Name    string                       `json:"name"`
+	Options CreateDatabaseRequestOptions `json:"options"`
+}
+
+type DatabasesResponse struct {
+	Error  bool
+	Code   int
+	Result []string
+}
+
 func (t *ComplextTest) createOneShardDatabase(databaseName string) error {
 	return t.createDatabase(databaseName, "single", t.ReplicationFactor, t.ReplicationFactor-1)
 }
@@ -14,19 +31,9 @@ func (t *ComplextTest) createOneShardDatabase(databaseName string) error {
 // createDatabase creates a new database.
 // The operation is expected to succeed.
 func (t *ComplextTest) createDatabase(databaseName string, sharding string, replicationFactor int, writeConcern int) error {
-	body := struct {
-		Name    string `json:"name"`
-		Options struct {
-			Sharding          string `json:"sharding"`
-			ReplicationFactor int    `json:"replicationFactor"`
-			WriteConcern      int    `json:"writeConcern"`
-		} `json:"options"`
-	}{Name: databaseName,
-		Options: struct {
-			Sharding          string `json:"sharding"`
-			ReplicationFactor int    `json:"replicationFactor"`
-			WriteConcern      int    `json:"writeConcern"`
-		}{
+	body := CreateDatabaseRequest{
+		Name: databaseName,
+		Options: CreateDatabaseRequestOptions{
 			Sharding:          sharding,
 			ReplicationFactor: replicationFactor,
 			WriteConcern:      writeConcern,
@@ -63,8 +70,8 @@ func (t *ComplextTest) createDatabase(databaseName string, sharding string, repl
 		// 0, 503: recheck without erxpectations
 		//     there: good
 		//     not there: retry
-		// 200   : good
-		// 1, 500: collection couldn't be finished.
+		// 201   : good
+		// 1, 500: database creation couldn't be finished.
 		//     there: failure
 		//     not there: retry
 		// 409   :
@@ -126,7 +133,7 @@ func (t *ComplextTest) createDatabase(databaseName string, sharding string, repl
 					}
 				}
 			} else {
-				return maskAny(checkErr)
+				continue
 			}
 		}
 
@@ -145,6 +152,7 @@ func (t *ComplextTest) createDatabase(databaseName string, sharding string, repl
 	}
 
 	// Overall timeout :(
+	t.createDatabaseCounter.failed++
 	t.reportFailure(
 		test.NewFailure(t.Name(), "Timed out while trying to create (%d) database %s.", i, databaseName))
 	return maskAny(fmt.Errorf("Timed out while trying to create (%d) database %s.", i, databaseName))
@@ -218,13 +226,7 @@ func (t *ComplextTest) dropDatabase(databaseName string) error {
 
 func (t *ComplextTest) databaseExists(databaseName string) (bool, error) {
 
-	type DatabasesResponse struct {
-		Error  bool
-		Code   string
-		Result []string
-	}
-
-	operationTimeout := time.Duration(ReadTimeout) * time.Second
+	operationTimeout := t.OperationTimeout
 	timeout := time.Now().Add(operationTimeout)
 
 	i := 0
@@ -239,9 +241,9 @@ func (t *ComplextTest) databaseExists(databaseName string) (bool, error) {
 		}
 
 		t.log.Infof("Checking (%d) database '%s'...", i, databaseName)
-		var response DatabasesResponse
+		result := &DatabasesResponse{}
 		resp, err := t.client.Get(
-			url, nil, nil, response, []int{0, 1, 200, 404, 503}, []int{400, 409, 307}, operationTimeout, 1)
+			url, nil, nil, result, []int{0, 1, 200, 404, 503}, []int{400, 409, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
 
 		if err[0] != nil {
@@ -251,8 +253,8 @@ func (t *ComplextTest) databaseExists(databaseName string) (bool, error) {
 		} else if resp[0].StatusCode == 404 {
 			return false, nil
 		} else if resp[0].StatusCode == 200 {
-			for k := 0; k < len(response.Result); k++ {
-				if response.Result[k] == databaseName {
+			for k := 0; k < len(result.Result); k++ {
+				if result.Result[k] == databaseName {
 					return true, nil
 				}
 			}
@@ -268,7 +270,7 @@ func (t *ComplextTest) databaseExists(databaseName string) (bool, error) {
 	}
 
 	// This is a failure
-	out := fmt.Errorf("Timed out checking for database '%s'", databaseName)
+	out := fmt.Errorf("timed out checking for database '%s'", databaseName)
 	t.log.Error(out)
 	return false, maskAny(out)
 
