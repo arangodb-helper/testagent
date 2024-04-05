@@ -495,11 +495,10 @@ func (m *arangodb) stop(destroy bool) error {
 	// Remove volume (in case of destroy)
 	if destroy {
 		m.log.Infof("Removing volume %s", m.volumeID)
+		if err := m.dockerHost.Client.RemoveVolume(m.volumeID); err != nil {
+			m.log.Errorf("Failed to remove volume %s: %v", m.volumeID, err)
+		}
 	}
-	if err := m.dockerHost.Client.RemoveVolume(m.volumeID); err != nil {
-		m.log.Errorf("Failed to remove volume %s: %v", m.volumeID, err)
-	}
-
 	return nil
 }
 
@@ -609,7 +608,7 @@ func (m *arangodb) updateServerInfo() error {
 		m.hasAgent = hasAgent
 		return nil
 	}
-	if err := retry.Retry(op, time.Minute*5); err != nil {
+	if err := retry.Retry(op, time.Minute*20); err != nil {
 		return maskAny(err)
 	}
 	return nil
@@ -674,6 +673,8 @@ func (m *arangodb) watchdog() {
 	monitorLoop := func(urlGetter func() url.URL, name string, activeVar *int32) {
 		for {
 			switch m.state {
+			case cluster.MachineStateStarted:
+				m.waitUntilServersReady(nil, time.Minute)
 			case cluster.MachineStateReady:
 				m.testInstance(nil, urlGetter(), name, timeout, activeVar)
 			case cluster.MachineStateDestroyed:
