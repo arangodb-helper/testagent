@@ -21,7 +21,7 @@ type TestDocument struct {
 }
 
 func (t *TestDocument) equals(other *TestDocument) bool {
-	return t.Key == other.Key && t.Rev == other.Rev && t.UpdateCounter == other.UpdateCounter
+	return t.Key == other.Key && t.Seed == other.Seed && t.UpdateCounter == other.UpdateCounter
 }
 
 type BigDocument struct {
@@ -31,6 +31,10 @@ type BigDocument struct {
 	Odd     bool   `json:"odd"`
 	Payload string `json:"payload"`
 }
+
+var (
+	BackOffTime = time.Millisecond * 500 // to be overwritten in unittests only
+)
 
 func NewBigDocument(seed int64, payloadSize int) BigDocument {
 	randGen := rand.New(rand.NewSource(seed))
@@ -79,7 +83,7 @@ func (t *ComplextTest) insertDocument(colName string, document any) error {
 	q := url.Values{}
 	q.Set("waitForSync", "true")
 	url := fmt.Sprintf("/_api/document/%s", colName)
-	backoff := time.Millisecond * 250
+	backoff := BackOffTime
 	i := 0
 
 	for {
@@ -113,8 +117,8 @@ func (t *ComplextTest) insertDocument(colName string, document any) error {
 		}
 
 		if checkRetry {
-			v, e := t.checkIfDocumentExists(colName, key)
-			success = e == nil && v
+			exists, err := t.checkIfDocumentExists(colName, key)
+			success = err == nil && exists
 		}
 
 		if success {
@@ -137,99 +141,15 @@ func (t *ComplextTest) insertDocument(colName string, document any) error {
 	return maskAny(fmt.Errorf("Timed out while trying to create a document in '%s with key %s'.", colName, key))
 }
 
-//FIXME: this method currently can't work properly. we need to extend the client to support bulk requests,
-// which may return an array of errors instead of just one ArangoError object
-
-// createDocuments creates a new documents in bulk
-// func (t *ComplextTest) createDocuments(numberOfDocuments int, startValue int64) error {
-
-// 	operationTimeout := t.OperationTimeout
-// 	testTimeout := time.Now().Add(operationTimeout * 4)
-
-// 	q := url.Values{}
-// 	q.Set("waitForSync", "true")
-// 	url := fmt.Sprintf("/_api/document/%s", t.docCollectionName)
-// 	backoff := time.Millisecond * 250
-// 	i := 0
-
-// 	for {
-
-// 		i++
-// 		if time.Now().After(testTimeout) {
-// 			break
-// 		}
-
-// 		checkRetry := false
-// 		success := false
-
-// 		var documents []TestDocument
-// 		documents = make([]TestDocument, numberOfDocuments)
-// 		for i := startValue; i < startValue+int64(numberOfDocuments); i++ {
-// 			documents = append(documents, NewTestDocument(i, t.DocumentSize))
-// 		}
-// 		t.log.Infof("Creating (%d) documents in collection '%s'...", numberOfDocuments, t.docCollectionName)
-// 		resp, err := t.client.Post(url, q, nil, documents, "", nil,
-// 			[]int{0, 1, 200, 201, 202, 409, 503}, []int{400, 404, 307}, operationTimeout, 1)
-// 		t.log.Infof("... got http %d - arangodb %d via %s",
-// 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
-
-// 		if err[0] == nil { // we have a response
-// 			if resp[0].StatusCode == 503 || resp[0].StatusCode == 409 || resp[0].StatusCode == 0 {
-// 				// 0, 503 and 409 -> check if accidentally successful
-// 				checkRetry = true
-// 			} else if resp[0].StatusCode != 1 {
-// 				//FIXME: properly check for success
-// 				success = true
-// 			}
-// 		} else { // failure
-// 			t.bulkCreateCounter.failed++
-// 			t.reportFailure(
-// 				test.NewFailure(t.Name(), "Failed to create %d documents in collection '%s'", numberOfDocuments, t.docCollectionName, err[0]))
-// 			return maskAny(err[0])
-// 		}
-
-// 		//FIXME: implement checkretry - check if documents were still created even though we got a bad http response from coordinator
-// 		if checkRetry {
-// 			// 	d, e := readDocument(t, c.name, key, "", ReadTimeout, false)
-// 			// 	// replace == with Equals
-// 			// 	if e == nil && d != nil && d.Equals(document) {
-// 			// 		document.Rev = d.Rev
-// 			// 		success = true
-// 			// 	}
-// 		}
-
-// 		if success {
-// 			for _, v := range documents {
-// 				t.existingDocSeeds = append(t.existingDocSeeds, v.Value)
-// 			}
-// 			t.bulkCreateCounter.succeeded++
-// 			t.log.Infof("Creating %d documents in '%s' succeeded", numberOfDocuments, t.docCollectionName)
-// 			return nil
-// 		}
-
-// 		time.Sleep(backoff)
-// 		if backoff < time.Second*5 {
-// 			backoff += backoff
-// 		}
-
-// 	}
-
-// 	// Overall timeout :(
-// 	t.bulkCreateCounter.failed++
-// 	t.reportFailure(
-// 		test.NewFailure(t.Name(), "Timed out while trying to create %d documents in '%s'.", numberOfDocuments, t.docCollectionName))
-// 	return maskAny(fmt.Errorf("Timed out while trying to create %d documents in '%s'.", numberOfDocuments, t.docCollectionName))
-// }
-
 // checkIfDocumentExists checks if a document with given key exists in given collection
 // The operation is expected to succeed.
 func (t *ComplextTest) checkIfDocumentExists(colName string, key string) (bool, error) {
 
-	operationTimeout := t.OperationTimeout / 5
+	operationTimeout := t.OperationTimeout
 	testTimeout := time.Now().Add(t.OperationTimeout)
 	i := 0
 	url := fmt.Sprintf("/_api/document/%s/%s", colName, key)
-	backoff := time.Millisecond * 100
+	backoff := BackOffTime
 	var result TestDocument
 
 	for {
@@ -269,12 +189,12 @@ func (t *ComplextTest) checkIfDocumentExists(colName string, key string) (bool, 
 
 // readExistingDocument reads an existing document.
 // The operation is expected to succeed.
-func (t *ComplextTest) readExistingDocument(colName string, expectedDocument any, skipExpectedValueCheck bool) error {
+func (t *ComplextTest) readExistingDocument(colName string, expectedDocument BigDocument, skipExpectedValueCheck bool) error {
 
 	operationTimeout := t.OperationTimeout / 5
 	testTimeout := time.Now().Add(t.OperationTimeout)
-	key := reflect.ValueOf(expectedDocument).FieldByName("Key").String()
-	result := reflect.New(reflect.TypeOf(expectedDocument)).Interface()
+	key := expectedDocument.Key
+	resultPtr := &BigDocument{}
 	i := 0
 	url := fmt.Sprintf("/_api/document/%s/%s", colName, key)
 	backoff := time.Millisecond * 100
@@ -288,7 +208,7 @@ func (t *ComplextTest) readExistingDocument(colName string, expectedDocument any
 
 		t.log.Infof("Reading existing document with key '%s' from collection '%s'...", key, colName)
 		resp, err := t.client.Get(
-			url, nil, nil, &result, []int{0, 1, 200, 503}, []int{400, 404, 307}, operationTimeout, 1)
+			url, nil, nil, resultPtr, []int{0, 1, 200, 503}, []int{400, 404, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
@@ -303,12 +223,12 @@ func (t *ComplextTest) readExistingDocument(colName string, expectedDocument any
 			if resp[0].StatusCode == 200 {
 				// Compare document against expected document
 				if !skipExpectedValueCheck {
-					if !reflect.ValueOf(result).MethodByName("Equals").Call([]reflect.Value{reflect.ValueOf(expectedDocument)})[0].Interface().(bool) {
+					if !resultPtr.Equals(expectedDocument) {
 						// This is a failure
 						t.readExistingCounter.failed++
 						t.reportFailure(test.NewFailure(t.Name(),
 							"Read existing document with key '%s' from collection '%s' returned different values: got %v expected %v",
-							key, colName, result, expectedDocument))
+							key, colName, resultPtr, expectedDocument))
 						return maskAny(fmt.Errorf("Read returned invalid values"))
 					}
 				}
@@ -340,7 +260,7 @@ func (t *ComplextTest) readExistingDocument(colName string, expectedDocument any
 // If the function times out, an error is returned. This function does
 // not report failures.
 func readDocument(t *ComplextTest, colName string, key string, rev string, seconds int, mustExist bool) (*BigDocument, error) {
-	backoff := time.Millisecond * 100
+	backoff := BackOffTime
 	i := 0
 	url := fmt.Sprintf("/_api/document/%s/%s", colName, key)
 	operationTimeout := time.Duration(seconds/8) * time.Second
@@ -352,7 +272,7 @@ func readDocument(t *ComplextTest, colName string, key string, rev string, secon
 			break
 		}
 		hdr := ifMatchHeader(nil, rev)
-		var result *BigDocument
+		var result BigDocument = BigDocument{}
 
 		t.log.Infof(
 			"Reading (%d) document '%s' (%s) in '%s' ...", i, key, rev, colName)
@@ -378,7 +298,7 @@ func readDocument(t *ComplextTest, colName string, key string, rev string, secon
 				t.readExistingCounter.succeeded++
 				t.log.Infof(
 					"Reading (%d) document '%s' (%s) in '%s' (name -> '%s') succeeded", i, key, rev, colName, result.Name)
-				return result, nil
+				return &result, nil
 			}
 		}
 
@@ -398,7 +318,7 @@ func readDocument(t *ComplextTest, colName string, key string, rev string, secon
 func readDocumentBySeed(t *ComplextTest, colName string, seed int64) (*TestDocument, error) {
 	operationTimeout := t.OperationTimeout
 	testTimeout := time.Now().Add(operationTimeout * 5)
-	backoff := time.Millisecond * 250
+	backoff := BackOffTime
 	i := 0
 
 	var err []error
@@ -509,7 +429,7 @@ func (t *ComplextTest) updateExistingDocument(colName string, oldDoc TestDocumen
 	delta := map[string]interface{}{
 		"update_counter": new_counter_value,
 	}
-	backoff := time.Millisecond * 250
+	backoff := BackOffTime
 	i := 0
 
 	for {

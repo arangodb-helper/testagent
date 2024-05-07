@@ -25,13 +25,15 @@ type MockResponse struct {
 	Err  error
 }
 
+type Behaviour = func(context.Context, *testing.T, chan *MockRequest, chan *MockResponse)
+
 type MockClient struct {
 	test         *testing.T
 	cancel       context.CancelFunc
 	ctx          context.Context
 	requests     chan *MockRequest
 	responses    chan *MockResponse
-	behaviour    func(context.Context, *testing.T, chan *MockRequest, chan *MockResponse)
+	behaviour    Behaviour
 	Wg           sync.WaitGroup
 	databaseName string
 }
@@ -43,7 +45,7 @@ type MockListener struct {
 func (ml MockListener) ReportFailure(f test.Failure) {
 }
 
-func NewMockClient(t *testing.T, behaviour func(context.Context, *testing.T, chan *MockRequest, chan *MockResponse)) *MockClient {
+func NewMockClient(t *testing.T, behaviour Behaviour) *MockClient {
 	mockClient := &MockClient{
 		test:         t,
 		requests:     make(chan *MockRequest),
