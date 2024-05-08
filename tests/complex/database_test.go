@@ -38,9 +38,9 @@ func NewMockTest(mockClient *util.MockClient) *OneShardTest {
 					ComplextTestConfig: ComplextTestConfig{
 						NumberOfShards:    1,
 						ReplicationFactor: 2,
-						OperationTimeout:  time.Millisecond * 300,
-						RetryTimeout:      time.Millisecond * 300,
-						StepTimeout:       time.Millisecond * 100,
+						OperationTimeout:  time.Millisecond * 100,
+						RetryTimeout:      time.Millisecond * 100,
+						StepTimeout:       time.Millisecond * 5,
 					},
 					ComplextTestHarness: ComplextTestHarness{
 						reportDir: ".",

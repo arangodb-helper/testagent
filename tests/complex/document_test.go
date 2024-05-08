@@ -20,6 +20,8 @@ var (
 		Rev:           "new_rev",
 		UpdateCounter: ExpectedDocument.UpdateCounter + 1,
 	}
+	backOffTimeForTesting time.Duration = time.Millisecond * 2
+	readTimeoutForTesting int           = 1
 )
 
 //checkIfDocumentExists tests
@@ -27,7 +29,7 @@ var (
 // a template for testing the checkIfDocumentExists function
 func checkThatDocumentExists(t *testing.T, expectedResult bool, expectError bool, behaviour util.Behaviour) {
 	savedBackOffTime := BackOffTime
-	BackOffTime = time.Millisecond * 2 // to speed up tests
+	BackOffTime = backOffTimeForTesting // to speed up tests
 	defer func() { BackOffTime = savedBackOffTime }()
 	test := NewMockTest(util.NewMockClient(t, behaviour))
 	actualResult, err := test.checkIfDocumentExists(CollectionName, DocumentKey)
@@ -182,7 +184,7 @@ func TestCheckIfDocumentExistsTimeOut(t *testing.T) {
 // a template for testing the insertDocument function
 func checkInsertDocument(t *testing.T, expectError bool, behaviour util.Behaviour) {
 	savedBackOffTime := BackOffTime
-	BackOffTime = time.Millisecond * 2 // to speed up tests
+	BackOffTime = backOffTimeForTesting // to speed up tests
 	defer func() { BackOffTime = savedBackOffTime }()
 	test := NewMockTest(util.NewMockClient(t, behaviour))
 	document := NewBigDocument(1, 16)
@@ -322,7 +324,7 @@ func TestInsertDocumentError(t *testing.T) {
 // a template for testing the readExistingDocument function
 func checkReadExistingDoc(t *testing.T, expectError bool, skipExpectedValueCheck bool, behaviour util.Behaviour) {
 	savedBackOffTime := BackOffTime
-	BackOffTime = time.Millisecond * 2 // to speed up tests
+	BackOffTime = backOffTimeForTesting // to speed up tests
 	defer func() { BackOffTime = savedBackOffTime }()
 	test := NewMockTest(util.NewMockClient(t, behaviour))
 	err := test.readExistingDocument(CollectionName, ExpectedDocument, skipExpectedValueCheck)
@@ -494,7 +496,7 @@ func TestReadExistingDocTimeout(t *testing.T) {
 // a template for testing the updateExistingDocument function
 func checkUpdateDoc(t *testing.T, expectError bool, behaviour util.Behaviour) {
 	savedBackOffTime := BackOffTime
-	BackOffTime = time.Millisecond * 2 // to speed up tests
+	BackOffTime = backOffTimeForTesting // to speed up tests
 	defer func() { BackOffTime = savedBackOffTime }()
 	test := NewMockTest(util.NewMockClient(t, behaviour))
 	newDoc, err := test.updateExistingDocument(CollectionName, ExpectedDocument.TestDocument)
@@ -550,6 +552,28 @@ func updateDocOKBehaviour(
 
 func TestUpdateDocOK(t *testing.T) {
 	checkUpdateDoc(t, false, updateDocOKBehaviour)
+}
+
+func updateDocErrorBehaviour(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+	// Get a request:
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{},
+		Err:  fmt.Errorf("Error"),
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestUpdateDocError(t *testing.T) {
+	checkUpdateDoc(t, true, updateDocErrorBehaviour)
 }
 
 func updateDocResp412Behaviour(
@@ -641,7 +665,7 @@ func TestUpdateDocRest409(t *testing.T) {
 	checkUpdateDoc(t, false, updateDocResp409Behaviour)
 }
 
-func updateDocResp409412Behaviour(
+func updateDocChangedIncorrectlyBehaviour(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
 	// Get a request:
@@ -660,11 +684,13 @@ func updateDocResp409412Behaviour(
 			req.UrlPath, expected_url)
 	}
 
+	//respond with 409, which means there is an update conflict
 	responses <- &util.MockResponse{
 		Resp: util.ArangoResponse{StatusCode: 409},
 		Err:  nil,
 	}
 
+	// Now the SUT must attempt to read the document to check if it was changed or not.
 	// Get a request:
 	req = next(ctx, t, requests, true)
 	if req == nil {
@@ -680,6 +706,12 @@ func updateDocResp409412Behaviour(
 			req.UrlPath, expected_url)
 	}
 
+	//respond as if the document was changed by another request
+	reqResultDoc := req.Result.(*BigDocument)
+	reqResultDoc.Seed = 999
+	reqResultDoc.Key = "invalid_key"
+	reqResultDoc.Rev = "invalid_rev"
+	reqResultDoc.UpdateCounter = 100
 	responses <- &util.MockResponse{
 		Resp: util.ArangoResponse{StatusCode: 200, Rev: ChangedDocument.Rev},
 		Err:  nil,
@@ -689,6 +721,13 @@ func updateDocResp409412Behaviour(
 	next(ctx, t, requests, false)
 }
 
-func TestUpdateDocRest409412(t *testing.T) {
-	checkUpdateDoc(t, true, updateDocResp409412Behaviour)
+func TestUpdateDocChangedIncorrectly(t *testing.T) {
+	checkUpdateDoc(t, true, updateDocChangedIncorrectlyBehaviour)
+}
+
+func TestUpdateDocTimeOut(t *testing.T) {
+	savedReadTimeout := ReadTimeout
+	ReadTimeout = readTimeoutForTesting // to speed up tests
+	defer func() { ReadTimeout = savedReadTimeout }()
+	checkUpdateDoc(t, true, only503ReplyBehaviour)
 }
