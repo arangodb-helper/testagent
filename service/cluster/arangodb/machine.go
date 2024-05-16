@@ -344,17 +344,17 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 		"--log.rotate-interval=2h0m0s",
 		fmt.Sprintf("--docker.endpoint=%s", dockerHost.Endpoint),
 		fmt.Sprintf("--starter.address=%s", dockerHost.IP),
-		"--agents.log.level=communication=debug",
-		"--agents.log.level=requests=debug",
-		"--coordinators.log.level=agencycomm=debug",
-		"--coordinators.log.level=cluster=debug",
-		"--coordinators.log.level=communication=debug",
-		"--coordinators.log.level=requests=debug",
-		"--dbservers.log.level=agencycomm=debug",
-		"--dbservers.log.level=cluster=debug",
-		"--dbservers.log.level=maintenance=debug",
-		"--dbservers.log.level=communication=debug",
-		"--dbservers.log.level=requests=debug",
+		"--args.agents.log.level=communication=debug",
+		"--args.agents.log.level=requests=debug",
+		"--args.coordinators.log.level=agencycomm=debug",
+		"--args.coordinators.log.level=cluster=debug",
+		"--args.coordinators.log.level=communication=debug",
+		"--args.coordinators.log.level=requests=debug",
+		"--args.dbservers.log.level=agencycomm=debug",
+		"--args.dbservers.log.level=cluster=debug",
+		"--args.dbservers.log.level=maintenance=debug",
+		"--args.dbservers.log.level=communication=debug",
+		"--args.dbservers.log.level=requests=debug",
 	}
 	if c.Verbose {
 		args = append(args, "--verbose")
@@ -366,8 +366,8 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 		args = append(args, "--docker.privileged")
 	}
 	if c.ReplicationVersion2 {
-		args = append(args, "--dbservers.database.default-replication-version=2")
-		args = append(args, "--coordinators.database.default-replication-version=2")
+		args = append(args, "--args.dbservers.database.default-replication-version=2")
+		args = append(args, "--args.coordinators.database.default-replication-version=2")
 	}
 	if c.ArangodbConfig.ArangoImage != "" {
 		args = append(args,
