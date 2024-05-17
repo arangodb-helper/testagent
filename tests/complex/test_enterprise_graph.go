@@ -41,6 +41,7 @@ func (t *EnterpriseGraphTest) createGraphAndCollections() {
 			t.graphName, t.edgeColName, []string{t.vertexColName}, []string{t.vertexColName},
 			nil, true, false, "", nil, t.NumberOfShards, t.ReplicationFactor, t.ReplicationFactor-1); err != nil {
 			t.log.Errorf("Failed to create graph: %v", err)
+			t.collectionNameSeq++
 		} else {
 			t.graphCreated = true
 			t.vertexColCreated = true

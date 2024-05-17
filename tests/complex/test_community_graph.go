@@ -73,4 +73,17 @@ func (t *CommunityGraphTest) createGraphAndCollections() {
 	t.createVertexCollections()
 	t.createEdgeCollections()
 	t.createNamedGraph()
+	if !(t.vertexColCreated && t.edgeColCreated && t.graphCreated) {
+		t.graphCreated = false
+		t.graphIsBroken = false
+		t.vertexColCreated = false
+		t.edgeColCreated = false
+		t.collectionNameSeq++
+		t.numberOfCreatedEdges = 0
+		t.numberOfCreatedVertices = 0
+		t.existingVertexDocuments = t.existingVertexDocuments[:0]
+		t.existingEdgeDocuments = t.existingEdgeDocuments[:0]
+		t.edgeCreationOffset = 0
+		t.vertexCreationOffset = 0
+	}
 }
