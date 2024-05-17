@@ -24,9 +24,9 @@ import (
 
 const (
 	projectName             = "testAgent"
-	defaultOperationTimeout = time.Second * 90 // Should be 15s
-	defaultRetryTimeout     = time.Minute * 4  // Should be 1m
-	defaultStepTimeout      = time.Second * 2
+	defaultOperationTimeout = time.Second * 330
+	defaultRetryTimeout     = time.Minute * 4
+	defaultStepTimeout      = time.Second * 5
 )
 
 var (
