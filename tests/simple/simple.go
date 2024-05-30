@@ -721,6 +721,7 @@ func (t *simpleTest) createAndInitCollection() error {
 	}
 	t.createCollectionCounter.succeeded++
 	t.actions++
+	t.registerCollection(c)
 
 	// Import documents
 	if err := t.importDocuments(c); err != nil {
@@ -728,7 +729,6 @@ func (t *simpleTest) createAndInitCollection() error {
 		return maskAny(err)
 	}
 	t.actions++
-	t.registerCollection(c)
 
 	// Check imported documents
 	for k := range c.existingDocs {
