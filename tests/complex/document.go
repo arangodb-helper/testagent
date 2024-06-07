@@ -36,7 +36,7 @@ var (
 	BackOffTime = time.Millisecond * 500 // to be overwritten in unittests only
 )
 
-func NewBigDocument(seed int64, payloadSize int) BigDocument {
+func NewBigDocumentFromSeed(seed int64, payloadSize int) BigDocument {
 	randGen := rand.New(rand.NewSource(seed))
 	payloadBytes := make([]byte, payloadSize)
 	lowerBound := 32
@@ -51,6 +51,26 @@ func NewBigDocument(seed int64, payloadSize int) BigDocument {
 		},
 		Value:   seed,
 		Name:    strconv.FormatInt(seed, 10),
+		Odd:     seed%2 == 1,
+		Payload: string(payloadBytes),
+	}
+}
+
+func NewBigDocumentWithName(seed int64, payloadSize int, name string) BigDocument {
+	randGen := rand.New(rand.NewSource(seed))
+	payloadBytes := make([]byte, payloadSize)
+	lowerBound := 32
+	upperBound := 126
+	for i := 0; i < payloadSize; i++ {
+		payloadBytes[i] = byte(randGen.Int31n(int32(upperBound-lowerBound)) + int32(lowerBound))
+	}
+	return BigDocument{
+		TestDocument: TestDocument{Key: generateKeyFromSeed(seed),
+			Seed:          seed,
+			UpdateCounter: 0,
+		},
+		Value:   seed,
+		Name:    name,
 		Odd:     seed%2 == 1,
 		Payload: string(payloadBytes),
 	}

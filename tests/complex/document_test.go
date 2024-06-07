@@ -12,8 +12,8 @@ import (
 var (
 	CollectionName   string       = "some_collection"
 	DocumentKey      string       = "some_key"
-	ExpectedDocument BigDocument  = NewBigDocument(2, 16)
-	WrongDocument    BigDocument  = NewBigDocument(3, 16)
+	ExpectedDocument BigDocument  = NewBigDocumentFromSeed(2, 16)
+	WrongDocument    BigDocument  = NewBigDocumentFromSeed(3, 16)
 	ChangedDocument  TestDocument = TestDocument{
 		Seed:          ExpectedDocument.Seed,
 		Key:           ExpectedDocument.Key,
@@ -187,7 +187,7 @@ func checkInsertDocument(t *testing.T, expectError bool, behaviour util.Behaviou
 	BackOffTime = backOffTimeForTesting // to speed up tests
 	defer func() { BackOffTime = savedBackOffTime }()
 	test := NewMockTest(util.NewMockClient(t, behaviour))
-	document := NewBigDocument(1, 16)
+	document := NewBigDocumentFromSeed(1, 16)
 	err := test.insertDocument(CollectionName, document)
 	if err != nil && !expectError {
 		t.Errorf("unexpected error: %v", err)

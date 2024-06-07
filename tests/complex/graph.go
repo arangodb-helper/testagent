@@ -348,7 +348,7 @@ func (t *GraphTest) createEdge(to string, from string, edgeColName string, verte
 		checkRetry := false
 		success := false
 
-		t.log.Infof("Creating edge in collection '%s'", edgeColName)
+		t.log.Infof("Creating edge from '%s' to '%s' in collection '%s'.", from, to, edgeColName)
 		resp, err := t.client.Post(url, q, nil, document, "", nil,
 			[]int{0, 1, 200, 201, 202, 409, 503}, []int{400, 404, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",

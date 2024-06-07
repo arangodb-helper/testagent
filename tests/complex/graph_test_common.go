@@ -2,6 +2,7 @@ package complex
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/arangodb-helper/testagent/service/test"
@@ -125,31 +126,40 @@ func (t *GraphTest) createVertexDocs() {
 		} else {
 			thisBatchSize = int(t.MaxVertices - t.numberOfCreatedVertices)
 		}
-		for i := 0; i < thisBatchSize; i++ {
+		oldVertexCreationOffsetValue := t.vertexCreationOffset
+		maxVertexCreationOffsetValue := oldVertexCreationOffsetValue + int64(thisBatchSize)
+		// for i := 0; i < thisBatchSize; i++ {
+		for {
+			if t.vertexCreationOffset >= maxVertexCreationOffsetValue || t.pauseRequested {
+				break
+			}
 			seed := t.documentIdSeq
 			t.documentIdSeq++
-			doc := NewBigDocument(seed, t.VertexSize)
+			doc := NewBigDocumentWithName(seed, t.VertexSize, strconv.FormatInt(t.vertexCreationOffset, 10))
 			doc.Key = doc.Name + ":" + doc.Key
 			e := t.insertDocument(t.vertexColName, doc)
 			t.actions++
 			if e == nil {
 				t.numberOfCreatedVertices++
 				t.existingVertexDocuments = append(t.existingVertexDocuments, doc.TestDocument)
+				t.vertexCreationOffset++
 			} else {
 				t.log.Errorf("Failed to create vertex document: %v", e)
 				t.graphIsBroken = true
 			}
 		}
-		t.vertexCreationOffset += int64(thisBatchSize)
 	}
 }
 
 func (t *GraphTest) traverseGraph() {
 	if t.vertexColCreated && t.edgeColCreated && t.graphCreated && !t.graphIsBroken {
 		for i := 0; i < t.TraversalOperationsPerCycle; i++ {
-			maxLength := minimum64(t.numberOfCreatedVertices-1, 100000)
+			if t.pauseRequested {
+				break
+			}
+			maxLength := minimum64(t.edgeCreationOffset, 100000)
 			length := randInt64(2, maxLength)
-			startIdx := randInt64(0, t.numberOfCreatedVertices-1-length)
+			startIdx := randInt64(0, t.edgeCreationOffset-length)
 			endIdx := startIdx + length
 			from := t.vertexColName + "/" + t.existingVertexDocuments[startIdx].Key
 			to := t.vertexColName + "/" + t.existingVertexDocuments[endIdx].Key
@@ -186,22 +196,28 @@ func (t *GraphTest) dropGraphAndCollections() {
 
 func (t *GraphTest) createEdgeDocs() {
 	if t.edgeColCreated && t.edgeCreationOffset < t.vertexCreationOffset && !t.graphIsBroken {
-		for i := t.edgeCreationOffset; i < t.vertexCreationOffset-1; i++ {
-			from := t.existingVertexDocuments[i].Key
-			to := t.existingVertexDocuments[i+1].Key
+		edgeCreationOffsetOldValue := t.edgeCreationOffset
+		for {
+			if t.edgeCreationOffset >= t.vertexCreationOffset-1 || t.pauseRequested {
+				break
+			}
+			idx := t.edgeCreationOffset
+			from := t.existingVertexDocuments[idx].Key
+			to := t.existingVertexDocuments[idx+1].Key
 			if err := t.createEdge(to, from, t.edgeColName, t.vertexColName, t.EdgeSize); err != nil {
 				t.log.Errorf("Failed to create edge document: %v", err)
 				t.graphIsBroken = true
 			} else {
 				t.actions++
 				t.numberOfCreatedEdges++
+				t.edgeCreationOffset++
 			}
 		}
-		for i := int64(1); i < t.vertexCreationOffset-1; i++ {
-			for div := int64(10); div <= i; div = div * 10 {
-				if i%div == 0 && i+div < int64(len(t.existingVertexDocuments)) && i+div > t.edgeCreationOffset {
-					from := t.existingVertexDocuments[i].Key
-					to := t.existingVertexDocuments[i+div].Key
+		for idx := int64(1); idx < t.vertexCreationOffset-1; idx++ {
+			for div := int64(10); div <= idx; div = div * 10 {
+				if idx%div == 0 && idx+div < t.edgeCreationOffset && idx+div >= edgeCreationOffsetOldValue {
+					from := t.existingVertexDocuments[idx].Key
+					to := t.existingVertexDocuments[idx+div].Key
 					if err := t.createEdge(to, from, t.edgeColName, t.vertexColName, t.EdgeSize); err != nil {
 						t.log.Errorf("Failed to create edge document: %v", err)
 						t.graphIsBroken = true
@@ -212,7 +228,6 @@ func (t *GraphTest) createEdgeDocs() {
 				}
 			}
 		}
-		t.edgeCreationOffset = t.vertexCreationOffset - 2
 	}
 }
 

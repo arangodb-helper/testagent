@@ -109,7 +109,7 @@ func (t *DocColTest) createDocuments() {
 		for i := 0; i < thisBatchSize; i++ {
 			seed := t.documentIdSeq
 			t.documentIdSeq++
-			document := NewBigDocument(seed, t.DocumentSize)
+			document := NewBigDocumentFromSeed(seed, t.DocumentSize)
 			if err := t.insertDocument(t.docCollectionName, document); err != nil {
 				t.log.Errorf("Failed to create document with key '%s' in collection '%s': %v",
 					document.Key, t.docCollectionName, err)
