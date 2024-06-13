@@ -26,7 +26,7 @@ const (
 	projectName             = "testAgent"
 	defaultOperationTimeout = time.Second * 330
 	defaultRetryTimeout     = time.Minute * 4
-	defaultStepTimeout      = time.Second * 5
+	defaultStepTimeout      = time.Second * 30
 )
 
 var (
@@ -91,7 +91,7 @@ func init() {
 	f.IntVar(&appFlags.ComplextTestConfig.ReplicationFactor, "complex-replicationFactor", 3, "Replication factor (\"complex\" test suite)")
 	f.DurationVar(&appFlags.ComplextTestConfig.OperationTimeout, "complex-operation-timeout", defaultOperationTimeout, "Timeout per database operation (\"complex\" test suite)")
 	f.DurationVar(&appFlags.ComplextTestConfig.RetryTimeout, "complex-retry-timeout", defaultRetryTimeout, "How long are tests retried before giving up (\"complex\" test suite)")
-	f.DurationVar(&appFlags.ComplextTestConfig.RetryTimeout, "complex-step-timeout", defaultStepTimeout, "Pause between test actions (\"complex\" test suite)")
+	f.DurationVar(&appFlags.ComplextTestConfig.StepTimeout, "complex-step-timeout", defaultStepTimeout, "Pause between test actions (\"complex\" test suite)")
 }
 
 // handleSignal listens for termination signals and stops this process onup termination.
