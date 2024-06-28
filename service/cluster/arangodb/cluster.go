@@ -24,18 +24,19 @@ const (
 )
 
 type ArangodbConfig struct {
-	MasterPort          int      // MasterPort for arangodb
-	ArangodbImage       string   // Docker image containing arangodb
-	ArangoImage         string   // Docker image containing arangod (can be empty)
-	NetworkBlockerImage string   // Docker image container network-blocker
-	DockerHostIP        string   // IP of docker host
-	DockerEndpoints     []string // Endpoint used to reach the docker daemon(s)
-	DockerNetHost       bool     // If set, run containers with `--net=host`
-	DockerInterface     string   // Network Interface used to connect docker container to
-	Verbose             bool     // Turn on debug logging
-	Privileged          bool     // Start containers with `--privileged`
-	ReplicationVersion2 bool     // Use replication version 2
-	ChaosLevel          int      // Level of chaos to use. An integer from 0 to 4. 0 - no chaos. 4 - maximum chaos.
+	MasterPort            int      // MasterPort for arangodb
+	ArangodbImage         string   // Docker image containing arangodb
+	ArangoImage           string   // Docker image containing arangod (can be empty)
+	NetworkBlockerImage   string   // Docker image container network-blocker
+	DockerHostIP          string   // IP of docker host
+	DockerEndpoints       []string // Endpoint used to reach the docker daemon(s)
+	DockerNetHost         bool     // If set, run containers with `--net=host`
+	DockerInterface       string   // Network Interface used to connect docker container to
+	Verbose               bool     // Turn on debug logging
+	Privileged            bool     // Start containers with `--privileged`
+	ReplicationVersion2   bool     // Use replication version 2
+	FailedWriteConcern403 bool     // Do not set option `--cluster.failed-write-concern-status-code` to `503` for all DB servers
+	ChaosLevel            int      // Level of chaos to use. An integer from 0 to 4. 0 - no chaos. 4 - maximum chaos.
 }
 
 // arangodbClusterBuilder implements a ClusterBuilder using arangodb.

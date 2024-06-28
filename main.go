@@ -67,6 +67,7 @@ func init() {
 	f.BoolVar(&appFlags.DockerNetHost, "docker-net-host", false, "If set, run all containers with `--net=host`")
 	f.BoolVar(&appFlags.ForceOneShard, "force-one-shard", false, "If set, force one shard arangodb cluster")
 	f.BoolVar(&appFlags.ReplicationVersion2, "replication-version-2", false, "If set, use replication version 2")
+	f.BoolVar(&appFlags.FailedWriteConcern403, "return-403-on-failed-write-concern", false, "If set, option `--cluster.failed-write-concern-status-code` will not be set to for DB servers, bringing it to the default value of 403. Otherwise this parameter will be set to 503.")
 	f.StringVar(&appFlags.DockerInterface, "docker-interface", "docker0", "Network interface used to connect docker containers to")
 	f.StringVar(&appFlags.ReportDir, "report-dir", getEnvVar("REPORT_DIR", "."), "Directory in which failure reports will be created")
 	f.BoolVar(&appFlags.CollectMetrics, "collect-metrics", false, "If set, metrics will be collected and saved into files.")

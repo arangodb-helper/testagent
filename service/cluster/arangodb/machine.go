@@ -369,6 +369,9 @@ func (c *arangodbCluster) createMachine(index int) (*arangodb, error) {
 		args = append(args, "--args.dbservers.database.default-replication-version=2")
 		args = append(args, "--args.coordinators.database.default-replication-version=2")
 	}
+	if !c.FailedWriteConcern403 {
+		args = append(args, "--args.dbservers.cluster.failed-write-concern-status-code=503")
+	}
 	if c.ArangodbConfig.ArangoImage != "" {
 		args = append(args,
 			fmt.Sprintf("--docker.image=%s", c.ArangodbConfig.ArangoImage),
