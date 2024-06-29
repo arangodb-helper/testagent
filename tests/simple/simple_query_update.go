@@ -43,7 +43,7 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 		if err[0] != nil {
 			// This is a failure
 			t.queryUpdateCounter.failed++
-			t.reportFailure(test.NewFailure(
+			t.reportFailure(test.NewFailure(t.Name(),
 				"Failed to create update AQL cursor in collection '%s': %v", c.name, err[0]))
 			return "", maskAny(err[0])
 		}
@@ -53,7 +53,7 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 			if resultCount != 1 {
 				// This is a failure
 				t.queryUpdateCounter.failed++
-				t.reportFailure(test.NewFailure(
+				t.reportFailure(test.NewFailure(t.Name(),
 					"Failed to create update AQL cursor in collection '%s': expected 1 result, got %d", c.name, resultCount))
 				return "", maskAny(fmt.Errorf(
 					"Number of documents was %d, expected 1", resultCount))
@@ -79,7 +79,7 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 
 	t.queryUpdateCounter.failed++
 	t.planCollectionDrop(c.name)
-	t.reportFailure(test.NewFailure(
+	t.reportFailure(test.NewFailure(t.Name(),
 		"Timed out while creating (%d) update AQL cursor in collection '%s'", i, c.name))
 	return "", maskAny(fmt.Errorf(
 		"Timed out while creating (%d) update AQL cursor in collection '%s'", i, c.name))
@@ -122,7 +122,7 @@ func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) 
 		if err[0] != nil {
 			// This is a failure
 			t.queryUpdateLongRunningCounter.failed++
-			t.reportFailure(test.NewFailure(
+			t.reportFailure(test.NewFailure(t.Name(),
 				"Failed to create long running update AQL cursor in collection '%s': %v", c.name, err[0]))
 			return "", maskAny(err[0])
 		}
@@ -132,7 +132,7 @@ func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) 
 			if resultCount != 1 {
 				// This is a failure
 				t.queryUpdateLongRunningCounter.failed++
-				t.reportFailure(test.NewFailure(
+				t.reportFailure(test.NewFailure(t.Name(),
 					"Failed to create long running update AQL cursor in collection '%s': expected 1 result, got %d", c.name, resultCount))
 				return "", maskAny(fmt.Errorf("Number of documents was %d, expected 1", resultCount))
 			}
@@ -158,7 +158,7 @@ func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) 
 
 	t.queryUpdateLongRunningCounter.failed++
 	t.planCollectionDrop(c.name)
-	t.reportFailure(test.NewFailure(
+	t.reportFailure(test.NewFailure(t.Name(),
 		"Timed out creating (%d) long running update AQL cursor in collection '%s'", i, c.name))
 	return "", maskAny(fmt.Errorf(
 		"Timed out creating (%d) long running update AQL cursor in collection '%s'", i, c.name))

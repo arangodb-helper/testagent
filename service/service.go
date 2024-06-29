@@ -25,7 +25,10 @@ type ServiceConfig struct {
 	ForceOneShard  bool
 	ServerPort     int
 	ReportDir      string
+	MetricsDir     string
+	CollectMetrics bool
 	ChaosConfig    chaos.ChaosMonkeyConfig
+	EnableTests    []string
 }
 
 type ServiceDependencies struct {
@@ -75,6 +78,13 @@ func (s *Service) Run(stopChan chan struct{}, withChaos bool) error {
 	s.Logger.Info("Waiting for cluster ready")
 	if err := c.WaitUntilReady(); err != nil {
 		return maskAny(err)
+	}
+
+	// Start metrics collection
+	if s.CollectMetrics {
+		if err := c.StartMetricsCollection(); err != nil {
+			return maskAny(err)
+		}
 	}
 
 	s.Logger.Debug("Try to set enterprise license")
