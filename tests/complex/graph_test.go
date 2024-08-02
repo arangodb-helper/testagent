@@ -10,7 +10,11 @@ import (
 )
 
 var (
-	graphName = "graph_name"
+	graphName     = "graph_name"
+	edgeColName   = "edge_col"
+	vertexColName = "vertex_col"
+	to            = "0002"
+	from          = "0001"
 )
 
 func NewMockGraphTest(mockClient *util.MockClient) *EnterpriseGraphTest {
@@ -52,7 +56,7 @@ func checkCreateGraph(t *testing.T, expectError bool, behaviour util.Behaviour) 
 		t.Errorf("unexpected error: %v", err)
 	}
 	if err == nil && expectError {
-		t.Errorf("unexpected result from checkIfDocumentExists: must return an error")
+		t.Errorf("unexpected result from createGraph: must return an error")
 	}
 }
 
@@ -748,4 +752,243 @@ func createGraphButItIsBrokenBehaviour(
 
 func TestCreateGraphButItIsBrokenTest(t *testing.T) {
 	checkCreateGraph(t, true, createGraphButItIsBrokenBehaviour)
+}
+
+// a template for testing the createEdge function
+func checkCreateEdge(t *testing.T, expectError bool, behaviour util.Behaviour) {
+	test := NewMockGraphTest(util.NewMockClient(t, behaviour))
+	err := test.createEdge(to, from, edgeColName, vertexColName, 1024)
+	if err != nil && !expectError {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if err == nil && expectError {
+		t.Errorf("unexpected result from createEdge: must return an error")
+	}
+}
+
+func createEdgeOKBehaviour(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a request:
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	//check request method
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	//check URL
+	expected_url := fmt.Sprintf("/_api/document/%s", edgeColName)
+	if req.UrlPath != expected_url {
+		t.Errorf("Got wrong URL path %s instead of %s",
+			req.UrlPath, expected_url)
+	}
+
+	//send a successfull response
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 201},
+		Err:  nil,
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestCreateEdgeOKTest(t *testing.T) {
+	checkCreateEdge(t, false, createEdgeOKBehaviour)
+}
+
+func createEdgeRetryBehaviour(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a request:
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	//check request method
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	//check URL
+	expected_url := fmt.Sprintf("/_api/document/%s", edgeColName)
+	if req.UrlPath != expected_url {
+		t.Errorf("Got wrong URL path %s instead of %s",
+			req.UrlPath, expected_url)
+	}
+
+	//send a 503 response
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 503},
+		Err:  nil,
+	}
+
+	// Expect a request to read the created document
+	// Get a request:
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	//check request method
+	expected_url = "/_api/cursor"
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	//check URL
+	if req.UrlPath != expected_url {
+		t.Errorf("Got wrong URL path %s instead of %s",
+			req.UrlPath, expected_url)
+	}
+
+	// set request result
+	reqCursorResponse, _ := req.Result.(*CursorResponse)
+	reqCursorResponse.Result = []interface{}{map[string]interface{}{
+		"_key": "key", "_rev": "rev", "seed": 1.0, "update_counter": 1.0,
+	}}
+	//send a successfull response
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 201},
+		Err:  nil,
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestCreateEdgeRetryTest(t *testing.T) {
+	checkCreateEdge(t, false, createEdgeRetryBehaviour)
+}
+
+func createEdgeRetryFailBehaviour(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a request:
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	//check request method
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	//check URL
+	expected_url := fmt.Sprintf("/_api/document/%s", edgeColName)
+	if req.UrlPath != expected_url {
+		t.Errorf("Got wrong URL path %s instead of %s",
+			req.UrlPath, expected_url)
+	}
+
+	//send a 503 response
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 503},
+		Err:  nil,
+	}
+
+	// Expect a request to read the created document
+	// Get a request:
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	//check request method
+	expected_url = "/_api/cursor"
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	//check URL
+	if req.UrlPath != expected_url {
+		t.Errorf("Got wrong URL path %s instead of %s",
+			req.UrlPath, expected_url)
+	}
+
+	//send a successfull response but leave cursor empty
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 201},
+		Err:  nil,
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestCreateEdgeRetryFailTest(t *testing.T) {
+	checkCreateEdge(t, true, createEdgeRetryFailBehaviour)
+}
+
+func createEdgeErrorBehaviour(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a request:
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	//check request method
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	//check URL
+	expected_url := fmt.Sprintf("/_api/document/%s", edgeColName)
+	if req.UrlPath != expected_url {
+		t.Errorf("Got wrong URL path %s instead of %s",
+			req.UrlPath, expected_url)
+	}
+
+	//return an error
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 404},
+		Err:  fmt.Errorf("Error"),
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestCreateEdgeErrorTest(t *testing.T) {
+	checkCreateEdge(t, true, createEdgeErrorBehaviour)
+}
+
+func createEdgeInvalidResponseBehaviour(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a request:
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	//check request method
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	//check URL
+	expected_url := fmt.Sprintf("/_api/document/%s", edgeColName)
+	if req.UrlPath != expected_url {
+		t.Errorf("Got wrong URL path %s instead of %s",
+			req.UrlPath, expected_url)
+	}
+
+	//check query param
+	value, exists := req.Query["waitForSync"]
+	if !(exists && (len(value) == 1 && value[0] == "true")) {
+		t.Errorf("\"waitForSync\" query param must be set to \"true\"")
+	}
+
+	//return an invalid status code
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 202},
+		Err:  nil,
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestCreateEdgeInvalidResponseTest(t *testing.T) {
+	checkCreateEdge(t, true, createEdgeInvalidResponseBehaviour)
 }

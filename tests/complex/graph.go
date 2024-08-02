@@ -350,7 +350,7 @@ func (t *GraphTest) createEdge(to string, from string, edgeColName string, verte
 
 		t.log.Infof("Creating edge from '%s' to '%s' in collection '%s'.", from, to, edgeColName)
 		resp, err := t.client.Post(url, q, nil, document, "", nil,
-			[]int{0, 1, 200, 201, 202, 409, 503}, []int{400, 404, 307}, operationTimeout, 1)
+			[]int{0, 1, 200, 201, 409, 503}, []int{400, 404, 307, 202}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
@@ -358,6 +358,13 @@ func (t *GraphTest) createEdge(to string, from string, edgeColName string, verte
 			if resp[0].StatusCode == 503 || resp[0].StatusCode == 409 || resp[0].StatusCode == 0 {
 				// 0, 503 and 409 -> check if accidentally successful
 				checkRetry = true
+			} else if resp[0].StatusCode == 202 {
+				// should not respond 202 if waitForSync == true
+				t.edgeDocumentCreateCounter.failed++
+				errorMsg := fmt.Sprintf("Server responded with status code 202 to a request with waitForSync=true: %v", resp[0])
+				t.reportFailure(
+					test.NewFailure(t.Name(), errorMsg))
+				return maskAny(fmt.Errorf(errorMsg))
 			} else if resp[0].StatusCode != 1 {
 				document.Rev = resp[0].Rev
 				success = true

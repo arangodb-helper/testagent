@@ -1,7 +1,8 @@
 #!/bin/bash
 
 if test -z "$STARTER_VERSION"; then
-    STARTER_VERSION=0.18.0
+    # STARTER_VERSION=0.18.7
+    STARTER_VERSION=0.19.3
 fi
 
 if test -z "$IMAGE"; then
@@ -9,7 +10,8 @@ if test -z "$IMAGE"; then
 fi
 
 if test -z "$ARANGODB_IMAGE"; then
-    ARANGODB_IMAGE=arangodb/enterprise:3.11.8
+    # ARANGODB_IMAGE=arangodb/enterprise:3.11.10.1
+    ARANGODB_IMAGE=arangodb/enterprise:3.12.1
     # ARANGODB_IMAGE=arangodb/enterprise-test:devel-nightly-amd64
 fi
 
@@ -31,6 +33,7 @@ docker run -it --rm -p 4200:4200 -p 4000:4000 \
        --arango-image="$ARANGODB_IMAGE" \
        --arangodb-image="arangodb/arangodb-starter:$STARTER_VERSION" \
        --complex-step-timeout 5s \
+       --complex-replicationFactor 2 \
        --complex-operation-timeout 3m \
        --complex-retry-timeout 8m \
        --doc-document-size 512 \
@@ -40,5 +43,8 @@ docker run -it --rm -p 4200:4200 -p 4000:4000 \
        --graph-max-vertices 50000 \
        --graph-vertex-size 512 \
        --graph-edge-size 256 \
-       --graph-traversal-ops 50 \
-       --graph-batch-size 1000
+       --graph-traversal-ops 10 \
+       --graph-batch-size 500 \
+       --enable-test simple \
+       --enable-test OneShardTest \
+       --enable-test CommunityGraphTest \

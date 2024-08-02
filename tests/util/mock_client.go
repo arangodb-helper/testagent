@@ -48,8 +48,8 @@ func (ml MockListener) ReportFailure(f test.Failure) {
 func NewMockClient(t *testing.T, behaviour Behaviour) *MockClient {
 	mockClient := &MockClient{
 		test:         t,
-		requests:     make(chan *MockRequest),
-		responses:    make(chan *MockResponse),
+		requests:     make(chan *MockRequest, 10),
+		responses:    make(chan *MockResponse, 10),
 		behaviour:    behaviour,
 		Wg:           sync.WaitGroup{},
 		databaseName: "_system",
