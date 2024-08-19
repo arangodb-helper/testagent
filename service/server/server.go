@@ -81,6 +81,8 @@ func StartHTTPServer(log *logging.Logger, port int, reportDir string, service Se
 	m.Get("/chaos/:id/disable", chaosActionDisablePage)
 	m.Get("/chaos/level/:level", chaosSetLevel)
 
+	m.Get("/api/failureCount", failureCount)
+
 	addr := fmt.Sprintf("0.0.0.0:%d", port)
 	log.Infof("HTTP server listening on %s", addr)
 	go func() {

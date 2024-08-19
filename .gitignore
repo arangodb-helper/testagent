@@ -1,5 +1,5 @@
 .gobuild
 bin
-.vscode
 .idea
+.vscode
 cover.out
