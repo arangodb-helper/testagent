@@ -12,7 +12,7 @@ func (t *simpleTest) rebalanceShards() error {
 	if _, err := t.client.Post("/_admin/cluster/rebalanceShards", nil, nil, opts, "", nil, []int{202}, []int{400, 403, 503}, operationTimeout, 1); err[0] != nil {
 		// This is a failure
 		t.rebalanceShardsCounter.failed++
-		t.reportFailure(test.NewFailure("Failed to rebalance shards: %v", err))
+		t.reportFailure(test.NewFailure(t.Name(), "Failed to rebalance shards: %v", err))
 		return maskAny(err[0])
 	}
 	t.rebalanceShardsCounter.succeeded++

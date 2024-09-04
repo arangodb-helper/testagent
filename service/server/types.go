@@ -53,6 +53,7 @@ type ChaosAction struct {
 
 type FailureReport struct {
 	Time    string
+	Test    string
 	Message string
 	Path    string
 	HRef    string
@@ -108,6 +109,7 @@ func testFromTestScript(ct test.TestScript) Test {
 func failureReportFromReporter(f reporter.FailureReport) FailureReport {
 	return FailureReport{
 		Time:    f.Failure.Timestamp.Local().Format("2006-01-02 15:04:05"),
+		Test:    f.Failure.Test,
 		Message: f.Failure.Message,
 		Path:    filepath.Base(f.Path),
 		HRef:    "/" + path.Join("reports", filepath.Base(f.Path)),

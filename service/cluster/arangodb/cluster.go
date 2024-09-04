@@ -24,23 +24,26 @@ const (
 )
 
 type ArangodbConfig struct {
-	MasterPort          int      // MasterPort for arangodb
-	ArangodbImage       string   // Docker image containing arangodb
-	ArangoImage         string   // Docker image containing arangod (can be empty)
-	NetworkBlockerImage string   // Docker image container network-blocker
-	DockerHostIP        string   // IP of docker host
-	DockerEndpoints     []string // Endpoint used to reach the docker daemon(s)
-	DockerNetHost       bool     // If set, run containers with `--net=host`
-	DockerInterface     string   // Network Interface used to connect docker container to
-	Verbose             bool     // Turn on debug logging
-	Privileged          bool     // Start containers with `--privileged`
-	ReplicationVersion2 bool     // Use replication version 2
-	ChaosLevel          int      // Level of chaos to use. An integer from 0 to 4. 0 - no chaos. 4 - maximum chaos.
+	MasterPort            int      // MasterPort for arangodb
+	ArangodbImage         string   // Docker image containing arangodb
+	ArangoImage           string   // Docker image containing arangod (can be empty)
+	NetworkBlockerImage   string   // Docker image container network-blocker
+	DockerHostIP          string   // IP of docker host
+	DockerEndpoints       []string // Endpoint used to reach the docker daemon(s)
+	DockerNetHost         bool     // If set, run containers with `--net=host`
+	DockerInterface       string   // Network Interface used to connect docker container to
+	Verbose               bool     // Turn on debug logging
+	Privileged            bool     // Start containers with `--privileged`
+	ReplicationVersion2   bool     // Use replication version 2
+	FailedWriteConcern403 bool     // Do not set option `--cluster.failed-write-concern-status-code` to `503` for all DB servers
+	ChaosLevel            int      // Level of chaos to use. An integer from 0 to 4. 0 - no chaos. 4 - maximum chaos.
 }
 
 // arangodbClusterBuilder implements a ClusterBuilder using arangodb.
 type arangodbClusterBuilder struct {
-	log *logging.Logger
+	log            *logging.Logger
+	collectMetrics bool
+	metricsDir     string
 	ArangodbConfig
 }
 
@@ -49,6 +52,8 @@ type arangodbCluster struct {
 
 	mutex            sync.Mutex
 	log              *logging.Logger
+	collectMetrics   bool
+	metricsDir       string
 	dockerHosts      []*docker.DockerHost
 	id               string
 	agencySize       int
@@ -59,7 +64,7 @@ type arangodbCluster struct {
 }
 
 // NewArangodbClusterBuilder creates a new ClusterBuilder using arangodb.
-func NewArangodbClusterBuilder(log *logging.Logger, config ArangodbConfig) (cluster.ClusterBuilder, error) {
+func NewArangodbClusterBuilder(log *logging.Logger, metricsDir string, collectMetrics bool, config ArangodbConfig) (cluster.ClusterBuilder, error) {
 	if config.MasterPort == 0 {
 		return nil, maskAny(fmt.Errorf("MasterPort missing"))
 	}
@@ -74,6 +79,8 @@ func NewArangodbClusterBuilder(log *logging.Logger, config ArangodbConfig) (clus
 	}
 	return &arangodbClusterBuilder{
 		log:            log,
+		collectMetrics: collectMetrics,
+		metricsDir:     metricsDir,
 		ArangodbConfig: config,
 	}, nil
 }
@@ -98,6 +105,8 @@ func (cb *arangodbClusterBuilder) Create(agencySize int, forceOneShard bool) (cl
 	// Instantiate
 	c := &arangodbCluster{
 		log:              cb.log,
+		collectMetrics:   cb.collectMetrics,
+		metricsDir:       cb.metricsDir,
 		ArangodbConfig:   cb.ArangodbConfig,
 		dockerHosts:      dockerHosts,
 		agencySize:       agencySize,
@@ -189,7 +198,23 @@ func (c *arangodbCluster) Add() (cluster.Machine, error) {
 		return nil, maskAny(err)
 	}
 
+	// Start metrics collection
+	if c.collectMetrics {
+		if err := ma.startMetricsCollectionFromAllContainers(); err != nil {
+			return nil, maskAny(err)
+		}
+	}
+
 	return m, nil
+}
+
+func (c *arangodbCluster) StartMetricsCollection() error {
+	for _, ma := range c.machines {
+		if err := ma.startMetricsCollectionFromAllContainers(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Remove the entire cluster

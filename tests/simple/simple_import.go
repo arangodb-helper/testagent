@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"time"
+
 	"github.com/arangodb-helper/testagent/service/test"
 )
 
@@ -66,7 +67,7 @@ func (t *simpleTest) importDocuments(c *collection) error {
 		if err[0] != nil {
 			// This is a failure
 			t.importCounter.failed++
-			t.reportFailure(test.NewFailure("Failed to import documents in collection '%s': %v", c.name, err[0]))
+			t.reportFailure(test.NewFailure(t.Name(), "Failed to import documents in collection '%s': %v", c.name, err[0]))
 			return maskAny(err[0])
 		}
 
@@ -89,7 +90,7 @@ func (t *simpleTest) importDocuments(c *collection) error {
 							}
 						} // no import off
 					} else { // cint not float64 convertible
-						t.reportFailure(test.NewFailure(
+						t.reportFailure(test.NewFailure(t.Name(),
 							"Failed to import documents in collection '%s': invalid response on import, cannot convert import count %T %+v",
 							c.name, created, created))
 						return maskAny(fmt.Errorf(
@@ -97,7 +98,7 @@ func (t *simpleTest) importDocuments(c *collection) error {
 							c.name, created, created))
 					}
 				} else { // no created key in result
-					t.reportFailure(test.NewFailure(
+					t.reportFailure(test.NewFailure(t.Name(),
 						"Failed to import documents in collection '%s': invalid response on import, no 'created' key in result",
 						c.name))
 					return maskAny(fmt.Errorf(
@@ -107,7 +108,7 @@ func (t *simpleTest) importDocuments(c *collection) error {
 			default:
 				t.importCounter.failed++
 				t.reportFailure(
-					test.NewFailure("Failed to import documents in collection '%s': unexpected result %v", c.name, result))
+					test.NewFailure(t.Name(), "Failed to import documents in collection '%s': unexpected result %v", c.name, result))
 				return maskAny(fmt.Errorf("Failed to import documents in collection '%s': unexpected result %v", c.name, result))
 			}
 
@@ -128,7 +129,7 @@ func (t *simpleTest) importDocuments(c *collection) error {
 
 	t.importCounter.failed++
 	t.planCollectionDrop(c.name)
-	t.reportFailure(test.NewFailure("Timed out while importing (%d) documents in collection '%s'", i, c.name))
+	t.reportFailure(test.NewFailure(t.Name(), "Timed out while importing (%d) documents in collection '%s'", i, c.name))
 	return maskAny(fmt.Errorf("Timed out while importing (%d) documents in collection '%s'", i, c.name))
 
 }
