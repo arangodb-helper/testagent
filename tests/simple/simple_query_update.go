@@ -35,7 +35,7 @@ func (t *simpleTest) queryUpdateDocuments(c *collection, key string) (string, er
 		resultDocument := &UserDocument{}
 		cursorResp.Result = []interface{}{resultDocument}
 		resp, err := t.client.Post(
-			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 409, 500, 503},
+			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 409, 410, 500, 503},
 			[]int{200, 202, 400, 404, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
@@ -114,7 +114,7 @@ func (t *simpleTest) queryUpdateDocumentsLongRunning(c *collection, key string) 
 		resultDocument := &UserDocument{}
 		cursorResp.Result = []interface{}{resultDocument}
 		resp, err := t.client.Post(
-			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 409, 500, 503},
+			"/_api/cursor", nil, nil, queryReq, "", &cursorResp, []int{0, 1, 201, 409, 410, 500, 503},
 			[]int{200, 202, 400, 404, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)

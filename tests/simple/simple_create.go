@@ -113,6 +113,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 	backoff := time.Millisecond * 250
 	i := 0
 
+	mustNotExist := true
 	for {
 
 		i++
@@ -125,7 +126,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 
 		t.log.Infof("Creating (%d) document '%s' in '%s'...", i, key, c.name)
 		resp, err := t.client.Post(url, q, nil, document, "", nil,
-			[]int{0, 1, 200, 201, 202, 409, 503}, []int{400, 404, 307}, operationTimeout, 1)
+			[]int{0, 1, 200, 201, 202, 409, 410, 503}, []int{400, 404, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
@@ -133,9 +134,14 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 			if resp[0].StatusCode == 503 || resp[0].StatusCode == 409 || resp[0].StatusCode == 0 {
 				// 0, 503 and 409 -> check if accidentally successful
 				checkRetry = true
+				mustNotExist = false
+			} else if resp[0].StatusCode == 410 {
+				// 410 -> check that document was NOT created, then retry
+				checkRetry = true
 			} else if resp[0].StatusCode != 1 {
 				document.Rev = resp[0].Rev
 				success = true
+				mustNotExist = false
 			}
 		} else { // failure
 			t.createCounter.failed++
@@ -147,9 +153,15 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 		if checkRetry {
 			d, e := readDocument(t, c.name, key, "", ReadTimeout, false)
 			// replace == with Equals
-			if e == nil && d != nil && d.Equals(document) {
+			if e == nil && d != nil && d.Equals(document) && !mustNotExist {
 				document.Rev = d.Rev
 				success = true
+			} else if e == nil && d != nil && mustNotExist {
+				// failure
+				t.createCounter.failed++
+				t.reportFailure(
+					test.NewFailure("Error when creating document with key '%s' in collection '%s'. Status code 410(GONE) was returned. Document was not expected to be created, but it was.", d.Key, c.name))
+				return "", maskAny(fmt.Errorf("Error when creating document with key '%s' in collection '%s'. Status code 410(GONE) was returned. Document was not expected to be created, but it was.", d.Key, c.name))
 			}
 		}
 

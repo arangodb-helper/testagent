@@ -29,6 +29,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 	backoff := time.Millisecond * 250
 	i := 0
 
+	mustNotBeReplacedYet := true
 	for {
 
 		i++
@@ -41,7 +42,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 		t.log.Infof("Replacing (%d) existing document '%s' (%s) in '%s' (name -> '%s')...",
 			i, key, ifMatchStatus, c.name, newName)
 		update, err := t.client.Put(
-			url, q, hdr, newDoc, "", nil, []int{0, 1, 200, 201, 202, 409, 412, 503},
+			url, q, hdr, newDoc, "", nil, []int{0, 1, 200, 201, 202, 409, 410, 412, 503},
 			[]int{400, 404}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			update[0].StatusCode, update[0].Error_.ErrorNum, update[0].CoordinatorURL)
@@ -49,6 +50,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 		/*
 		 * 20x, if document was replaced
 		 * 404, if document did not exist
+		 * 410, if operation could not been completed, nothing was written
 		 * 412, if if-match was given and document already there
 		 * timeout, in which case the document might or might not exist
 		 *   connection refused with coordinator ==> simply try again with another
@@ -82,6 +84,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 							key, ifMatchStatus, c.name))
 				} else {
 					checkRetry = true
+					mustNotBeReplacedYet = false
 				}
 			} else if update[0].StatusCode == 503 || update[0].StatusCode == 409 ||
 				update[0].StatusCode == 0 {
@@ -91,9 +94,13 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 				// In this case we want to check if any of the operations was
 				// successful in changing the document.
 				checkRetry = true
+				mustNotBeReplacedYet = false
+			} else if update[0].StatusCode == 410 {
+				checkRetry = true
 			} else if update[0].StatusCode != 1 {
 				newDoc.Rev = update[0].Rev
 				success = true
+				mustNotBeReplacedYet = false
 			}
 		} else {
 			t.replaceExistingCounter.failed++
@@ -114,8 +121,18 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 			if e == nil {
 
 				if d.Equals(newDoc) {
-					newDoc.Rev = d.Rev
-					success = true
+					if !mustNotBeReplacedYet {
+						newDoc.Rev = d.Rev
+						success = true
+					} else {
+						t.replaceExistingCounter.failed++
+						t.reportFailure(test.NewFailure(
+							"Failed to replace existing document '%s' (%s) in collection '%s': document was replaced unexpectedly. Last returned HTTP status code: %d",
+							key, ifMatchStatus, c.name, update[0].StatusCode))
+						return "", maskAny(fmt.Errorf(
+							"Failed to replace existing document '%s' (%s) in collection '%s': document was replaced unexpectedly. Last returned HTTP status code: %d",
+							key, ifMatchStatus, c.name, update[0].StatusCode))
+					}
 				} else if !d.Equals(expected) {
 					t.replaceExistingCounter.failed++
 					t.reportFailure(test.NewFailure(
@@ -199,7 +216,7 @@ func (t *simpleTest) replaceExistingDocumentWrongRevision(collectionName string,
 			"Replacing (%d) existing document '%s' wrong revision in '%s' (name -> '%s')...",
 			i, key, collectionName, newName)
 		resp, err := t.client.Put(
-			url, q, hdr, newDoc, "", nil, []int{0, 1, 412, 503},
+			url, q, hdr, newDoc, "", nil, []int{0, 1, 410, 412, 503},
 			[]int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
@@ -210,7 +227,7 @@ func (t *simpleTest) replaceExistingDocumentWrongRevision(collectionName string,
 				t.log.Infof("Replacing existing document '%s' wrong revision in '%s' (name -> '%s') succeeded", key, collectionName, newName)
 				return nil
 			}
-			// In cases 0 and 1 and 503, we fall through here and try again
+			// In cases 0, 1, 410 and 503, we fall through here and try again
 		} else {
 			// This is a failure
 			t.replaceExistingWrongRevisionCounter.failed++
@@ -269,7 +286,7 @@ func (t *simpleTest) replaceNonExistingDocument(collectionName string, key strin
 			i, key, collectionName, newName)
 		resp, err := t.client.Put(
 			fmt.Sprintf("/_api/document/%s/%s", collectionName, key), q, nil, newDoc, "", nil,
-			[]int{0, 1, 404, 503}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, 1)
+			[]int{0, 1, 404, 410, 503}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
@@ -280,7 +297,7 @@ func (t *simpleTest) replaceNonExistingDocument(collectionName string, key strin
 					"Replacing non-existing document '%s' in '%s' (name -> '%s') succeeded", key, collectionName, newName)
 				return nil
 			}
-			// In cases 0, 1 and 503 we fall through here and try again.
+			// In cases 0, 1, 410 and 503 we fall through here and try again.
 		} else {
 			// This is a failure
 			t.replaceNonExistingCounter.failed++
