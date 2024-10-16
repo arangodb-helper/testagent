@@ -375,6 +375,123 @@ func TestCollectionCreateUnknownOk(t *testing.T) {
 	mockClient.Shutdown()
 }
 
+func createCollectionGoneOk(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	//POST -> 410 -> GET -> 404 -> POST -> 200
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	// answer with 410:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 410},
+		Err:  nil,
+	}
+	// Expect a try to GET
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "GET" {
+		t.Errorf("Got wrong method %s instead of GET.", req.Method)
+	}
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 404},
+		Err:  nil,
+	}
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	// answer with 200:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 200},
+		Err:  nil,
+	}
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestCollectionCreateGoneOk(t *testing.T) {
+	test := simpleTest{
+		SimpleConfig: config,
+		reportDir:    ".",
+		log:          log,
+		collections:  make(map[string]*collection),
+	}
+
+	mockClient := util.NewMockClient(t, createCollectionGoneOk)
+	test.client = mockClient
+	test.listener = util.MockListener{}
+
+	// Create collection
+	err := test.createCollection(foo, 9, 2)
+	if err != nil {
+		t.Errorf("Unexpected result from createCollection: err: %v", err)
+	}
+	mockClient.Shutdown()
+}
+
+func createCollectionGoneButCreatedFail(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	//POST -> 410 -> GET -> 200 -> fail
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	// answer with 410:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 410},
+		Err:  nil,
+	}
+	// Expect a try to GET
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "GET" {
+		t.Errorf("Got wrong method %s instead of GET.", req.Method)
+	}
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 200},
+		Err:  nil,
+	}
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestCreateCollectionGoneButCreatedFail(t *testing.T) {
+	test := simpleTest{
+		SimpleConfig: config,
+		reportDir:    ".",
+		log:          log,
+		collections:  make(map[string]*collection),
+	}
+
+	mockClient := util.NewMockClient(t, createCollectionGoneButCreatedFail)
+	test.client = mockClient
+	test.listener = util.MockListener{}
+
+	// Create collection
+	err := test.createCollection(foo, 9, 2)
+	if err == nil {
+		t.Errorf("Unexpected result from createCollection: expected an error!")
+	}
+	mockClient.Shutdown()
+}
 
 func createCollectionRefusedExistsFail(
 	ctx context.Context, t *testing.T,
@@ -798,6 +915,63 @@ func TestCollectionExistingRemoveMissingFirstFail(t *testing.T) {
 	err := test.removeExistingCollection(foo)
 	if err == nil {
 		t.Errorf("Unexpected result from createCollection: err: %v", err)
+	}
+	mockClient.Shutdown()
+}
+
+func removeExistingCollectionGoneThenOk(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "DELETE" {
+		t.Errorf("Got wrong method %s instead of DELETE.", req.Method)
+	}
+	path := "/_api/collection/" + foo.name
+	if req.UrlPath != path {
+		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
+	}
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 410},
+		Err:  nil,
+	}
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "DELETE" {
+		t.Errorf("Got wrong method %s instead of DELETE.", req.Method)
+	}
+	if req.UrlPath != path {
+		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
+	}
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 200},
+		Err:  nil,
+	}
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestCollectionExistingRemoveGoneThenOk(t *testing.T) {
+	test := simpleTest{
+		SimpleConfig: config,
+		reportDir:    ".",
+		log:          log,
+		collections:  make(map[string]*collection),
+	}
+
+	mockClient := util.NewMockClient(t, removeExistingCollectionGoneThenOk)
+	test.client = mockClient
+	test.listener = util.MockListener{}
+
+	// Remove a collection
+	err := test.removeExistingCollection(foo)
+	if err != nil {
+		t.Errorf("Unexpected result from removeExistingCollection: err: %v", err)
 	}
 	mockClient.Shutdown()
 }

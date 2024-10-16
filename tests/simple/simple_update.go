@@ -27,6 +27,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 	backoff := time.Millisecond * 250
 	i := 0
 
+	mustNotBeUpdatedYet := true
 	for {
 		i++
 		if time.Now().After(testTimeout) {
@@ -38,7 +39,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 		t.log.Infof(
 			"Updating (%d) existing document '%s' (%s) in '%s' (name -> '%s')...",
 			i, key, ifMatchStatus, c.name, newName)
-		update, err := t.client.Patch(url, q, hdr, delta, "", nil, []int{0, 1, 200, 201, 202, 409, 412, 503},
+		update, err := t.client.Patch(url, q, hdr, delta, "", nil, []int{0, 1, 200, 201, 202, 409, 410, 412, 503},
 			[]int{400, 404, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			update[0].StatusCode, update[0].Error_.ErrorNum, update[0].CoordinatorURL)
@@ -50,6 +51,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 		 *  409, if unique constraint would be violated (cannot happen here) or
 		 *       if we had a timeout (or 503) and try again and we collide with
 		 *       the previous request, in that case we need to checkRetry
+		 * 410, if operation could not been completed, nothing was written
 		 *  412, if if-match was given and document already there
 		 *  timeout, in which case the document might or might not have been written
 		 *    after this, either one of the 5 things might have happened,
@@ -84,13 +86,19 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 							key, ifMatchStatus, c.name))
 				} else {
 					checkRetry = true
+					mustNotBeUpdatedYet = false
 				}
 			} else if update[0].StatusCode == 0 || update[0].StatusCode == 409 || update[0].StatusCode == 503 {
 				// 0, 409, 503 -> check if not accidentally successful
 				checkRetry = true
+				mustNotBeUpdatedYet = false
+			} else if update[0].StatusCode == 410 {
+				// 410 -> no changes must have been commited
+				checkRetry = true
 			} else if update[0].StatusCode != 1 {
 				doc.Rev = update[0].Rev
 				success = true
+				mustNotBeUpdatedYet = false
 			}
 		} else { // failure
 			t.updateExistingCounter.failed++
@@ -110,8 +118,18 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 
 			if e == nil { // document does not exist
 				if d.Equals(expected) {
-					doc.Rev = d.Rev
-					success = true
+					if !mustNotBeUpdatedYet {
+						doc.Rev = d.Rev
+						success = true
+					} else {
+						t.replaceExistingCounter.failed++
+						t.reportFailure(test.NewFailure(
+							"Failed to update existing document '%s' (%s) in collection '%s': found updated document unexpectedly. Last returned status code: %d",
+							key, ifMatchStatus, c.name, update[0].StatusCode))
+						return "", maskAny(fmt.Errorf(
+							"Failed to update existing document '%s' (%s) in collection '%s': found updated document unexpectedly. Last returned status code: %d",
+							key, ifMatchStatus, c.name, update[0].StatusCode))
+					}
 				} else if !d.Equals(doc) {
 					// If we see the existing one, we simply try again on the grounds
 					// that the operation might not have happened. If it is still
@@ -199,7 +217,7 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 		t.log.Infof(
 			"Updating (%d) existing document '%s' wrong revision in '%s' (name -> '%s')...",
 			i, key, collectionName, newName)
-		resp, err := t.client.Patch(url, q, hdr, delta, "", nil, []int{0, 1, 412, 503},
+		resp, err := t.client.Patch(url, q, hdr, delta, "", nil, []int{0, 1, 410, 412, 503},
 			[]int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
@@ -212,7 +230,7 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 					key, collectionName, newName)
 				return nil
 			}
-			// In cases 0 and 1 and 503, we fall through here and try again
+			// In cases 0, 1, 410 and 503, we fall through here and try again
 		} else {
 			// This is a failure
 			t.updateExistingWrongRevisionCounter.failed++
@@ -266,7 +284,7 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 
 		t.log.Infof(
 			"Updating (%d) non-existing document '%s' in '%s' (name -> '%s')...", i, key, collectionName, newName)
-		resp, err := t.client.Patch(url, q, nil, delta, "", nil, []int{0, 1, 404, 503},
+		resp, err := t.client.Patch(url, q, nil, delta, "", nil, []int{0, 1, 404, 410, 503},
 			[]int{200, 201, 202, 400, 412, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
@@ -278,7 +296,7 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 					"Updating non-existing document '%s' in '%s' (name -> '%s') succeeded", key, collectionName, newName)
 				return nil
 			}
-			// In cases 0, 1 and 503 we fall through here and try again.
+			// In cases 0, 1, 410 and 503 we fall through here and try again.
 		} else {
 			// This is a failure
 			t.updateNonExistingCounter.failed++
