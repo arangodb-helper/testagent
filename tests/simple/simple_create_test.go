@@ -4,10 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	logging "github.com/op/go-logging"
 	"testing"
 	"time"
-
-	logging "github.com/op/go-logging"
 
 	"github.com/arangodb-helper/testagent/service"
 	"github.com/arangodb-helper/testagent/service/cluster/arangodb"

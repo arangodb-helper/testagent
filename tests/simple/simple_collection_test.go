@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	foo *collection = &collection{
-		name:         "foo",
+	foo *collection = &collection {
+		name: "foo",
 		existingDocs: map[string]UserDocument{},
 	}
 )
@@ -35,7 +35,7 @@ func createCollectionOk(
 	// Answer with a normal good response:
 	// Respond with found:
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{StatusCode: 200},
+		Resp: util.ArangoResponse { StatusCode: 200, },
 		Err:  nil,
 	}
 
@@ -74,7 +74,7 @@ func createCollectionRedirectFail(
 	}
 	responses <- &util.MockResponse{
 		Resp: util.ArangoResponse{},
-		Err:  fmt.Errorf("Error"),
+		Err: fmt.Errorf("Error"),
 	}
 	// No more requests coming:
 	next(ctx, t, requests, false)
@@ -118,7 +118,7 @@ func createCollectionTestTimeoutFail(
 		// Answer with a normal good response:
 		// Respond with found:
 		responses <- &util.MockResponse{
-			Resp: util.ArangoResponse{StatusCode: 503},
+			Resp: util.ArangoResponse { StatusCode: 503, },
 			Err:  nil,
 		}
 		// Get a normal POST request (as preparation)
@@ -131,7 +131,7 @@ func createCollectionTestTimeoutFail(
 		}
 		// Respond with not found:
 		responses <- &util.MockResponse{
-			Resp: util.ArangoResponse{StatusCode: 404},
+			Resp: util.ArangoResponse { StatusCode: 404, },
 			Err:  nil,
 		}
 	}
@@ -173,7 +173,7 @@ func createCollectionReadTimeoutFail(
 	// Answer with a normal good response:
 	// Respond with found:
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{StatusCode: 503},
+			Resp: util.ArangoResponse { StatusCode: 503, },
 		Err:  nil,
 	}
 	for {
@@ -187,7 +187,7 @@ func createCollectionReadTimeoutFail(
 		}
 		// Respond with temporarily unavailable:
 		responses <- &util.MockResponse{
-			Resp: util.ArangoResponse{StatusCode: 503},
+			Resp: util.ArangoResponse { StatusCode: 503, },
 			Err:  nil,
 		}
 	}
@@ -230,7 +230,7 @@ func createCollectionCreateReadErrorFail(
 	}
 	// Answer with temporarily not available:
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{StatusCode: 503},
+		Resp: util.ArangoResponse { StatusCode: 503, },
 		Err:  nil,
 	}
 
@@ -243,7 +243,7 @@ func createCollectionCreateReadErrorFail(
 	}
 	// Answer with a error:
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{},
+		Resp: util.ArangoResponse {},
 		Err:  fmt.Errorf("error"),
 	}
 
@@ -294,12 +294,13 @@ func createCollectionTimeoutOk(
 		return
 	}
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{StatusCode: 200},
+		Resp: util.ArangoResponse { StatusCode: 200, },
 		Err:  nil,
 	}
 	// No more requests coming:
 	next(ctx, t, requests, false)
 }
+
 
 func TestCollectionCreateTimeoutOk(t *testing.T) {
 	test := simpleTest{
@@ -347,7 +348,7 @@ func createCollectionUnknownOk(
 		t.Errorf("Got wrong method %s instead of GET.", req.Method)
 	}
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{StatusCode: 200},
+		Resp: util.ArangoResponse { StatusCode: 200, },
 		Err:  nil,
 	}
 	// No more requests coming:
@@ -518,7 +519,7 @@ func createCollectionRefusedExistsFail(
 		t.Errorf("Got wrong method %s instead of GET.", req.Method)
 	}
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{StatusCode: 200},
+		Resp: util.ArangoResponse { StatusCode: 200, },
 		Err:  nil,
 	}
 	// No more requests coming:
@@ -567,7 +568,7 @@ func createCollectionUnfinishedExistsFail(
 		return
 	}
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{StatusCode: 200},
+		Resp: util.ArangoResponse { StatusCode: 200, },
 		Err:  nil,
 	}
 	// No more requests coming:
@@ -592,6 +593,7 @@ func TestCollectionCreateUnfinishedExistsFail(t *testing.T) {
 	}
 	mockClient.Shutdown()
 }
+
 
 func createCollectionConflictFirstAttemptFail(
 	ctx context.Context, t *testing.T,
@@ -632,6 +634,7 @@ func TestCollectionCreateConflictFirstAttemptFail(t *testing.T) {
 	}
 	mockClient.Shutdown()
 }
+
 
 func createCollectionConflictLaterAttemptExistsOk(
 	ctx context.Context, t *testing.T,
@@ -785,6 +788,7 @@ func TestCollectionCreateConflictLaterAttemptNotExistsFail(t *testing.T) {
 	mockClient.Shutdown()
 }
 
+
 func removeExistingCollectionOk(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
@@ -802,7 +806,7 @@ func removeExistingCollectionOk(
 		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
 	}
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{StatusCode: 200},
+		Resp: util.ArangoResponse { StatusCode: 200, },
 		Err:  nil,
 	}
 	// No more requests coming:
@@ -888,7 +892,7 @@ func removeExistingCollectionMissingFirstFail(
 		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
 	}
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{StatusCode: 404},
+		Resp: util.ArangoResponse { StatusCode: 404, },
 		Err:  nil,
 	}
 	// No more requests coming:
@@ -988,7 +992,7 @@ func removeExistingCollectionMissingLaterOk(
 		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
 	}
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{StatusCode: 503},
+		Resp: util.ArangoResponse { StatusCode: 503, },
 		Err:  nil,
 	}
 	req = next(ctx, t, requests, true)
@@ -1002,7 +1006,7 @@ func removeExistingCollectionMissingLaterOk(
 		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
 	}
 	responses <- &util.MockResponse{
-		Resp: util.ArangoResponse{StatusCode: 404},
+		Resp: util.ArangoResponse { StatusCode: 404, },
 		Err:  nil,
 	}
 	// No more requests coming:
@@ -1048,7 +1052,7 @@ func removeExistingCollectionTimeoutFail(
 			t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
 		}
 		responses <- &util.MockResponse{
-			Resp: util.ArangoResponse{StatusCode: 503},
+			Resp: util.ArangoResponse { StatusCode: 503, },
 			Err:  nil,
 		}
 	}
@@ -1075,3 +1079,4 @@ func TestCollectionExistingRemoveTimeoutFail(t *testing.T) {
 	}
 	mockClient.Shutdown()
 }
+
