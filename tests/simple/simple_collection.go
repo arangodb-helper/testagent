@@ -43,7 +43,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 		t.log.Infof("Creating (%d) collection '%s' with numberOfShards=%d, replicationFactor=%d...",
 			i, c.name, numberOfShards, replicationFactor)
 		resp, err := t.client.Post(
-			"/_api/collection", nil, nil, opts, "", nil, []int{0, 1, 200, 409, 500, 503},
+			"/_api/collection", nil, nil, opts, "", nil, []int{0, 1, 200, 409, 500, 503, 410},
 			[]int{400, 404, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
@@ -52,7 +52,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 		//     there: good
 		//     not there: retry
 		// 200   : good
-		// 1, 500: collection couldn't be finished.
+		// 1, 500, 410: collection couldn't be finished.
 		//     there: failure
 		//     not there: retry
 		// 409   :
@@ -66,8 +66,8 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 			if resp[0].StatusCode == 200 {
 				success = true
 			} else {
-				checkRetry = true
-				if resp[0].StatusCode == 1 || resp[0].StatusCode == 500 { // connection refused or not created
+				if resp[0].StatusCode == 1 || resp[0].StatusCode == 500 || resp[0].StatusCode == 410 { // connection refused or not created
+					checkRetry = true
 					shouldNotExist = true
 				} else if resp[0].StatusCode == 409 {
 					if i == 1 {
@@ -160,7 +160,7 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 
 		t.log.Infof("Removing (%d) collection '%s'...", i, c.name)
 		resp, err := t.client.Delete(
-			url, nil, nil, []int{0, 1, 200, 404, 500, 503}, []int{400, 409, 307}, operationTimeout, 1)
+			url, nil, nil, []int{0, 1, 200, 404, 410, 500, 503}, []int{400, 409, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
 
 		if err[0] != nil {
@@ -224,7 +224,7 @@ func (t *simpleTest) collectionExists(c *collection) (bool, error) {
 
 		t.log.Infof("Checking (%d) collection '%s'...", i, c.name)
 		resp, err := t.client.Get(
-			url, nil, nil, nil, []int{0, 1, 200, 404, 503}, []int{400, 409, 307}, operationTimeout, 1)
+			url, nil, nil, nil, []int{0, 1, 200, 404, 410, 503}, []int{400, 409, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
 
 		if err[0] != nil {
@@ -237,7 +237,7 @@ func (t *simpleTest) collectionExists(c *collection) (bool, error) {
 			return true, nil
 		}
 
-		// 0, 1, 503 retry
+		// 0, 1, 410, 503 retry
 		time.Sleep(backoff)
 		if backoff < time.Second*5 {
 			backoff += backoff

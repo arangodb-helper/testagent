@@ -23,6 +23,7 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 	backoff := time.Millisecond * 250
 	i := 0
 
+	mustExist := true
 	for {
 
 		i++
@@ -34,7 +35,7 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 		success := false
 		t.log.Infof("Removing (%d) existing document '%s' (%s) from '%s'...", i, key, ifMatchStatus, collectionName)
 		resp, err := t.client.Delete(
-			url, q, hdr, []int{0, 1, 200, 201, 202, 404, 409, 503}, []int{400, 412, 307}, operationTimeout, 1)
+			url, q, hdr, []int{0, 1, 200, 201, 202, 404, 409, 410, 503}, []int{400, 412, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
@@ -42,17 +43,21 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 			if resp[0].StatusCode == 0 || resp[0].StatusCode == 409 || resp[0].StatusCode == 503 {
 				// 0, 409 and 503 -> check if accidentally successful
 				checkRetry = true
+				mustExist = false
+			} else if resp[0].StatusCode == 410 {
+				// 410 -> document must have NOT been deleted. re-check this and retry.
+				checkRetry = true
 			} else if resp[0].StatusCode == 404 {
-				if i == 1 {
+				if mustExist {
 					// Not enough attempts, this is a failure
 					t.deleteExistingCounter.failed++
 					t.reportFailure(
-						test.NewFailure(t.Name(),
-							"Failed to delete existing document '%s' (%s) in collection '%s': got 404 after only 1 attempt",
+						test.NewFailure(
+							"Failed to delete existing document '%s' (%s) in collection '%s': got 404 after only 1 attempt, or after receiving 410(GONE) for previous attempts.",
 							key, ifMatchStatus, collectionName))
 					return maskAny(
 						fmt.Errorf(
-							"Failed to delete existing document '%s' (%s) in collection '%s': got 404 after only 1 attempt",
+							"Failed to delete existing document '%s' (%s) in collection '%s': got 404 after only 1 attempt, or after receiving 410(GONE) for previous attempts.",
 							key, ifMatchStatus, collectionName))
 				} else {
 					// Potentially, an earlier try timed out but the document was
@@ -128,7 +133,7 @@ func (t *simpleTest) removeExistingDocumentWrongRevision(collectionName string, 
 
 		t.log.Infof("Removing existing document '%s' wrong revision from '%s'...", key, collectionName)
 		resp, err := t.client.Delete(
-			url, q, hdr, []int{0, 1, 412, 503}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
+			url, q, hdr, []int{0, 1, 410, 412, 503}, []int{200, 201, 202, 400, 404, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
@@ -185,7 +190,7 @@ func (t *simpleTest) removeNonExistingDocument(collectionName string, key string
 
 		t.log.Infof("Removing (%d) non-existing document '%s' from '%s'...", i, key, collectionName)
 		resp, err := t.client.Delete(
-			url, q, nil, []int{0, 1, 404, 503}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, 1)
+			url, q, nil, []int{0, 1, 404, 410, 503}, []int{200, 201, 202, 400, 412, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 

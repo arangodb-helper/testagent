@@ -124,6 +124,40 @@ func createDocumentOkBehaviour(
 		t.Errorf("Got wrong method %s instead of POST.", req.Method)
 	}
 
+	// Respond immediately with a 410:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 410},
+		Err:  nil,
+	}
+
+	// Now expect a GET request to see if the document is there, answer
+	// with no:
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "GET" {
+		t.Errorf("Got wrong method %s instead of GET.", req.Method)
+	}
+	if req.UrlPath != "/_api/document/"+coll.name+"/doc2" {
+		t.Errorf("Got wrong URL path %s instead of /_api/document/%s/doc2", req.UrlPath, coll.name)
+	}
+
+	// Respond with not found:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 404},
+		Err:  nil,
+	}
+
+	// Expect another try to POST:
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+
 	// this time, let a timeout happen:
 	responses <- &util.MockResponse{
 		Resp: util.ArangoResponse{StatusCode: 0},
@@ -419,6 +453,83 @@ func TestCreateDocumentReadTimeout(t *testing.T) {
 	rev, err := test.createDocument(coll, doc, "doc1")
 	if rev != "" || err == nil {
 		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
+	}
+	mockClient.Shutdown()
+}
+
+func createDocumentGoneButCreatedBehaviour(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a POST request:
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	if req.UrlPath != "/_api/document/"+coll.name {
+		t.Errorf("Got wrong URL path %s instead of /_api/document/%s",
+			req.UrlPath, coll.name)
+	}
+
+	newDoc := req.Input.(UserDocument)
+
+	// Answer with 410:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 410},
+		Err:  nil,
+	}
+
+	// Get a GET request:
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "GET" {
+		t.Errorf("Got wrong method %s instead of GET.", req.Method)
+	}
+	expectedUrl := fmt.Sprintf("/_api/document/%s/%s", coll.name, "doc1")
+	if req.UrlPath != expectedUrl {
+		t.Errorf("Got wrong URL path %s instead of %s",
+			req.UrlPath, expectedUrl)
+	}
+
+	// Respond with a 200:
+	if x, ok := req.Result.(**UserDocument); ok {
+		*x = &UserDocument{}
+		**x = newDoc
+	}
+
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 200},
+		Err:  nil,
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestCreateDocumentGoneButCreatedFail(t *testing.T) {
+	test := simpleTest{
+		SimpleConfig: config,
+		reportDir:    ".",
+		log:          log,
+		collections:  make(map[string]*collection),
+	}
+	mockClient := util.NewMockClient(t, createDocumentGoneButCreatedBehaviour)
+	test.client = mockClient
+	test.listener = util.MockListener{}
+	doc := UserDocument{
+		Key:   "doc1",
+		Value: 12,
+		Name:  "hanswurst",
+		Odd:   true,
+	}
+	_, err := test.createDocument(coll, doc, "doc1")
+	if err == nil {
+		t.Errorf("Expected to get an error, but got none.")
 	}
 	mockClient.Shutdown()
 }
