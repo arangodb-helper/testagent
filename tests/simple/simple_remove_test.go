@@ -108,6 +108,45 @@ func removeExistingDocumentOk(
 		Err:  nil,
 	}
 
+	// Get another DELETE request:
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "DELETE" {
+		t.Errorf("Got wrong method %s instead of DELETE.", req.Method)
+	}
+
+	// Respond immediately with a 410:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 410},
+		Err:  nil,
+	}
+
+	// Now expect a GET request to see if the document is there, answer
+	// with yes:
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "GET" {
+		t.Errorf("Got wrong method %s instead of GET.", req.Method)
+	}
+	path = "/_api/document/" + coll.name + "/doc1"
+	if req.UrlPath != path {
+		t.Errorf("Got wrong URL path %s instead of %s", req.UrlPath, path)
+	}
+
+	// Respond with found, but original version:
+	if x, ok := req.Result.(**UserDocument); ok {
+		*x = &UserDocument{}
+		**x = coll.existingDocs["doc1"]
+	}
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 200},
+		Err:  nil,
+	}
+
 	// Expect another try to DELETE:
 	req = next(ctx, t, requests, true)
 	if req == nil {
