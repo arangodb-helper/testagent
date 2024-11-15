@@ -79,6 +79,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 						shouldExist = true
 					}
 				}
+				checkRetry = true
 			}
 		} else {
 			// This is a failure
