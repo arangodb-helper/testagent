@@ -133,6 +133,7 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 	}
 
 	// Overall timeout :(
+	t.createCollectionCounter.failed++
 	t.reportFailure(
 		test.NewFailure("Timed out while trying to create (%d) collection %s.", i, c.name))
 	return maskAny(fmt.Errorf("Timed out while trying to create (%d) collection %s.", i, c.name))
