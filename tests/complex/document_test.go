@@ -661,7 +661,7 @@ func updateDocResp409Behaviour(
 	next(ctx, t, requests, false)
 }
 
-func TestUpdateDocRest409(t *testing.T) {
+func TestUpdateDocResp409(t *testing.T) {
 	checkUpdateDoc(t, false, updateDocResp409Behaviour)
 }
 
@@ -730,4 +730,145 @@ func TestUpdateDocTimeOut(t *testing.T) {
 	ReadTimeout = readTimeoutForTesting // to speed up tests
 	defer func() { ReadTimeout = savedReadTimeout }()
 	checkUpdateDoc(t, true, only503ReplyBehaviour)
+}
+
+func updateDoc410RetryBehaviour(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+	// Get a request:
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	//check request method
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
+	}
+	//check URL
+	expected_url := fmt.Sprintf("/_api/document/%s/%s", CollectionName, ExpectedDocument.Key)
+	if req.UrlPath != expected_url {
+		t.Errorf("Got wrong URL path %s instead of %s",
+			req.UrlPath, expected_url)
+	}
+
+	//respond with 410, which means that a dbserver is unavailable and the update could not have been completed
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 410},
+		Err:  nil,
+	}
+
+	// Now the testagent must read the document to check if it was updated accidentally
+	// Get a request:
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	//check request method
+	if req.Method != "GET" {
+		t.Errorf("Got wrong method %s instead of GET.", req.Method)
+	}
+	//check URL
+	if req.UrlPath != expected_url {
+		t.Errorf("Got wrong URL path %s instead of %s",
+			req.UrlPath, expected_url)
+	}
+
+	//respond as if the document was not updated
+	reqResultDoc := req.Result.(*BigDocument)
+	reqResultDoc.Seed = ExpectedDocument.Seed
+	reqResultDoc.Key = ExpectedDocument.Key
+	reqResultDoc.Rev = ExpectedDocument.Rev
+	reqResultDoc.UpdateCounter = ExpectedDocument.UpdateCounter
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 200, Rev: ExpectedDocument.Rev},
+		Err:  nil,
+	}
+
+	// Get a request:
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	//check request method
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
+	}
+	//check URL
+	if req.UrlPath != expected_url {
+		t.Errorf("Got wrong URL path %s instead of %s",
+			req.UrlPath, expected_url)
+	}
+
+	//respond with 200
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 200, Rev: ChangedDocument.Rev},
+		Err:  nil,
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestUpdateDoc410Retry(t *testing.T) {
+	checkUpdateDoc(t, false, updateDoc410RetryBehaviour)
+}
+
+func updateDoc410ButUpdatedBehaviour(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+	// Get a request:
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	//check request method
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
+	}
+	//check URL
+	expected_url := fmt.Sprintf("/_api/document/%s/%s", CollectionName, ExpectedDocument.Key)
+	if req.UrlPath != expected_url {
+		t.Errorf("Got wrong URL path %s instead of %s",
+			req.UrlPath, expected_url)
+	}
+
+	//respond with 410, which means that a dbserver is unavailable and the update could not have been completed
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 410},
+		Err:  nil,
+	}
+
+	// Now the testagent must read the document to check if it was updated accidentally
+	// Get a request:
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	//check request method
+	if req.Method != "GET" {
+		t.Errorf("Got wrong method %s instead of GET.", req.Method)
+	}
+	//check URL
+	if req.UrlPath != expected_url {
+		t.Errorf("Got wrong URL path %s instead of %s",
+			req.UrlPath, expected_url)
+	}
+
+	//respond as if the document was accidentally updated
+	reqResultDoc := req.Result.(*BigDocument)
+	reqResultDoc.Seed = ChangedDocument.Seed
+	reqResultDoc.Key = ChangedDocument.Key
+	reqResultDoc.Rev = ChangedDocument.Rev
+	reqResultDoc.UpdateCounter = ChangedDocument.UpdateCounter
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 200, Rev: ChangedDocument.Rev},
+		Err:  nil,
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestUpdateDoc410ButUpdated(t *testing.T) {
+	checkUpdateDoc(t, true, updateDoc410ButUpdatedBehaviour)
 }

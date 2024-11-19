@@ -105,6 +105,7 @@ func (t *ComplextTest) insertDocument(colName string, document any) error {
 	url := fmt.Sprintf("/_api/document/%s", colName)
 	backoff := BackOffTime
 	i := 0
+	mustNotExist := true
 
 	for {
 
@@ -118,7 +119,7 @@ func (t *ComplextTest) insertDocument(colName string, document any) error {
 
 		t.log.Infof("Creating document in collection '%s' with key %s...", colName, key)
 		resp, err := t.client.Post(url, q, nil, document, "", nil,
-			[]int{0, 1, 200, 201, 202, 409, 503}, []int{400, 404, 307}, operationTimeout, 1)
+			[]int{0, 1, 200, 201, 202, 409, 410, 503}, []int{400, 404, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
@@ -126,8 +127,10 @@ func (t *ComplextTest) insertDocument(colName string, document any) error {
 			if resp[0].StatusCode == 503 || resp[0].StatusCode == 409 || resp[0].StatusCode == 0 {
 				// 0, 503 and 409 -> check if accidentally successful
 				checkRetry = true
+				mustNotExist = false
 			} else if resp[0].StatusCode != 1 {
 				success = true
+				mustNotExist = false
 			}
 		} else { // failure
 			t.singleDocCreateCounter.failed++
@@ -138,7 +141,17 @@ func (t *ComplextTest) insertDocument(colName string, document any) error {
 
 		if checkRetry {
 			exists, err := t.checkIfDocumentExists(colName, key)
-			success = err == nil && exists
+			if !mustNotExist {
+				success = err == nil && exists
+			} else if err == nil && exists {
+				t.singleDocCreateCounter.failed++
+				t.reportFailure(
+					test.NewFailure(t.Name(),
+						"Incorrect behaviour during document creation in collection '%s'. "+
+							"Was not expecting the document to be created, but it was created.",
+						colName))
+				return errors.New("Incorrect behaviour during document creation. Was not expecting the document to be created, but it was created.")
+			}
 		}
 
 		if success {
@@ -335,6 +348,7 @@ func readDocument(t *ComplextTest, colName string, key string, rev string, secon
 }
 
 // readDocumentBySeed finds a single document by a custom unique field "seed"
+// if document does not exist, nil value is returned
 func readDocumentBySeed(t *ComplextTest, colName string, seed int64) (*TestDocument, error) {
 	operationTimeout := t.OperationTimeout
 	testTimeout := time.Now().Add(operationTimeout * 5)
@@ -451,6 +465,7 @@ func (t *ComplextTest) updateExistingDocument(colName string, oldDoc TestDocumen
 	}
 	backoff := BackOffTime
 	i := 0
+	updateMustNotYetBeWritten := true
 
 	for {
 		i++
@@ -462,7 +477,7 @@ func (t *ComplextTest) updateExistingDocument(colName string, oldDoc TestDocumen
 		t.log.Infof(
 			"Updating (%d) existing document '%s' (%s) in '%s' (update_counter -> '%d')...",
 			i, oldDoc.Key, ifMatchStatus, colName, new_counter_value)
-		update, err := t.client.Patch(url, q, hdr, delta, "", nil, []int{0, 1, 200, 201, 202, 409, 412, 503},
+		update, err := t.client.Patch(url, q, hdr, delta, "", nil, []int{0, 1, 200, 201, 202, 409, 410, 412, 503},
 			[]int{400, 404, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			update[0].StatusCode, update[0].Error_.ErrorNum, update[0].CoordinatorURL)
@@ -514,9 +529,13 @@ func (t *ComplextTest) updateExistingDocument(colName string, oldDoc TestDocumen
 				t.log.Debugf(
 					"Got status code %d. We need to re-check if the update operation was successfull.", update[0].StatusCode)
 				checkRetry = true
+				updateMustNotYetBeWritten = false
+			} else if update[0].StatusCode == 410 {
+				checkRetry = true
 			} else if update[0].StatusCode != 1 {
 				oldDoc.Rev = update[0].Rev
 				success = true
+				updateMustNotYetBeWritten = false
 			}
 		} else { // failure
 			t.updateExistingCounter.failed++
@@ -538,8 +557,18 @@ func (t *ComplextTest) updateExistingDocument(colName string, oldDoc TestDocumen
 
 			if e == nil { // document does not exist
 				if d.TestDocument.equals(&expected) {
-					oldDoc.Rev = d.Rev
-					success = true
+					if !updateMustNotYetBeWritten {
+						oldDoc.Rev = d.Rev
+						success = true
+					} else {
+						t.updateExistingCounter.failed++
+						t.reportFailure(
+							test.NewFailure(t.Name(),
+								"Incorrect behaviour during document update in collection '%s'. "+
+									"Was not expecting the document not to be updated, but it was updated.",
+								colName))
+						return nil, errors.New("Incorrect behaviour during document update. Was not expecting the document to be updated, but it was updated.")
+					}
 				} else if !d.TestDocument.equals(&oldDoc) {
 					// If we see the existing one, we simply try again on the grounds
 					// that the operation might not have happened. If it is still
