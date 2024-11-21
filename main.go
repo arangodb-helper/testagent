@@ -26,7 +26,7 @@ const (
 	projectName             = "testAgent"
 	defaultOperationTimeout = time.Minute * 6
 	defaultRetryTimeout     = time.Minute * 8
-	defaultStepTimeout      = time.Second * 30
+	defaultStepTimeout      = time.Second * 15
 )
 
 var (
@@ -88,7 +88,7 @@ func init() {
 	f.IntVar(&appFlags.GraphTestConf.TraversalOperationsPerCycle, "graph-traversal-ops", 100, "How many traversal operations to perform in one test cycle (graph tests)")
 	f.IntVar(&appFlags.GraphTestConf.BatchSize, "graph-batch-size", 500, "Batch size for creating documents (graph tests)")
 	f.IntVar(&appFlags.DocColConfig.MaxDocuments, "doc-max-documents", 50000, "Upper limit to the number of documents created in document collection tests")
-	f.IntVar(&appFlags.DocColConfig.BatchSize, "doc-batch-size", 1000, "Batch size for creating documents in bulk mode in document collection tests")
+	f.IntVar(&appFlags.DocColConfig.BatchSize, "doc-batch-size", 500, "Batch size for creating documents in bulk mode in document collection tests")
 	f.IntVar(&appFlags.DocColConfig.DocumentSize, "doc-document-size", 10240, "The size of the payload field in bytes in regular documents in document collection tests")
 	f.IntVar(&appFlags.DocColConfig.MaxUpdates, "doc-max-updates", 3, "Number of update operations to be performed on each document, before dropping collection, in document collection tests.")
 	f.IntVar(&appFlags.ComplextTestConfig.NumberOfShards, "complex-shards", 10, "Number of shards (\"complex\" test suite)")
