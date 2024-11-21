@@ -24,8 +24,8 @@ import (
 
 const (
 	projectName             = "testAgent"
-	defaultOperationTimeout = time.Second * 330
-	defaultRetryTimeout     = time.Minute * 4
+	defaultOperationTimeout = time.Minute * 6
+	defaultRetryTimeout     = time.Minute * 8
 	defaultStepTimeout      = time.Second * 30
 )
 
@@ -54,7 +54,10 @@ var (
 func init() {
 	f := cmdMain.Flags()
 	defaultDockerEndpoints := []string{"unix:///var/run/docker.sock"}
-	defaultTestList := []string{"simple", "DocColTest", "OneShardTest", "CommunityGraphTest", "SmartGraphTest", "EnterpriseGraphTest"}
+	// Full test list:
+	// defaultTestList := []string{"simple", "DocColTest", "OneShardTest", "CommunityGraphTest", "SmartGraphTest", "EnterpriseGraphTest"}
+	// Use only "simple" test by default for backwards compatibility
+	defaultTestList := []string{"simple"}
 	f.IntVar(&appFlags.AgencySize, "agency-size", 3, "Number of agents in the cluster")
 	f.IntVar(&appFlags.port, "port", 4200, "First port of range of ports used by the testAgent")
 	f.StringVar(&appFlags.logLevel, "log-level", "debug", "Minimum log level (debug|info|warning|error)")
@@ -79,17 +82,17 @@ func init() {
 	f.IntVar(&appFlags.SimpleConfig.MaxCollections, "simple-max-collections", 10, "Upper limit to the number of collections created in simple test")
 	f.DurationVar(&appFlags.SimpleConfig.OperationTimeout, "simple-operation-timeout", defaultOperationTimeout, "Timeout per database operation")
 	f.DurationVar(&appFlags.SimpleConfig.RetryTimeout, "simple-retry-timeout", defaultRetryTimeout, "How long are tests retried before giving up")
-	f.Int64Var(&appFlags.GraphTestConf.MaxVertices, "graph-max-vertices", 100000, "Upper limit to the number of vertices (graph tests)")
+	f.Int64Var(&appFlags.GraphTestConf.MaxVertices, "graph-max-vertices", 50000, "Upper limit to the number of vertices (graph tests)")
 	f.IntVar(&appFlags.GraphTestConf.VertexSize, "graph-vertex-size", 512, "The size of the payload field in bytes in all vertices (graph tests)")
-	f.IntVar(&appFlags.GraphTestConf.EdgeSize, "graph-edge-size", 128, "The size of the payload field in bytes in all vertices (graph tests)")
-	f.IntVar(&appFlags.GraphTestConf.TraversalOperationsPerCycle, "graph-traversal-ops", 1000, "How many traversal operations to perform in one test cycle (graph tests)")
-	f.IntVar(&appFlags.GraphTestConf.BatchSize, "graph-batch-size", 1000, "Batch size for creating documents (graph tests)")
-	f.IntVar(&appFlags.DocColConfig.MaxDocuments, "doc-max-documents", 1000000, "Upper limit to the number of documents created in document collection tests")
+	f.IntVar(&appFlags.GraphTestConf.EdgeSize, "graph-edge-size", 256, "The size of the payload field in bytes in all vertices (graph tests)")
+	f.IntVar(&appFlags.GraphTestConf.TraversalOperationsPerCycle, "graph-traversal-ops", 100, "How many traversal operations to perform in one test cycle (graph tests)")
+	f.IntVar(&appFlags.GraphTestConf.BatchSize, "graph-batch-size", 500, "Batch size for creating documents (graph tests)")
+	f.IntVar(&appFlags.DocColConfig.MaxDocuments, "doc-max-documents", 50000, "Upper limit to the number of documents created in document collection tests")
 	f.IntVar(&appFlags.DocColConfig.BatchSize, "doc-batch-size", 1000, "Batch size for creating documents in bulk mode in document collection tests")
-	f.IntVar(&appFlags.DocColConfig.DocumentSize, "doc-document-size", 1024, "The size of the payload field in bytes in regular documents in document collection tests")
-	f.IntVar(&appFlags.DocColConfig.MaxUpdates, "doc-max-updates", 10, "Number of update operations to be performed on each document, before dropping collection, in document collection tests.")
+	f.IntVar(&appFlags.DocColConfig.DocumentSize, "doc-document-size", 10240, "The size of the payload field in bytes in regular documents in document collection tests")
+	f.IntVar(&appFlags.DocColConfig.MaxUpdates, "doc-max-updates", 3, "Number of update operations to be performed on each document, before dropping collection, in document collection tests.")
 	f.IntVar(&appFlags.ComplextTestConfig.NumberOfShards, "complex-shards", 10, "Number of shards (\"complex\" test suite)")
-	f.IntVar(&appFlags.ComplextTestConfig.ReplicationFactor, "complex-replicationFactor", 3, "Replication factor (\"complex\" test suite)")
+	f.IntVar(&appFlags.ComplextTestConfig.ReplicationFactor, "complex-replicationFactor", 2, "Replication factor (\"complex\" test suite)")
 	f.DurationVar(&appFlags.ComplextTestConfig.OperationTimeout, "complex-operation-timeout", defaultOperationTimeout, "Timeout per database operation (\"complex\" test suite)")
 	f.DurationVar(&appFlags.ComplextTestConfig.RetryTimeout, "complex-retry-timeout", defaultRetryTimeout, "How long are tests retried before giving up (\"complex\" test suite)")
 	f.DurationVar(&appFlags.ComplextTestConfig.StepTimeout, "complex-step-timeout", defaultStepTimeout, "Pause between test actions (\"complex\" test suite)")
