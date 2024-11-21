@@ -60,7 +60,7 @@ func (t *simpleTest) importDocuments(c *collection) error {
 		t.log.Infof("Importing %d documents ('%s' - '%s') into '%s'...",
 			len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name)
 		resp, err := t.client.Post("/_api/import", q, nil, importData, "application/x-www-form-urlencoded", &result,
-			[]int{0, 1, 200, 201, 202, 503}, []int{400, 404, 409, 307}, operationTimeout, 1)
+			[]int{0, 1, 200, 201, 202, 404, 503}, []int{400, 409, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
@@ -118,6 +118,13 @@ func (t *simpleTest) importDocuments(c *collection) error {
 			t.importCounter.succeeded++
 			t.log.Infof("Importing (%d) %d documents ('%s' - '%s') into '%s' succeeded", i, len(docs), docs[0].Key, docs[len(docs)-1].Key, c.name)
 			return nil
+		} else if resp[0].StatusCode == 404 && resp[0].Error_.ErrorNum != 1655 {
+			// 404: If transaction was lost(error 1655) due to server restart, then we should just retry.
+			// In any other case(e.g. collection not found etc. - fail.)
+			t.importCounter.failed++
+			t.reportFailure(
+				test.NewFailure("Failed to import documents in collection '%s': unexpected result %v", c.name, result))
+			return maskAny(fmt.Errorf("Failed to import documents in collection '%s': unexpected result %v", c.name, result))
 		}
 
 		time.Sleep(backoff)
