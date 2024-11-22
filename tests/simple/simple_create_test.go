@@ -533,3 +533,120 @@ func TestCreateDocumentGoneButCreatedFail(t *testing.T) {
 	}
 	mockClient.Shutdown()
 }
+
+func createDocumentErrorTransactionLostBehaviour(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a POST request:
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	if req.UrlPath != "/_api/document/"+coll.name {
+		t.Errorf("Got wrong URL path %s instead of /_api/document/%s",
+			req.UrlPath, coll.name)
+	}
+
+	// Answer with an error response:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 404, Error_: util.ArangoError{Error_: true, ErrorMessage: "transaction not found", Code: 404, ErrorNum: 1655}},
+		Err:  nil,
+	}
+
+	// Get another POST request:
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	if req.UrlPath != "/_api/document/"+coll.name {
+		t.Errorf("Got wrong URL path %s instead of /_api/document/%s",
+			req.UrlPath, coll.name)
+	}
+	// Answer with a normal good response:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 200, Rev: "abcd1234"},
+		Err:  nil,
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestCreateDocumentErrorTransactionLostRetry(t *testing.T) {
+	test := simpleTest{
+		SimpleConfig: config,
+		reportDir:    ".",
+		log:          log,
+		collections:  make(map[string]*collection),
+	}
+	mockClient := util.NewMockClient(t, createDocumentErrorTransactionLostBehaviour)
+	test.client = mockClient
+	test.listener = util.MockListener{}
+	doc := UserDocument{
+		Key:   "doc1",
+		Value: 12,
+		Name:  "hanswurst",
+		Odd:   true,
+	}
+	rev, err := test.createDocument(coll, doc, "doc1")
+	if rev == "" || err != nil {
+		t.Errorf("Unexpected result from createDocument: %v, err: %v", rev, err)
+	}
+	mockClient.Shutdown()
+}
+
+func createDocument404ErrorBehaviour(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a POST request:
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	if req.UrlPath != "/_api/document/"+coll.name {
+		t.Errorf("Got wrong URL path %s instead of /_api/document/%s",
+			req.UrlPath, coll.name)
+	}
+
+	// Answer with an error response:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 404, Error_: util.ArangoError{Error_: true, ErrorMessage: "something is wrong", Code: 404, ErrorNum: 1000}},
+		Err:  nil,
+	}
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestCreateDocumentError404Fail(t *testing.T) {
+	test := simpleTest{
+		SimpleConfig: config,
+		reportDir:    ".",
+		log:          log,
+		collections:  make(map[string]*collection),
+	}
+	mockClient := util.NewMockClient(t, createDocument404ErrorBehaviour)
+	test.client = mockClient
+	test.listener = util.MockListener{}
+	doc := UserDocument{
+		Key:   "doc1",
+		Value: 12,
+		Name:  "hanswurst",
+		Odd:   true,
+	}
+	_, err := test.createDocument(coll, doc, "doc1")
+	if err == nil {
+		t.Errorf("Expected to get an error, but got none.")
+	}
+	mockClient.Shutdown()
+}
