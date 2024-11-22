@@ -53,6 +53,8 @@ func NewMockGraphTest(mockClient *util.MockClient) *EnterpriseGraphTest {
 	return test
 }
 
+// createGraph tests
+
 // a template for testing the createGraph function
 func checkCreateGraph(t *testing.T, expectError bool, behaviour util.Behaviour) {
 	test := NewMockGraphTest(util.NewMockClient(t, behaviour))
@@ -758,6 +760,8 @@ func createGraphButItIsBrokenBehaviour(
 func TestCreateGraphButItIsBrokenTest(t *testing.T) {
 	checkCreateGraph(t, true, createGraphButItIsBrokenBehaviour)
 }
+
+// createEdge tests
 
 // a template for testing the createEdge function
 func checkCreateEdge(t *testing.T, expectError bool, behaviour util.Behaviour) {
