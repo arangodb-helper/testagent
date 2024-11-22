@@ -1176,3 +1176,111 @@ func createEdge410RetryBehaviour(
 func TestCreateEdge410RetryTest(t *testing.T) {
 	checkCreateEdge(t, false, createEdge410RetryBehaviour)
 }
+
+func createEdgeTransactionLostRetryBehaviour(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a request:
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	//check request method
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	//check URL
+	expected_url := fmt.Sprintf("/_api/document/%s", edgeColName)
+	if req.UrlPath != expected_url {
+		t.Errorf("Got wrong URL path %s instead of %s",
+			req.UrlPath, expected_url)
+	}
+
+	//check query param
+	value, exists := req.Query["waitForSync"]
+	if !(exists && (len(value) == 1 && value[0] == "true")) {
+		t.Errorf("\"waitForSync\" query param must be set to \"true\"")
+	}
+
+	//return 404 with arango error 1655
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 404, Error_: util.ArangoError{Error_: true, ErrorMessage: "transaction not found", Code: 404, ErrorNum: 1655}},
+		Err:  nil,
+	}
+
+	// Get a request:
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	//check request method
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	//check URL
+	expected_url = fmt.Sprintf("/_api/document/%s", edgeColName)
+	if req.UrlPath != expected_url {
+		t.Errorf("Got wrong URL path %s instead of %s",
+			req.UrlPath, expected_url)
+	}
+
+	//check query param
+	value, exists = req.Query["waitForSync"]
+	if !(exists && (len(value) == 1 && value[0] == "true")) {
+		t.Errorf("\"waitForSync\" query param must be set to \"true\"")
+	}
+
+	//return successfull response
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 201},
+		Err:  nil,
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestCreateEdgeTransactionLostRetryTest(t *testing.T) {
+	checkCreateEdge(t, false, createEdgeTransactionLostRetryBehaviour)
+}
+
+func createEdge404FailBehaviour(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a request:
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	//check request method
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	//check URL
+	expected_url := fmt.Sprintf("/_api/document/%s", edgeColName)
+	if req.UrlPath != expected_url {
+		t.Errorf("Got wrong URL path %s instead of %s",
+			req.UrlPath, expected_url)
+	}
+
+	//check query param
+	value, exists := req.Query["waitForSync"]
+	if !(exists && (len(value) == 1 && value[0] == "true")) {
+		t.Errorf("\"waitForSync\" query param must be set to \"true\"")
+	}
+
+	//return 404 with any arango error other than 1655(transaction lost)
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 404, Error_: util.ArangoError{Error_: true, ErrorMessage: "error", Code: 404, ErrorNum: 1000}},
+		Err:  nil,
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestCreateEdge404FailTest(t *testing.T) {
+	checkCreateEdge(t, true, createEdge404FailBehaviour)
+}

@@ -872,3 +872,90 @@ func updateDoc410ButUpdatedBehaviour(
 func TestUpdateDoc410ButUpdated(t *testing.T) {
 	checkUpdateDoc(t, true, updateDoc410ButUpdatedBehaviour)
 }
+
+func updateDocTransactionLostRetryBehaviour(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+	// Get a request:
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	//check request method
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
+	}
+	//check URL
+	expected_url := fmt.Sprintf("/_api/document/%s/%s", CollectionName, ExpectedDocument.Key)
+	if req.UrlPath != expected_url {
+		t.Errorf("Got wrong URL path %s instead of %s",
+			req.UrlPath, expected_url)
+	}
+
+	//return 404 with arango error 1655
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 404, Error_: util.ArangoError{Error_: true, ErrorMessage: "transaction not found", Code: 404, ErrorNum: 1655}},
+		Err:  nil,
+	}
+
+	// Get a request:
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	//check request method
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
+	}
+	//check URL
+	if req.UrlPath != expected_url {
+		t.Errorf("Got wrong URL path %s instead of %s",
+			req.UrlPath, expected_url)
+	}
+
+	//respond with 200
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 200, Rev: ChangedDocument.Rev},
+		Err:  nil,
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestUpdateDocTransactionLostRetry(t *testing.T) {
+	checkUpdateDoc(t, false, updateDocTransactionLostRetryBehaviour)
+}
+
+func updateDoc404FailBehaviour(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+	// Get a request:
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	//check request method
+	if req.Method != "PATCH" {
+		t.Errorf("Got wrong method %s instead of PATCH.", req.Method)
+	}
+	//check URL
+	expected_url := fmt.Sprintf("/_api/document/%s/%s", CollectionName, ExpectedDocument.Key)
+	if req.UrlPath != expected_url {
+		t.Errorf("Got wrong URL path %s instead of %s",
+			req.UrlPath, expected_url)
+	}
+
+	//return 404 with any arango error other than 1655
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 404, Error_: util.ArangoError{Error_: true, ErrorMessage: "some error", Code: 404, ErrorNum: 1000}},
+		Err:  nil,
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestUpdateDoc404Fail(t *testing.T) {
+	checkUpdateDoc(t, true, updateDoc404FailBehaviour)
+}

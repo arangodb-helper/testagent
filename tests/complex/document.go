@@ -119,7 +119,7 @@ func (t *ComplextTest) insertDocument(colName string, document any) error {
 
 		t.log.Infof("Creating document in collection '%s' with key %s...", colName, key)
 		resp, err := t.client.Post(url, q, nil, document, "", nil,
-			[]int{0, 1, 200, 201, 202, 409, 410, 503}, []int{400, 404, 307}, operationTimeout, 1)
+			[]int{0, 1, 200, 201, 202, 404, 409, 410, 503}, []int{400, 404, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
@@ -128,6 +128,15 @@ func (t *ComplextTest) insertDocument(colName string, document any) error {
 				// 0, 503 and 409 -> check if accidentally successful
 				checkRetry = true
 				mustNotExist = false
+			} else if resp[0].StatusCode == 404 {
+				// 404: If transaction was lost(error 1655) due to server restart, then we should just retry.
+				// In any other case(e.g. collection not found etc. - fail.)
+				if resp[0].Error_.ErrorNum != 1655 {
+					t.singleDocCreateCounter.failed++
+					t.reportFailure(
+						test.NewFailure("Failed to create a document in collection '%s'. Unexpected response: %v", colName, resp[0]))
+					return maskAny(fmt.Errorf("Failed to create a document in collection '%s'. Unexpected response: %v", colName, resp[0]))
+				}
 			} else if resp[0].StatusCode != 1 {
 				success = true
 				mustNotExist = false
@@ -477,8 +486,8 @@ func (t *ComplextTest) updateExistingDocument(colName string, oldDoc TestDocumen
 		t.log.Infof(
 			"Updating (%d) existing document '%s' (%s) in '%s' (update_counter -> '%d')...",
 			i, oldDoc.Key, ifMatchStatus, colName, new_counter_value)
-		update, err := t.client.Patch(url, q, hdr, delta, "", nil, []int{0, 1, 200, 201, 202, 409, 410, 412, 503},
-			[]int{400, 404, 307}, operationTimeout, 1)
+		update, err := t.client.Patch(url, q, hdr, delta, "", nil, []int{0, 1, 200, 201, 202, 404, 409, 410, 412, 503},
+			[]int{400, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			update[0].StatusCode, update[0].Error_.ErrorNum, update[0].CoordinatorURL)
 
@@ -532,6 +541,15 @@ func (t *ComplextTest) updateExistingDocument(colName string, oldDoc TestDocumen
 				updateMustNotYetBeWritten = false
 			} else if update[0].StatusCode == 410 {
 				checkRetry = true
+			} else if update[0].StatusCode == 404 {
+				// 404: If transaction was lost(error 1655) due to server restart, then we should just retry.
+				// In any other case(e.g. collection not found etc. - fail.)
+				if update[0].Error_.ErrorNum != 1655 {
+					t.updateExistingCounter.failed++
+					t.reportFailure(
+						test.NewFailure("Failed to update document in collection '%s'. Unexpected response: %v", colName, update[0]))
+					return nil, maskAny(fmt.Errorf("Failed to update document in collection '%s'. Unexpected response: %v", colName, update[0]))
+				}
 			} else if update[0].StatusCode != 1 {
 				oldDoc.Rev = update[0].Rev
 				success = true

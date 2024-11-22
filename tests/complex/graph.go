@@ -352,7 +352,7 @@ func (t *GraphTest) createEdge(to string, from string, edgeColName string, verte
 
 		t.log.Infof("Creating edge from '%s' to '%s' in collection '%s'.", from, to, edgeColName)
 		resp, err := t.client.Post(url, q, nil, document, "", nil,
-			[]int{0, 1, 200, 201, 202, 409, 410, 503}, []int{400, 404, 307}, operationTimeout, 1)
+			[]int{0, 1, 200, 201, 202, 404, 409, 410, 503}, []int{400, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
@@ -371,6 +371,15 @@ func (t *GraphTest) createEdge(to string, from string, edgeColName string, verte
 			} else if resp[0].StatusCode == 410 {
 				// retry. if 410 was returned on first attempt, document must not exist
 				checkRetry = true
+			} else if resp[0].StatusCode == 404 {
+				// 404: If transaction was lost(error 1655) due to server restart, then we should just retry.
+				// In any other case(e.g. collection not found etc. - fail.)
+				if resp[0].Error_.ErrorNum != 1655 {
+					t.edgeDocumentCreateCounter.failed++
+					t.reportFailure(
+						test.NewFailure("Failed to create edge in collection '%s': unexpected response %v", edgeColName, resp[0]))
+					return maskAny(fmt.Errorf("Failed to create edge in collection '%s': unexpected response %v", edgeColName, resp[0]))
+				}
 			} else if resp[0].StatusCode != 1 {
 				document.Rev = resp[0].Rev
 				success = true
