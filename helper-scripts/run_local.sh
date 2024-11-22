@@ -17,6 +17,10 @@ fi
 
 docker pull $ARANGODB_IMAGE
 
+if test -z "$DOCKER_HOST_ADDRESS"; then
+    DOCKER_HOST_ADDRESS=10.0.0.1
+fi
+
 docker run -it --rm -p 4200:4200 -p 4000:4000 \
        --name testagent \
        -v /var/run/docker.sock:/var/run/docker.sock \
@@ -29,7 +33,7 @@ docker run -it --rm -p 4200:4200 -p 4000:4000 \
        --log-level=info \
        --chaos-level=0 \
        --collect-metrics \
-       --docker-host-ip=10.0.0.1 \
+       --docker-host-ip=$DOCKER_HOST_ADDRESS \
        --arango-image="$ARANGODB_IMAGE" \
        --arangodb-image="arangodb/arangodb-starter:$STARTER_VERSION" \
        --complex-step-timeout 5s \
