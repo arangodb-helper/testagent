@@ -141,7 +141,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 			} else if resp[0].StatusCode == 404 && resp[0].Error_.ErrorNum != 1655 {
 				// 404: If transaction was lost(error 1655) due to server restart, then we should just retry.
 				// In any other case(e.g. collection not found etc. - fail.)
-				t.importCounter.failed++
+				t.createCounter.failed++
 				t.reportFailure(
 					test.NewFailure("Failed to create a document in collection '%s'. Unexpected response: %v", c.name, resp[0]))
 				return "", maskAny(fmt.Errorf("Failed to create a document in collection '%s'. Unexpected response: %v", c.name, resp[0]))
