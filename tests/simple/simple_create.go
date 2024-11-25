@@ -126,7 +126,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 
 		t.log.Infof("Creating (%d) document '%s' in '%s'...", i, key, c.name)
 		resp, err := t.client.Post(url, q, nil, document, "", nil,
-			[]int{0, 1, 200, 201, 202, 409, 410, 503}, []int{400, 404, 307}, operationTimeout, 1)
+			[]int{0, 1, 200, 201, 202, 404, 409, 410, 503}, []int{400, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d via %s",
 			resp[0].StatusCode, resp[0].Error_.ErrorNum, resp[0].CoordinatorURL)
 
@@ -138,6 +138,15 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 			} else if resp[0].StatusCode == 410 {
 				// 410 -> check that document was NOT created, then retry
 				checkRetry = true
+			} else if resp[0].StatusCode == 404 {
+				// 404: If transaction was lost(error 1655) due to server restart, then we should just retry.
+				// In any other case(e.g. collection not found etc. - fail.)
+				if resp[0].Error_.ErrorNum != 1655 {
+					t.createCounter.failed++
+					t.reportFailure(
+						test.NewFailure("Failed to create a document in collection '%s'. Unexpected response: %v", c.name, resp[0]))
+					return "", maskAny(fmt.Errorf("Failed to create a document in collection '%s'. Unexpected response: %v", c.name, resp[0]))
+				}
 			} else if resp[0].StatusCode != 1 {
 				document.Rev = resp[0].Rev
 				success = true

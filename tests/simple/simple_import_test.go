@@ -99,6 +99,72 @@ func TestImportDocumentsError(t *testing.T) {
 	mockClient.Shutdown()
 }
 
+func importDocumentsErrorTransactionLostBehaviour(
+	ctx context.Context, t *testing.T,
+	requests chan *util.MockRequest, responses chan *util.MockResponse) {
+
+	// Get a normal POST request:
+	req := next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	if req.UrlPath != "/_api/import" {
+		t.Errorf("Got wrong URL path %s instead of /_api/import", req.UrlPath)
+	}
+
+	// Answer with an error response:
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 404, Error_: util.ArangoError{Error_: true, ErrorMessage: "transaction not found", Code: 404, ErrorNum: 1655}},
+		Err:  nil,
+	}
+
+	// Get another POST request:
+	req = next(ctx, t, requests, true)
+	if req == nil {
+		return
+	}
+	if req.Method != "POST" {
+		t.Errorf("Got wrong method %s instead of POST.", req.Method)
+	}
+	if req.UrlPath != "/_api/import" {
+		t.Errorf("Got wrong URL path %s instead of /_api/import", req.UrlPath)
+	}
+
+	// Answer with a normal good response:
+	body := map[string]interface{}{
+		"created": float64(10000),
+		"details": []int{1, 2, 3},
+	}
+	*req.Result.(*interface{}) = body
+	responses <- &util.MockResponse{
+		Resp: util.ArangoResponse{StatusCode: 200},
+		Err:  nil,
+	}
+
+	// No more requests coming:
+	next(ctx, t, requests, false)
+}
+
+func TestImportDocumentsTransactionLostRetry(t *testing.T) {
+	test := simpleTest{
+		SimpleConfig: config,
+		reportDir:    ".",
+		log:          log,
+		collections:  make(map[string]*collection),
+	}
+	mockClient := util.NewMockClient(t, importDocumentsErrorTransactionLostBehaviour)
+	test.client = mockClient
+	test.listener = util.MockListener{}
+	err := test.importDocuments(coll)
+	if err != nil {
+		t.Errorf("Unexpected result from importDocuments, err: %v", err)
+	}
+	mockClient.Shutdown()
+}
+
 func importDocumentsIncompleteBehaviour(
 	ctx context.Context, t *testing.T,
 	requests chan *util.MockRequest, responses chan *util.MockResponse) {
