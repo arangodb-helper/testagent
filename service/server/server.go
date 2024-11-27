@@ -85,6 +85,7 @@ func StartHTTPServer(log *logging.Logger, port int, reportDir string, service Se
 	// API
 	m.Get("/api/failureCount", failureCount)
 	m.Post("/api/pauseAllTests", pauseAllTests)
+	m.Post("/api/resumeAllTests", resumeAllTests)
 
 	addr := fmt.Sprintf("0.0.0.0:%d", port)
 	log.Infof("HTTP server listening on %s", addr)
