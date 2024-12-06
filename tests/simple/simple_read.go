@@ -39,7 +39,7 @@ func (t *simpleTest) readExistingDocument(
 			// This is a failure
 			t.readExistingCounter.failed++
 			t.reportFailure(
-				test.NewFailure(
+				test.NewFailure(t.Name(),
 					"Failed to read existing document '%s' (%s) in collection '%s': %v", key, ifMatchStatus, c.name, err[0]))
 			return "", maskAny(err[0])
 		} else {
@@ -50,7 +50,7 @@ func (t *simpleTest) readExistingDocument(
 					if !result.Equals(expected) {
 						// This is a failure
 						t.readExistingCounter.failed++
-						t.reportFailure(test.NewFailure("Read existing document '%s' (%s) returned different values '%s': got %v expected %v", key, ifMatchStatus, c.name, result, expected))
+						t.reportFailure(test.NewFailure(t.Name(), "Read existing document '%s' (%s) returned different values '%s': got %v expected %v", key, ifMatchStatus, c.name, result, expected))
 						return "", maskAny(fmt.Errorf("Read returned invalid values"))
 					}
 				}
@@ -73,8 +73,8 @@ func (t *simpleTest) readExistingDocument(
 
 	t.readExistingCounter.failed++
 	t.reportFailure(
-		test.NewFailure(
-			"Timed out (%d) reading existing document '%s' from %s", i, key, c.name))
+		test.NewFailure(t.Name(),
+			t.Name(), "Timed out (%d) reading existing document '%s' from %s", i, key, c.name))
 	return "", maskAny(fmt.Errorf("Timed out (%d) reading existing document '%s' from %s", i, key, c.name))
 
 }
@@ -111,7 +111,7 @@ func (t *simpleTest) readExistingDocumentWrongRevision(
 			// This is a failure
 			t.readExistingWrongRevisionCounter.failed++
 			t.reportFailure(
-				test.NewFailure(
+				test.NewFailure(t.Name(),
 					"Failed to read existing document '%s' wrong revision in collection '%s': %v",
 					key, collectionName, err[0]))
 			return maskAny(err[0])
@@ -130,7 +130,7 @@ func (t *simpleTest) readExistingDocumentWrongRevision(
 	}
 
 	t.readExistingWrongRevisionCounter.failed++
-	t.reportFailure(test.NewFailure(
+	t.reportFailure(test.NewFailure(t.Name(),
 		"Timed out (%d) while reading existing document '%s' wrong revision in collection '%s'",
 		i, key, collectionName))
 	return maskAny(fmt.Errorf(
@@ -167,7 +167,7 @@ func (t *simpleTest) readNonExistingDocument(collectionName string, key string) 
 		if err[0] != nil {
 			// This is a failure
 			t.readNonExistingCounter.failed++
-			t.reportFailure(test.NewFailure(
+			t.reportFailure(test.NewFailure(t.Name(),
 				"Failed to read non-existing document '%s' in collection '%s': %v", key, collectionName, err[0]))
 			return maskAny(err[0])
 		} else if resp[0].StatusCode == 404 {
@@ -184,7 +184,7 @@ func (t *simpleTest) readNonExistingDocument(collectionName string, key string) 
 	}
 
 	t.readNonExistingCounter.failed++
-	t.reportFailure(test.NewFailure(
+	t.reportFailure(test.NewFailure(t.Name(),
 		"Timed out while reading non-existing document '%s' in collection '%s'", key, collectionName))
 	return maskAny(fmt.Errorf(
 		"Timed out while reading non-existing document '%s' in collection '%s'", key, collectionName))

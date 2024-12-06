@@ -114,6 +114,7 @@
     <thead>
     <tr>
         <th>Time</th>
+        <th>Test</th>
         <th>Message</th>
         <th>Report</th>
     </tr>
@@ -121,6 +122,7 @@
 {{ range $r := .Reports }}
     <tr>
         <td>{{$r.Time}}</td>
+        <td>{{$r.Test}}</td>
         <td>{{$r.Message}}</td>
         <td><a href="{{$r.HRef}}">{{$r.Path}}</a></td>
     </tr>

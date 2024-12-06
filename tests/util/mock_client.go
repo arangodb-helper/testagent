@@ -25,14 +25,17 @@ type MockResponse struct {
 	Err  error
 }
 
+type Behaviour = func(context.Context, *testing.T, chan *MockRequest, chan *MockResponse)
+
 type MockClient struct {
-	test      *testing.T
-	cancel    context.CancelFunc
-	ctx       context.Context
-	requests  chan *MockRequest
-	responses chan *MockResponse
-	behaviour func(context.Context, *testing.T, chan *MockRequest, chan *MockResponse)
-	Wg        sync.WaitGroup
+	test         *testing.T
+	cancel       context.CancelFunc
+	ctx          context.Context
+	requests     chan *MockRequest
+	responses    chan *MockResponse
+	behaviour    Behaviour
+	Wg           sync.WaitGroup
+	databaseName string
 }
 
 type MockListener struct {
@@ -42,13 +45,14 @@ type MockListener struct {
 func (ml MockListener) ReportFailure(f test.Failure) {
 }
 
-func NewMockClient(t *testing.T, behaviour func(context.Context, *testing.T, chan *MockRequest, chan *MockResponse)) *MockClient {
+func NewMockClient(t *testing.T, behaviour Behaviour) *MockClient {
 	mockClient := &MockClient{
-		test:      t,
-		requests:  make(chan *MockRequest),
-		responses: make(chan *MockResponse),
-		behaviour: behaviour,
-		Wg:        sync.WaitGroup{},
+		test:         t,
+		requests:     make(chan *MockRequest, 10),
+		responses:    make(chan *MockResponse, 10),
+		behaviour:    behaviour,
+		Wg:           sync.WaitGroup{},
+		databaseName: "_system",
 	}
 	mockClient.ctx, mockClient.cancel = context.WithCancel(context.Background())
 	mockClient.Wg.Add(1)
@@ -134,4 +138,8 @@ func (mc *MockClient) Put(urlPath string, query url.Values, header map[string]st
 func (mc *MockClient) Shutdown() {
 	mc.cancel()
 	mc.Wg.Wait()
+}
+
+func (c *MockClient) UseDatabase(databaseName string) {
+	c.databaseName = databaseName
 }

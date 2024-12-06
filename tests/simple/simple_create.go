@@ -155,7 +155,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 		} else { // failure
 			t.createCounter.failed++
 			t.reportFailure(
-				test.NewFailure("Failed to create document '%s' in collection '%s': %v", key, c.name, err[0]))
+				test.NewFailure(t.Name(), "Failed to create document '%s' in collection '%s': %v", key, c.name, err[0]))
 			return "", maskAny(err[0])
 		}
 
@@ -191,7 +191,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 	// Overall timeout :(
 	t.createCounter.failed++
 	t.reportFailure(
-		test.NewFailure("Timed out while trying to create(%d) document %s in %s.", i, key, c.name))
+		test.NewFailure(t.Name(), "Timed out while trying to create(%d) document %s in %s.", i, key, c.name))
 	t.planCollectionDrop(c.name)
 	return "", maskAny(fmt.Errorf("Timed out while trying to create(%d) document %s in %s.", i, key, c.name))
 

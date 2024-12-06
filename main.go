@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -12,6 +13,7 @@ import (
 	service "github.com/arangodb-helper/testagent/service"
 	arangodb "github.com/arangodb-helper/testagent/service/cluster/arangodb"
 	"github.com/arangodb-helper/testagent/service/test"
+	complex "github.com/arangodb-helper/testagent/tests/complex"
 	"github.com/arangodb-helper/testagent/tests/simple"
 	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
@@ -22,8 +24,9 @@ import (
 
 const (
 	projectName             = "testAgent"
-	defaultOperationTimeout = time.Second * 90 // Should be 15s
-	defaultRetryTimeout     = time.Minute * 4  // Should be 1m
+	defaultOperationTimeout = time.Minute * 6
+	defaultRetryTimeout     = time.Minute * 8
+	defaultStepTimeout      = time.Second * 15
 )
 
 var (
@@ -40,6 +43,9 @@ var (
 		service.ServiceConfig
 		arangodb.ArangodbConfig
 		simple.SimpleConfig
+		complex.ComplextTestConfig
+		complex.DocColConfig
+		complex.GraphTestConf
 		logLevel string
 	}
 	maskAny = errors.WithStack
@@ -48,6 +54,10 @@ var (
 func init() {
 	f := cmdMain.Flags()
 	defaultDockerEndpoints := []string{"unix:///var/run/docker.sock"}
+	// Full test list:
+	// defaultTestList := []string{"simple", "DocColTest", "OneShardTest", "CommunityGraphTest", "SmartGraphTest", "EnterpriseGraphTest"}
+	// Use only "simple" test by default for backwards compatibility
+	defaultTestList := []string{"simple"}
 	f.IntVar(&appFlags.AgencySize, "agency-size", 3, "Number of agents in the cluster")
 	f.IntVar(&appFlags.port, "port", 4200, "First port of range of ports used by the testAgent")
 	f.StringVar(&appFlags.logLevel, "log-level", "debug", "Minimum log level (debug|info|warning|error)")
@@ -60,14 +70,32 @@ func init() {
 	f.BoolVar(&appFlags.DockerNetHost, "docker-net-host", false, "If set, run all containers with `--net=host`")
 	f.BoolVar(&appFlags.ForceOneShard, "force-one-shard", false, "If set, force one shard arangodb cluster")
 	f.BoolVar(&appFlags.ReplicationVersion2, "replication-version-2", false, "If set, use replication version 2")
+	f.BoolVar(&appFlags.FailedWriteConcern403, "return-403-on-failed-write-concern", false, "If set, option `--cluster.failed-write-concern-status-code` will not be set for DB servers, bringing it to the default value of 403. Otherwise this parameter will be set to 503.")
 	f.StringVar(&appFlags.DockerInterface, "docker-interface", "docker0", "Network interface used to connect docker containers to")
 	f.StringVar(&appFlags.ReportDir, "report-dir", getEnvVar("REPORT_DIR", "."), "Directory in which failure reports will be created")
+	f.BoolVar(&appFlags.CollectMetrics, "collect-metrics", false, "If set, metrics will be collected and saved into files.")
+	f.StringVar(&appFlags.MetricsDir, "metrics-dir", getEnvVar("METRICS_DIR", "."), "Directory in which metrics will be stored")
 	f.BoolVar(&appFlags.Privileged, "privileged", false, "If set, run all containers with `--privileged`")
 	f.IntVar(&appFlags.ChaosConfig.MaxMachines, "max-machines", 10, "Upper limit to the number of machines in a cluster")
+	f.StringSliceVar(&appFlags.EnableTests, "enable-test", defaultTestList, "Enable particular test. Default: run all tests. Available tests: simple, DocColTest, OneShardTest, CommunityGraphTest, SmartGraphTest, EnterpriseGraphTest")
 	f.IntVar(&appFlags.SimpleConfig.MaxDocuments, "simple-max-documents", 20000, "Upper limit to the number of documents created in simple test")
 	f.IntVar(&appFlags.SimpleConfig.MaxCollections, "simple-max-collections", 10, "Upper limit to the number of collections created in simple test")
 	f.DurationVar(&appFlags.SimpleConfig.OperationTimeout, "simple-operation-timeout", defaultOperationTimeout, "Timeout per database operation")
 	f.DurationVar(&appFlags.SimpleConfig.RetryTimeout, "simple-retry-timeout", defaultRetryTimeout, "How long are tests retried before giving up")
+	f.Int64Var(&appFlags.GraphTestConf.MaxVertices, "graph-max-vertices", 150000, "Upper limit to the number of vertices (graph tests)")
+	f.IntVar(&appFlags.GraphTestConf.VertexSize, "graph-vertex-size", 4096, "The size of the payload field in bytes in all vertices (graph tests)")
+	f.IntVar(&appFlags.GraphTestConf.EdgeSize, "graph-edge-size", 8192, "The size of the payload field in bytes in all edges (graph tests)")
+	f.IntVar(&appFlags.GraphTestConf.TraversalOperationsPerCycle, "graph-traversal-ops", 50, "How many traversal operations to perform in one test cycle (graph tests)")
+	f.IntVar(&appFlags.GraphTestConf.BatchSize, "graph-batch-size", 250, "Batch size for creating vertices/edges (graph tests)")
+	f.IntVar(&appFlags.DocColConfig.MaxDocuments, "doc-max-documents", 50000, "Upper limit to the number of documents created in document collection tests")
+	f.IntVar(&appFlags.DocColConfig.BatchSize, "doc-batch-size", 250, "Batch size for creating documents in document tests")
+	f.IntVar(&appFlags.DocColConfig.DocumentSize, "doc-document-size", 20480, "The size of payload field in bytes in regular documents in document collection tests")
+	f.IntVar(&appFlags.DocColConfig.MaxUpdates, "doc-max-updates", 3, "Number of update operations to be performed on each document")
+	f.IntVar(&appFlags.ComplextTestConfig.NumberOfShards, "complex-shards", 10, "Number of shards (\"complex\" test suite)")
+	f.IntVar(&appFlags.ComplextTestConfig.ReplicationFactor, "complex-replicationFactor", 2, "Replication factor (\"complex\" test suite)")
+	f.DurationVar(&appFlags.ComplextTestConfig.OperationTimeout, "complex-operation-timeout", defaultOperationTimeout, "Timeout per database operation (\"complex\" test suite)")
+	f.DurationVar(&appFlags.ComplextTestConfig.RetryTimeout, "complex-retry-timeout", defaultRetryTimeout, "How long are tests retried before giving up (\"complex\" test suite)")
+	f.DurationVar(&appFlags.ComplextTestConfig.StepTimeout, "complex-step-timeout", defaultStepTimeout, "Pause between test actions (\"complex\" test suite)")
 }
 
 // handleSignal listens for termination signals and stops this process onup termination.
@@ -129,14 +157,40 @@ func cmdMainRun(cmd *cobra.Command, args []string) {
 
 	// Create cluster builder
 	log.Debug("creating arangodb cluster builder")
-	cb, err := arangodb.NewArangodbClusterBuilder(log, appFlags.ArangodbConfig)
+
+	if appFlags.CollectMetrics {
+		if _, err := os.Stat(appFlags.MetricsDir); os.IsNotExist(err) {
+			log.Info("Metrics directory does not exist. Creating: %s", appFlags.MetricsDir)
+			if err := os.Mkdir(appFlags.MetricsDir, 0755); err != nil {
+				Exitf("Can't create metrics directory: %#v", err)
+			}
+		}
+	}
+
+	cb, err := arangodb.NewArangodbClusterBuilder(log, appFlags.MetricsDir, appFlags.CollectMetrics, appFlags.ArangodbConfig)
 	if err != nil {
 		log.Fatalf("Failed to create cluster builder: %#v", err)
 	}
 
 	// Create tests
-	tests := []test.TestScript{
-		simple.NewSimpleTest(log, appFlags.ReportDir, appFlags.SimpleConfig),
+	tests := []test.TestScript{}
+	if slices.Contains(appFlags.EnableTests, "simple") {
+		tests = append(tests, simple.NewSimpleTest(log, appFlags.ReportDir, appFlags.SimpleConfig))
+	}
+	if slices.Contains(appFlags.EnableTests, "DocColTest") {
+		tests = append(tests, complex.NewRegularDocColTest(log, appFlags.ReportDir, appFlags.ComplextTestConfig, appFlags.DocColConfig))
+	}
+	if slices.Contains(appFlags.EnableTests, "OneShardTest") {
+		tests = append(tests, complex.NewOneShardTest(log, appFlags.ReportDir, appFlags.ComplextTestConfig, appFlags.DocColConfig))
+	}
+	if slices.Contains(appFlags.EnableTests, "CommunityGraphTest") {
+		tests = append(tests, complex.NewComGraphTest(log, appFlags.ReportDir, appFlags.ComplextTestConfig, appFlags.GraphTestConf))
+	}
+	if slices.Contains(appFlags.EnableTests, "SmartGraphTest") {
+		tests = append(tests, complex.NewSmartGraphTest(log, appFlags.ReportDir, appFlags.ComplextTestConfig, appFlags.GraphTestConf))
+	}
+	if slices.Contains(appFlags.EnableTests, "EnterpriseGraphTest") {
+		tests = append(tests, complex.NewEnterpriseGraphTest(log, appFlags.ReportDir, appFlags.ComplextTestConfig, appFlags.GraphTestConf))
 	}
 
 	// Create service

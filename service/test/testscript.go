@@ -21,7 +21,7 @@ type TestScript interface {
 	Status() TestStatus
 
 	// Start triggers the test script to start.
-	// It should spwan actions in a go routine.
+	// It should spawn actions in a go routine.
 	Start(cluster cluster.Cluster, listener TestListener) error
 
 	// Stop any running test. This should not return until tests are actually stopped.
@@ -40,6 +40,7 @@ type TestScript interface {
 type Failure struct {
 	Timestamp time.Time
 	Message   string
+	Test      string
 	Errors    []error
 }
 
@@ -47,7 +48,7 @@ type AggregateError interface {
 	Errors() []error
 }
 
-func NewFailure(message string, args ...interface{}) Failure {
+func NewFailure(testName string, message string, args ...interface{}) Failure {
 	var errorList []error
 	for _, x := range args {
 		if err, ok := x.(error); ok {
@@ -59,6 +60,7 @@ func NewFailure(message string, args ...interface{}) Failure {
 	}
 	return Failure{
 		Timestamp: time.Now(),
+		Test:      testName,
 		Message:   fmt.Sprintf(message, args...),
 		Errors:    errorList,
 	}

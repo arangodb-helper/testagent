@@ -72,7 +72,7 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 		} else {
 			t.deleteExistingCounter.failed++
 			t.reportFailure(
-				test.NewFailure(
+				test.NewFailure(t.Name(),
 					"Failed to delete existing document '%s' (%s) in collection '%s': %v",
 					key, ifMatchStatus, collectionName, err[0]))
 			return maskAny(err[0])
@@ -105,7 +105,7 @@ func (t *simpleTest) removeExistingDocument(collectionName string, key, rev stri
 	t.deleteExistingCounter.failed++
 	t.planCollectionDrop(collectionName)
 	t.reportFailure(
-		test.NewFailure("Timed out while trying to remove(%d) document %s in %s.", i, key, collectionName))
+		test.NewFailure(t.Name(), "Timed out while trying to remove(%d) document %s in %s.", i, key, collectionName))
 	return maskAny(fmt.Errorf("Timed out while trying to remove(%d) document %s in %s.", i, key, collectionName))
 
 }
@@ -146,7 +146,7 @@ func (t *simpleTest) removeExistingDocumentWrongRevision(collectionName string, 
 		} else {
 			t.deleteExistingWrongRevisionCounter.failed++
 			t.reportFailure(
-				test.NewFailure(
+				test.NewFailure(t.Name(),
 					"Failed to delete existing document '%s' wrong revision in collection '%s': %v",
 					key, collectionName, err[0]))
 			return maskAny(err[0])
@@ -204,7 +204,7 @@ func (t *simpleTest) removeNonExistingDocument(collectionName string, key string
 			// This is a failure
 			t.deleteNonExistingCounter.failed++
 			t.reportFailure(
-				test.NewFailure(
+				test.NewFailure(t.Name(),
 					"Failed to delete non-existing document '%s' in collection '%s': %v", key, collectionName, err[0]))
 			return maskAny(err[0])
 		}

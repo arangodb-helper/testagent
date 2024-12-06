@@ -32,13 +32,17 @@ ENV CGO_ENABLED=0
 ENV GOARCH=${GOARCH}
 ENV GOOS=${GOOS}
 
-RUN go build -installsuffix netgo -tags "${GOTAGS}" \
+RUN CGO_ENABLED=0 go install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@latest
+
+RUN CGO_ENABLED=0 go build -installsuffix netgo -tags "${GOTAGS}" \
+    -gcflags "all=-N -l" \
     -ldflags "-extldflags '-static' -X main.projectVersion=${VERSION} -X main.projectBuild=${COMMIT}" -o /${BINNAME}
 
 FROM alpine:3.18.9
 ARG BINNAME
 COPY --from=builder /${BINNAME} /app/testAgent
-EXPOSE 4200
+COPY --from=builder /go/bin/dlv /bin/dlv
+EXPOSE 4000 4200
 
 # Signal running in docker 
 ENV RUNNING_IN_DOCKER=true
@@ -63,4 +67,4 @@ VOLUME /reports
 ENV METRICS_DIR=/metrics
 VOLUME /metrics
 
-ENTRYPOINT ["/app/testAgent"]
+ENTRYPOINT [ "/bin/dlv", "--listen=:4000", "--headless=true", "--log=true", "--accept-multiclient", "--api-version=2", "exec", "/app/testAgent", "--" ]

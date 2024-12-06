@@ -68,6 +68,7 @@ func StartHTTPServer(log *logging.Logger, port int, reportDir string, service Se
 	m.Map(log)
 	m.Map(service)
 
+	// UI
 	m.Get("/", indexPage)
 	m.Get("/test/:name", testPage)
 	m.Get("/test/:name/pause", testPausePage)
@@ -81,7 +82,10 @@ func StartHTTPServer(log *logging.Logger, port int, reportDir string, service Se
 	m.Get("/chaos/:id/disable", chaosActionDisablePage)
 	m.Get("/chaos/level/:level", chaosSetLevel)
 
+	// API
 	m.Get("/api/failureCount", failureCount)
+	m.Post("/api/pauseAllTests", pauseAllTests)
+	m.Post("/api/resumeAllTests", resumeAllTests)
 
 	addr := fmt.Sprintf("0.0.0.0:%d", port)
 	log.Infof("HTTP server listening on %s", addr)

@@ -13,3 +13,35 @@ func failureCount(ctx *macaron.Context, log *logging.Logger, service Service) {
 	failureReportsNumber := len(failureReports)
 	ctx.PlainText(http.StatusOK, []byte(strconv.Itoa(failureReportsNumber)))
 }
+
+func pauseAllTests(ctx *macaron.Context, log *logging.Logger, service Service) {
+	tests := service.Tests()
+	failed := false
+	for _, test := range tests {
+		err := test.Pause()
+		if err != nil {
+			failed = true
+		}
+	}
+	if failed {
+		ctx.PlainText(http.StatusInternalServerError, []byte("error while pausing tests! see server log for details."))
+	} else {
+		ctx.PlainText(http.StatusOK, []byte("OK"))
+	}
+}
+
+func resumeAllTests(ctx *macaron.Context, log *logging.Logger, service Service) {
+	tests := service.Tests()
+	failed := false
+	for _, test := range tests {
+		err := test.Resume()
+		if err != nil {
+			failed = true
+		}
+	}
+	if failed {
+		ctx.PlainText(http.StatusInternalServerError, []byte("error while resuming tests! see server log for details."))
+	} else {
+		ctx.PlainText(http.StatusOK, []byte("OK"))
+	}
+}
