@@ -11,7 +11,7 @@ ORGPATH := github.com/arangodb-helper
 REPONAME := $(PROJECT)
 REPOPATH := $(ORGPATH)/$(REPONAME)
 
-GOVERSION := 1.15-alpine
+GOVERSION := 1.22.9-alpine
 
 ifndef GOOS
 	GOOS := linux
@@ -52,6 +52,17 @@ docker: $(SOURCES) templates/templates.go
 		--build-arg COMMIT="$(COMMIT)" \
 		-f Dockerfile -t arangodb/testagent .
 
+docker-dbg: $(SOURCES) templates/templates.go
+	docker build \
+		--build-arg GOVERSION=$(GOVERSION) \
+		--build-arg GOOS="$(GOOS)" \
+		--build-arg GOARCH="$(GOARCH)" \
+		--build-arg BINNAME="$(BINNAME)" \
+		--build-arg GOTAGS="$(GOTAGS)" \
+		--build-arg VERSION="$(VERSION)" \
+		--build-arg COMMIT="$(COMMIT)" \
+		-f Dockerfile.debug -t arangodb/testagent:dbg .
+
 docker-push: docker
 ifneq ($(DOCKERNAMESPACE), arangodb)
 	docker tag arangodb/testagent $(DOCKERNAMESPACE)/testagent
@@ -62,7 +73,7 @@ localtest:
 	docker run -it --rm --net=host -v $(HOME)/tmp:/reports -v /var/run/docker.sock:/var/run/docker.sock arangodb/testagent --docker-net-host
 
 tests:
-	go test -coverprofile cover.out github.com/arangodb-helper/testagent/tests/simple -v
+	go test -coverprofile cover.out github.com/arangodb-helper/testagent/tests/simple github.com/arangodb-helper/testagent/tests/complex -v
 	go tool cover -html=cover.out
 
 docker-push-version: docker

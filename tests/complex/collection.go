@@ -1,4 +1,4 @@
-package simple
+package complex
 
 import (
 	"fmt"
@@ -9,15 +9,26 @@ import (
 
 // createCollection creates a new collection.
 // The operation is expected to succeed.
-func (t *simpleTest) createCollection(c *collection, numberOfShards, replicationFactor int) error {
+func (t *ComplextTest) createCollection(collectionName string, edge bool) error {
+	var colType int
+	var colTypeName string
+	if edge {
+		colType = 3
+		colTypeName = "edge"
+	} else {
+		colType = 2
+		colTypeName = "document"
+	}
 	opts := struct {
 		Name              string `json:"name"`
 		NumberOfShards    int    `json:"numberOfShards"`
 		ReplicationFactor int    `json:"replicationFactor"`
+		Type              int    `json:"type"`
 	}{
-		Name:              c.name,
-		NumberOfShards:    numberOfShards,
-		ReplicationFactor: replicationFactor,
+		Name:              collectionName,
+		NumberOfShards:    t.NumberOfShards,
+		ReplicationFactor: t.ReplicationFactor,
+		Type:              colType,
 	}
 	//operationTimeout, retryTimeout := t.OperationTimeout, t.RetryTimeout
 	// For now, we increase the timeout to 5 minutes, since the cluster-internal
@@ -40,8 +51,8 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 		shouldNotExist := false
 		shouldExist := false
 
-		t.log.Infof("Creating (%d) collection '%s' with numberOfShards=%d, replicationFactor=%d...",
-			i, c.name, numberOfShards, replicationFactor)
+		t.log.Infof("Creating (%d) collection '%s' of type '%s' with numberOfShards=%d, replicationFactor=%d...",
+			i, collectionName, colTypeName, t.NumberOfShards, t.ReplicationFactor)
 		resp, err := t.client.Post(
 			"/_api/collection", nil, nil, opts, "", nil, []int{0, 1, 200, 409, 500, 503, 410},
 			[]int{400, 404, 307}, operationTimeout, 1)
@@ -66,32 +77,32 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 			if resp[0].StatusCode == 200 {
 				success = true
 			} else {
+				checkRetry = true
 				if resp[0].StatusCode == 1 || resp[0].StatusCode == 500 || resp[0].StatusCode == 410 { // connection refused or not created
-					checkRetry = true
 					shouldNotExist = true
+					t.log.Debugf("Error code: %d\nError num: %d\nError message: %s", resp[0].Error_.Code, resp[0].Error_.ErrorNum, resp[0].Error_.ErrorMessage)
 				} else if resp[0].StatusCode == 409 {
 					if i == 1 {
 						// This is a failure
 						t.createCollectionCounter.failed++
-						t.reportFailure(test.NewFailure(t.Name(), "Failed to create collection '%s': got 409 on first attempt", c.name))
-						return maskAny(fmt.Errorf("Failed to create collection '%s': got 409 on first attempt", c.name))
+						t.reportFailure(test.NewFailure(t.Name(), "Failed to create collection '%s': got 409 on first attempt", collectionName))
+						return maskAny(fmt.Errorf("Failed to create collection '%s': got 409 on first attempt", collectionName))
 					} else {
 						shouldExist = true
 					}
 				}
-				checkRetry = true
 			}
 		} else {
 			// This is a failure
 			t.createCollectionCounter.failed++
-			t.reportFailure(test.NewFailure(t.Name(), "Failed to create collection '%s': %v", c.name, err[0]))
+			t.reportFailure(test.NewFailure(t.Name(), "Failed to create collection '%s': %v", collectionName, err[0]))
 			return maskAny(err[0])
 		}
 
 		if checkRetry {
 
-			t.log.Infof("Checking existence of collection '%s' ...", c.name)
-			exists, checkErr := t.collectionExists(c)
+			t.log.Infof("Checking existence of collection '%s' ...", collectionName)
+			exists, checkErr := t.collectionExists(collectionName)
 			t.log.Infof("... got result %v and error %v", exists, checkErr)
 
 			if checkErr == nil {
@@ -100,8 +111,8 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 						// This is a failure
 						t.createCollectionCounter.failed++
 						t.reportFailure(test.NewFailure(t.Name(),
-							"Failed to create collection '%s' rechecked and failed existence", c.name))
-						return maskAny(fmt.Errorf("Failed to create collection '%s' rechecked and failed existence", c.name))
+							"Failed to create collection '%s' rechecked and failed existence", collectionName))
+						return maskAny(fmt.Errorf("Failed to create collection '%s' rechecked and failed existence", collectionName))
 					}
 					success = true
 				} else {
@@ -109,8 +120,8 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 						// This is a failure
 						t.createCollectionCounter.failed++
 						t.reportFailure(test.NewFailure(t.Name(),
-							"Failed to create collection '%s' rechecked and failed existence", c.name))
-						return maskAny(fmt.Errorf("Failed to create collection '%s' rechecked and failed existence", c.name))
+							"Failed to create collection '%s' rechecked and failed existence", collectionName))
+						return maskAny(fmt.Errorf("Failed to create collection '%s' rechecked and failed existence", collectionName))
 					}
 				}
 			} else {
@@ -121,8 +132,8 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 		if success {
 			t.createCollectionCounter.succeeded++
 			t.log.Infof(
-				"Creating collection '%s' with numberOfShards=%d, replicationFactor=%d succeeded",
-				c.name, numberOfShards, replicationFactor)
+				"Creating collection '%s' of type '%s' with numberOfShards=%d, replicationFactor=%d succeeded",
+				collectionName, colTypeName, t.NumberOfShards, t.ReplicationFactor)
 			return nil
 		}
 
@@ -135,19 +146,19 @@ func (t *simpleTest) createCollection(c *collection, numberOfShards, replication
 
 	// Overall timeout :(
 	t.reportFailure(
-		test.NewFailure(t.Name(), "Timed out while trying to create (%d) collection %s.", i, c.name))
-	return maskAny(fmt.Errorf("Timed out while trying to create (%d) collection %s.", i, c.name))
+		test.NewFailure(t.Name(), "Timed out while trying to create (%d) collection %s.", i, collectionName))
+	return maskAny(fmt.Errorf("Timed out while trying to create (%d) collection %s.", i, collectionName))
 
 }
 
-// removeCollection remove an existing collection.
+// dropCollection remove an existing collection.
 // The operation is expected to succeed.
-func (t *simpleTest) removeExistingCollection(c *collection) error {
+func (t *ComplextTest) dropCollection(collectionName string) error {
 
 	operationTimeout := t.OperationTimeout
 	testTimeout := time.Now().Add(t.OperationTimeout * 5)
 
-	url := fmt.Sprintf("/_api/collection/%s", c.name)
+	url := fmt.Sprintf("/_api/collection/%s", collectionName)
 	backoff := time.Millisecond * 250
 	i := 0
 
@@ -159,15 +170,15 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 			break
 		}
 
-		t.log.Infof("Removing (%d) collection '%s'...", i, c.name)
+		t.log.Infof("Removing (%d) collection '%s'...", i, collectionName)
 		resp, err := t.client.Delete(
-			url, nil, nil, []int{0, 1, 200, 404, 410, 500, 503}, []int{400, 409, 307}, operationTimeout, 1)
+			url, nil, nil, []int{0, 1, 200, 404, 500, 503, 410}, []int{400, 409, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
 
 		if err[0] != nil {
 			// This is a failure
-			t.removeExistingCollectionCounter.failed++
-			t.reportFailure(test.NewFailure(t.Name(), "Failed to remove collection '%s': %v", c.name, err[0]))
+			t.dropCollectionCounter.failed++
+			t.reportFailure(test.NewFailure(t.Name(), "Failed to drop collection '%s': %v", collectionName, err[0]))
 			return maskAny(err[0])
 		} else if resp[0].StatusCode == 404 {
 			// Collection not found.
@@ -175,10 +186,10 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 			// So we accept this if there are multiple attempts.
 			if i == 1 { // this is a failure in first run
 				// Not enough attempts, this is a failure
-				t.removeExistingCollectionCounter.failed++
+				t.dropCollectionCounter.failed++
 				t.reportFailure(
-					test.NewFailure(t.Name(), "Failed to remove collection '%s': got 404 after only 1 attempt", c.name))
-				return maskAny(fmt.Errorf("Failed to remove collection '%s': got 404 after only 1 attempt", c.name))
+					test.NewFailure(t.Name(), "Failed to drop collection '%s': got 404 after only 1 attempt", collectionName))
+				return maskAny(fmt.Errorf("Failed to drop collection '%s': got 404 after only 1 attempt", collectionName))
 			} else {
 				success = true
 			}
@@ -187,9 +198,8 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 		}
 
 		if success {
-			t.removeExistingCollectionCounter.succeeded++
-			t.log.Infof("Removing collection '%s' succeeded", c.name)
-			t.unregisterCollection(c)
+			t.dropCollectionCounter.succeeded++
+			t.log.Infof("Droping collection '%s' succeeded", collectionName)
 			return nil
 		}
 
@@ -200,21 +210,20 @@ func (t *simpleTest) removeExistingCollection(c *collection) error {
 
 	}
 
-	t.removeExistingCollectionCounter.failed++
-	t.reportFailure(test.NewFailure(t.Name(), "Timed out (%d) while removing collection '%s'", i, c.name))
-	return maskAny(fmt.Errorf("Timed out (%d) while removing collection '%s'", i, c.name))
+	t.dropCollectionCounter.failed++
+	t.reportFailure(test.NewFailure(t.Name(), "Timed out (%d) while droping collection '%s'", i, collectionName))
+	return maskAny(fmt.Errorf("Timed out (%d) while droping collection '%s'", i, collectionName))
 
 }
 
-// collectionExists tries to fetch information about the collection to see if it exists.
-func (t *simpleTest) collectionExists(c *collection) (bool, error) {
+func (t *ComplextTest) collectionExists(collectionName string) (bool, error) {
 
 	operationTimeout := time.Duration(ReadTimeout) * time.Second
 	timeout := time.Now().Add(operationTimeout)
 
 	i := 0
 	backoff := time.Millisecond * 250
-	url := fmt.Sprintf("/_api/collection/%s", c.name)
+	url := fmt.Sprintf("/_api/collection/%s", collectionName)
 
 	for {
 
@@ -223,14 +232,14 @@ func (t *simpleTest) collectionExists(c *collection) (bool, error) {
 			break
 		}
 
-		t.log.Infof("Checking (%d) collection '%s'...", i, c.name)
+		t.log.Infof("Checking (%d) collection '%s'...", i, collectionName)
 		resp, err := t.client.Get(
-			url, nil, nil, nil, []int{0, 1, 200, 404, 410, 503}, []int{400, 409, 307}, operationTimeout, 1)
+			url, nil, nil, nil, []int{0, 1, 200, 404, 503, 410}, []int{400, 409, 307}, operationTimeout, 1)
 		t.log.Infof("... got http %d - arangodb %d", resp[0].StatusCode, resp[0].Error_.ErrorNum)
 
 		if err[0] != nil {
 			// This is a failure
-			t.log.Infof("Failed checking for collection '%s': %v", c.name, err[0])
+			t.log.Infof("Failed checking for collection '%s': %v", collectionName, err[0])
 			return false, maskAny(err[0])
 		} else if resp[0].StatusCode == 404 {
 			return false, nil
@@ -247,7 +256,7 @@ func (t *simpleTest) collectionExists(c *collection) (bool, error) {
 	}
 
 	// This is a failure
-	out := fmt.Errorf("Timed out checking for collection '%s'", c.name)
+	out := fmt.Errorf("Timed out checking for collection '%s'", collectionName)
 	t.log.Error(out)
 	return false, maskAny(out)
 

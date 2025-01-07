@@ -1,12 +1,10 @@
 package server
 
 import (
-	"bytes"
 	"fmt"
+	"github.com/op/go-logging"
+	"gopkg.in/macaron.v1"
 	"net/http"
-
-	logging "github.com/op/go-logging"
-	macaron "gopkg.in/macaron.v1"
 )
 
 func logsPage(ctx *macaron.Context, log *logging.Logger, service Service) {
@@ -20,24 +18,27 @@ func logsPage(ctx *macaron.Context, log *logging.Logger, service Service) {
 			return
 		}
 		for _, m := range machines {
-			var buf bytes.Buffer
 			if m.ID() == machineID {
+				var err error
+				ctx.Status(http.StatusOK)
 				switch mode {
 				case "agent":
-					m.CollectAgentLogs(&buf)
+					err = m.CollectAgentLogs(ctx.Resp)
 				case "dbserver":
-					m.CollectDBServerLogs(&buf)
+					err = m.CollectDBServerLogs(ctx.Resp)
 				case "coordinator":
-					m.CollectCoordinatorLogs(&buf)
+					err = m.CollectCoordinatorLogs(ctx.Resp)
 				case "machine":
-					m.CollectMachineLogs(&buf)
+					err = m.CollectMachineLogs(ctx.Resp)
 				case "network":
-					m.CollectNetworkLogs(&buf)
+					err = m.CollectNetworkLogs(ctx.Resp)
 				default:
 					showError(ctx, fmt.Errorf("Unknown mode '%s'", mode))
 					return
 				}
-				ctx.PlainText(http.StatusOK, buf.Bytes())
+				if err != nil {
+					showError(ctx, fmt.Errorf("Can't collect logs from machine %s", machineID))
+				}
 				return
 			}
 		}

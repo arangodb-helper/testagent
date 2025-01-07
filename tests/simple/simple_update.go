@@ -77,7 +77,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 					// We got a 412 without asking for an explicit revision on first attempt
 					t.updateExistingCounter.failed++
 					t.reportFailure(
-						test.NewFailure(
+						test.NewFailure(t.Name(),
 							"Failed to update existing document '%s' (%s) in collection '%s': got 412 but did not set If-Match",
 							key, ifMatchStatus, c.name))
 					return "", maskAny(
@@ -103,7 +103,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 		} else { // failure
 			t.updateExistingCounter.failed++
 			t.reportFailure(
-				test.NewFailure("Failed to update existing document '%s' (%s) in collection '%s': %v",
+				test.NewFailure(t.Name(), "Failed to update existing document '%s' (%s) in collection '%s': %v",
 					key, ifMatchStatus, c.name, err[0]))
 			return "", maskAny(
 				fmt.Errorf(
@@ -137,7 +137,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 					// version.
 					t.updateExistingCounter.failed++
 					t.reportFailure(
-						test.NewFailure(
+						test.NewFailure(t.Name(),
 							"Failed to update existing document '%s' (%s) in collection '%s': found unexpected document: %v",
 							key, ifMatchStatus, c.name, d))
 					return "", maskAny(fmt.Errorf(
@@ -145,7 +145,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 						key, ifMatchStatus, c.name, d))
 				} else if update[0].StatusCode == 412 {
 					t.replaceExistingCounter.failed++
-					t.reportFailure(test.NewFailure(
+					t.reportFailure(test.NewFailure(t.Name(),
 						"Failed to update existing document '%s' (%s) in collection '%s': found old document, and still got 412: %v",
 						key, ifMatchStatus, c.name, d))
 					return "", maskAny(fmt.Errorf(
@@ -156,7 +156,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 			} else { // should never get here
 				t.updateExistingCounter.failed++
 				t.reportFailure(
-					test.NewFailure(
+					test.NewFailure(t.Name(),
 						"Failed to read existing document '%s' (%s) in collection '%s' that should have been updated: %v",
 						key, ifMatchStatus, c.name, e))
 				return "", maskAny(e)
@@ -185,7 +185,7 @@ func (t *simpleTest) updateExistingDocument(c *collection, key, rev string) (str
 	t.updateExistingCounter.failed++
 	t.planCollectionDrop(c.name)
 	t.reportFailure(
-		test.NewFailure("Timed out while trying to update(%d) document %s in %s.", i, key, c.name))
+		test.NewFailure(t.Name(), "Timed out while trying to update(%d) document %s in %s.", i, key, c.name))
 	return "", maskAny(fmt.Errorf("Timed out while trying to update(%d) document %s in %s.", i, key, c.name))
 
 }
@@ -235,7 +235,7 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 			// This is a failure
 			t.updateExistingWrongRevisionCounter.failed++
 			t.reportFailure(
-				test.NewFailure(
+				test.NewFailure(t.Name(),
 					"Failed to update existing document '%s' wrong revision in collection '%s': %v",
 					key, collectionName, err[0]))
 			return maskAny(err[0])
@@ -249,8 +249,8 @@ func (t *simpleTest) updateExistingDocumentWrongRevision(collectionName string, 
 
 	t.updateExistingWrongRevisionCounter.failed++
 	t.reportFailure(
-		test.NewFailure(
-			"Timed out while updating (%d) existing document '%s' wrong revision in collection '%s'",
+		test.NewFailure(t.Name(),
+			t.Name(), "Timed out while updating (%d) existing document '%s' wrong revision in collection '%s'",
 			i, key, collectionName))
 	return maskAny(
 		fmt.Errorf("Timed out while updating (%d) existing document '%s' wrong revision in collection '%s'",
@@ -301,7 +301,7 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 			// This is a failure
 			t.updateNonExistingCounter.failed++
 			t.reportFailure(
-				test.NewFailure(
+				test.NewFailure(t.Name(),
 					"Failed to update non-existing document '%s' in collection '%s': %v", key, collectionName, err[0]))
 			return maskAny(err[0])
 		}
@@ -314,8 +314,8 @@ func (t *simpleTest) updateNonExistingDocument(collectionName string, key string
 
 	t.updateNonExistingCounter.failed++
 	t.reportFailure(
-		test.NewFailure(
-			"Timeout while updating (%d) non-existing document '%s' in collection '%s'", i, key, collectionName))
+		test.NewFailure(t.Name(),
+			t.Name(), "Timeout while updating (%d) non-existing document '%s' in collection '%s'", i, key, collectionName))
 	return maskAny(
 		fmt.Errorf(
 			"Timeout while updating (%d) non-existing document '%s' in collection '%s'", i, key, collectionName))
