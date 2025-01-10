@@ -1,5 +1,5 @@
 ARG BINNAME
-ARG GOVERSION=1.22.9-alpine
+ARG GOVERSION=1.22.10-alpine
 FROM golang:${GOVERSION} AS downloader
 
 # git is required by 'go mod'
@@ -35,7 +35,7 @@ ENV GOOS=${GOOS}
 RUN go build -installsuffix netgo -tags "${GOTAGS}" \
     -ldflags "-extldflags '-static' -X main.projectVersion=${VERSION} -X main.projectBuild=${COMMIT}" -o /${BINNAME}
 
-FROM alpine:3.18.9
+FROM alpine:3.18.11
 ARG BINNAME
 COPY --from=builder /${BINNAME} /app/testAgent
 EXPOSE 4200
