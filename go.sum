@@ -28,6 +28,8 @@ github.com/elazarl/go-bindata-assetfs v1.0.1 h1:m0kkaHRKEu7tUIUFVwhGGGYClXvyl4RE
 github.com/elazarl/go-bindata-assetfs v1.0.1/go.mod h1:v+YaWX3bdea5J/mo8dSETolEo7R71Vk1u8bnjau5yw4=
 github.com/fsouza/go-dockerclient v1.12.0 h1:S2f2crEUbBNCFiF06kR/GvioEB8EMsb3Td/bpawD+aU=
 github.com/fsouza/go-dockerclient v1.12.0/go.mod h1:YWUtjg8japrqD/80L98nTtCoxQFp5B5wrSsnyeB5lFo=
+github.com/go-bindata/go-bindata v3.1.2+incompatible h1:5vjJMVhowQdPzjE1LdxyFF7YFTXg5IgGVW4gBr5IbvE=
+github.com/go-bindata/go-bindata v3.1.2+incompatible/go.mod h1:xK8Dsgwmeed+BBsSy2XTopBn/8uK2HWuGSnA11C3Joo=
 github.com/go-macaron/bindata v0.0.0-20200308113348-9fced76aaa6e h1:FcCaIjax+xgwA4gMXp0bzLzTqW7iD9/zK4NDdbxnupI=
 github.com/go-macaron/bindata v0.0.0-20200308113348-9fced76aaa6e/go.mod h1:NkmXhFuAlCOqgV5EWhU1DKLrgztCEIVXGmr2DZv/+sk=
 github.com/go-macaron/inject v0.0.0-20200308113650-138e5925c53b h1:/aWj44HoEycE4MDi2HZf4t+XI7hKwZRltZf4ih5tB2c=
