@@ -38,8 +38,8 @@ clean:
 	rm -Rf $(BIN)
 
 templates/templates.go: $(TEMPLATES)
-	go build -o bin/go-bindata github.com/jteeuwen/go-bindata/go-bindata
-	bin/go-bindata -pkg templates -prefix templates -modtime 1486974991 -ignore templates.go -o templates/templates.go templates/...
+	go build -o bin/go-bindata github.com/go-bindata/go-bindata/go-bindata
+	bin/go-bindata -pkg templates -prefix templates -ignore templates.go -o templates/templates.go templates/...
 
 docker: $(SOURCES) templates/templates.go
 	docker build \
