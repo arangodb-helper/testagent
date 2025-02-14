@@ -126,7 +126,7 @@ func (t *simpleTest) replaceExistingDocument(c *collection, key, rev string) (st
 						success = true
 					} else {
 						t.replaceExistingCounter.failed++
-						t.reportFailure(test.NewFailure(
+						t.reportFailure(test.NewFailure(t.Name(),
 							"Failed to replace existing document '%s' (%s) in collection '%s': document was replaced unexpectedly. Last returned HTTP status code: %d",
 							key, ifMatchStatus, c.name, update[0].StatusCode))
 						return "", maskAny(fmt.Errorf(

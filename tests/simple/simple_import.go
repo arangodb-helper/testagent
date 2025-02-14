@@ -123,7 +123,7 @@ func (t *simpleTest) importDocuments(c *collection) error {
 			// In any other case(e.g. collection not found etc. - fail.)
 			t.importCounter.failed++
 			t.reportFailure(
-				test.NewFailure("Failed to import documents in collection '%s': unexpected result %v", c.name, result))
+				test.NewFailure(t.Name(), "Failed to import documents in collection '%s': unexpected result %v", c.name, result))
 			return maskAny(fmt.Errorf("Failed to import documents in collection '%s': unexpected result %v", c.name, result))
 		}
 
