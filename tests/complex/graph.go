@@ -377,7 +377,7 @@ func (t *GraphTest) createEdge(to string, from string, edgeColName string, verte
 				if resp[0].Error_.ErrorNum != 1655 {
 					t.edgeDocumentCreateCounter.failed++
 					t.reportFailure(
-						test.NewFailure("Failed to create edge in collection '%s': unexpected response %v", edgeColName, resp[0]))
+						test.NewFailure(t.Name(), "Failed to create edge in collection '%s': unexpected response %v", edgeColName, resp[0]))
 					return maskAny(fmt.Errorf("Failed to create edge in collection '%s': unexpected response %v", edgeColName, resp[0]))
 				}
 			} else if resp[0].StatusCode != 1 {

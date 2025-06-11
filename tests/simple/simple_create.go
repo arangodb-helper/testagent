@@ -144,8 +144,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 				if resp[0].Error_.ErrorNum != 1655 {
 					t.createCounter.failed++
 					t.reportFailure(
-						test.NewFailure(t.Name(),
-							"Failed to create a document in collection '%s'. Unexpected response: %v", c.name, resp[0]))
+						test.NewFailure(t.Name(), "Failed to create a document in collection '%s'. Unexpected response: %v", c.name, resp[0]))
 					return "", maskAny(fmt.Errorf("Failed to create a document in collection '%s'. Unexpected response: %v", c.name, resp[0]))
 				}
 			} else if resp[0].StatusCode != 1 {
@@ -170,8 +169,7 @@ func (t *simpleTest) createDocument(c *collection, document UserDocument, key st
 				// failure
 				t.createCounter.failed++
 				t.reportFailure(
-					test.NewFailure(t.Name(),
-						"Error when creating document with key '%s' in collection '%s'. Status code 410(GONE) was returned. Document was not expected to be created, but it was.", d.Key, c.name))
+					test.NewFailure(t.Name(), "Error when creating document with key '%s' in collection '%s'. Status code 410(GONE) was returned. Document was not expected to be created, but it was.", d.Key, c.name))
 				return "", maskAny(fmt.Errorf("Error when creating document with key '%s' in collection '%s'. Status code 410(GONE) was returned. Document was not expected to be created, but it was.", d.Key, c.name))
 			}
 		}
