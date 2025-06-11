@@ -13,13 +13,15 @@ import (
 )
 
 var (
-	versionFile string
-	releaseType string
+	versionFile  string
+	releaseType  string
+	markAsLatest bool
 )
 
 func init() {
 	flag.StringVar(&versionFile, "versionfile", "./VERSION", "Path of the VERSION file")
 	flag.StringVar(&releaseType, "type", "patch", "Type of release to build (major|minor|patch)")
+	flag.BoolVar(&markAsLatest, "latest", false, "Tag the released docker image as latest")
 }
 
 func main() {
@@ -27,7 +29,11 @@ func main() {
 	checkCleanRepo()
 	version := bumpVersion(releaseType)
 	make("clean")
-	make("docker-push-version")
+	if markAsLatest {
+		make("docker-push-version-latest")
+	} else {
+		make("docker-push-version")
+	}
 	gitTag(version)
 	bumpVersion("devel")
 }
