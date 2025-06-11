@@ -134,7 +134,7 @@ func (t *ComplextTest) insertDocument(colName string, document any) error {
 				if resp[0].Error_.ErrorNum != 1655 {
 					t.singleDocCreateCounter.failed++
 					t.reportFailure(
-						test.NewFailure("Failed to create a document in collection '%s'. Unexpected response: %v", colName, resp[0]))
+						test.NewFailure(t.Name(), "Failed to create a document in collection '%s'. Unexpected response: %v", colName, resp[0]))
 					return maskAny(fmt.Errorf("Failed to create a document in collection '%s'. Unexpected response: %v", colName, resp[0]))
 				}
 			} else if resp[0].StatusCode != 1 {
@@ -547,7 +547,7 @@ func (t *ComplextTest) updateExistingDocument(colName string, oldDoc TestDocumen
 				if update[0].Error_.ErrorNum != 1655 {
 					t.updateExistingCounter.failed++
 					t.reportFailure(
-						test.NewFailure("Failed to update document in collection '%s'. Unexpected response: %v", colName, update[0]))
+						test.NewFailure(t.Name(), "Failed to update document in collection '%s'. Unexpected response: %v", colName, update[0]))
 					return nil, maskAny(fmt.Errorf("Failed to update document in collection '%s'. Unexpected response: %v", colName, update[0]))
 				}
 			} else if update[0].StatusCode != 1 {
