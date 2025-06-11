@@ -87,10 +87,10 @@ docker-push-version-latest: docker
 	# docker push arangodb/testagent:latest
 
 release-patch:
-	go run ./tools/release.go -type=patch 
+	go run ./tools/release.go -type=patch -latest
 
 release-minor:
-	go run ./tools/release.go -type=minor
+	go run ./tools/release.go -type=minor -latest
 
 release-major:
-	go run ./tools/release.go -type=major 
+	go run ./tools/release.go -type=major -latest
