@@ -80,11 +80,20 @@ docker-push-version: docker
 	docker tag arangodb/testagent arangodb/testagent:$(VERSION)
 	docker push arangodb/testagent:$(VERSION)
 
+docker-push-version-latest: docker
+	docker tag arangodb/testagent arangodb/testagent:$(VERSION)
+	docker tag arangodb/testagent:$(VERSION) arangodb/testagent:latest
+	docker push arangodb/testagent:$(VERSION)
+	docker push arangodb/testagent:latest
+
 release-patch:
-	go run ./tools/release.go -type=patch 
+	go run ./tools/release.go -type=patch -latest
 
 release-minor:
-	go run ./tools/release.go -type=minor
+	go run ./tools/release.go -type=minor -latest
 
 release-major:
-	go run ./tools/release.go -type=major 
+	go run ./tools/release.go -type=major -latest
+
+release-patch-legacy:
+	go run ./tools/release.go -type=patch
