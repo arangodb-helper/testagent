@@ -53,8 +53,8 @@ func indexPage(ctx *macaron.Context, log *logging.Logger, service Service) {
 	// Failure reports
 	creports := service.Reports()
 	reports := []FailureReport{}
-	for _, r := range creports {
-		reports = append(reports, failureReportFromReporter(r))
+	for idx, r := range creports {
+		reports = append(reports, failureReportFromReporter(r, idx))
 	}
 	log.Debugf("Found %d failure reports", len(reports))
 	ctx.Data["Reports"] = reports

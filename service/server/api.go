@@ -14,6 +14,21 @@ func failureCount(ctx *macaron.Context, log *logging.Logger, service Service) {
 	ctx.PlainText(http.StatusOK, []byte(strconv.Itoa(failureReportsNumber)))
 }
 
+func reportMessage(ctx *macaron.Context, log *logging.Logger, service Service) {
+	failureReports := service.Reports()
+	reportIdx, err := strconv.Atoi(ctx.Params("idx"))
+	if err != nil {
+		ctx.PlainText(http.StatusBadRequest, []byte("invalid report ID"))
+		return
+	}
+	if reportIdx < 0 || reportIdx >= len(failureReports) {
+		ctx.PlainText(http.StatusNotFound, []byte("report not found"))
+		return
+	}
+	failureReport := failureReports[reportIdx]
+	ctx.PlainText(http.StatusOK, []byte(failureReport.Failure.Message))
+}
+
 func pauseAllTests(ctx *macaron.Context, log *logging.Logger, service Service) {
 	tests := service.Tests()
 	failed := false

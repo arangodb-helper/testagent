@@ -3,6 +3,7 @@ package server
 import (
 	"path"
 	"path/filepath"
+	"strconv"
 
 	"github.com/arangodb-helper/testagent/service/chaos"
 	"github.com/arangodb-helper/testagent/service/cluster"
@@ -52,11 +53,13 @@ type ChaosAction struct {
 }
 
 type FailureReport struct {
-	Time    string
-	Test    string
-	Message string
-	Path    string
-	HRef    string
+	Time             string
+	Test             string
+	Message          string
+	MessageHRef      string
+	MessageTruncated bool
+	Path             string
+	HRef             string
 }
 
 const (
@@ -106,13 +109,25 @@ func testFromTestScript(ct test.TestScript) Test {
 	}
 }
 
-func failureReportFromReporter(f reporter.FailureReport) FailureReport {
+func failureReportFromReporter(f reporter.FailureReport, idx int) FailureReport {
+	var shortMessage string
+	var messageTruncated bool
+	maxDisplayLength := 250
+	if len(f.Failure.Message) > maxDisplayLength {
+		shortMessage = f.Failure.Message[:maxDisplayLength]
+		messageTruncated = true
+	} else {
+		shortMessage = f.Failure.Message
+		messageTruncated = false
+	}
 	return FailureReport{
-		Time:    f.Failure.Timestamp.Local().Format("2006-01-02 15:04:05"),
-		Test:    f.Failure.Test,
-		Message: f.Failure.Message,
-		Path:    filepath.Base(f.Path),
-		HRef:    "/" + path.Join("reports", filepath.Base(f.Path)),
+		Time:             f.Failure.Timestamp.Local().Format("2006-01-02 15:04:05"),
+		Test:             f.Failure.Test,
+		Message:          shortMessage,
+		MessageTruncated: messageTruncated,
+		MessageHRef:      "/" + path.Join("api", "reportMessage", strconv.Itoa(idx)),
+		Path:             filepath.Base(f.Path),
+		HRef:             "/" + path.Join("reports", filepath.Base(f.Path)),
 	}
 }
 

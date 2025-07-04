@@ -81,6 +81,7 @@ func StartHTTPServer(log *logging.Logger, port int, reportDir string, service Se
 	m.Get("/chaos/:id/enable", chaosActionEnablePage)
 	m.Get("/chaos/:id/disable", chaosActionDisablePage)
 	m.Get("/chaos/level/:level", chaosSetLevel)
+	m.Get("/api/reportMessage/:idx", reportMessage)
 
 	// API
 	m.Get("/api/failureCount", failureCount)

@@ -123,7 +123,7 @@
     <tr>
         <td>{{$r.Time}}</td>
         <td>{{$r.Test}}</td>
-        <td>{{$r.Message}}</td>
+        <td>{{$r.Message}}{{if $r.MessageTruncated}}...<a href="{{$r.MessageHRef}}">view full message</a> {{end}}</td>
         <td><a href="{{$r.HRef}}">{{$r.Path}}</a></td>
     </tr>
 {{ end }}
