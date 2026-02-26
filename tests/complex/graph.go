@@ -380,6 +380,15 @@ func (t *GraphTest) createEdge(to string, from string, edgeColName string, verte
 						test.NewFailure(t.Name(), "Failed to create edge in collection '%s': unexpected response %v", edgeColName, resp[0]))
 					return maskAny(fmt.Errorf("Failed to create edge in collection '%s': unexpected response %v", edgeColName, resp[0]))
 				}
+			} else if resp[0].StatusCode == 400 {
+				// 400: If transaction was lost(error 1652) due to failover etc
+				// In any other case(e.g. collection not found etc. - fail.)
+				if resp[0].Error_.ErrorNum != 1652 {
+					t.edgeDocumentCreateCounter.failed++
+					t.reportFailure(
+						test.NewFailure(t.Name(), "Failed to create edge in collection '%s': unexpected response %v", edgeColName, resp[0]))
+					return maskAny(fmt.Errorf("Failed to create edge in collection '%s': unexpected response %v", edgeColName, resp[0]))
+				}
 			} else if resp[0].StatusCode != 1 {
 				document.Rev = resp[0].Rev
 				success = true
