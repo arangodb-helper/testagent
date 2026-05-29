@@ -366,8 +366,8 @@ func (t *GraphTest) createEdge(to string, from string, edgeColName string, verte
 				t.edgeDocumentCreateCounter.failed++
 				errorMsg := fmt.Sprintf("Server responded with status code 202 to a request with waitForSync=true: %v", resp[0])
 				t.reportFailure(
-					test.NewFailure(t.Name(), errorMsg))
-				return maskAny(fmt.Errorf(errorMsg))
+					test.NewFailure(t.Name(), "Server responded with status code 202 to a request with waitForSync=true: %v", resp[0]))
+				return maskAny(fmt.Errorf("%s", errorMsg))
 			} else if resp[0].StatusCode == 410 {
 				// retry. if 410 was returned on first attempt, document must not exist
 				checkRetry = true
