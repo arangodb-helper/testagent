@@ -54,6 +54,7 @@ docker: $(SOURCES) templates/templates.go
 
 docker-new: $(SOURCES) templates/templates.go
 	docker build \
+		--network=host \
 		--build-arg GOVERSION=$(GOVERSION) \
 		--build-arg GOOS="$(GOOS)" \
 		--build-arg GOARCH="$(GOARCH)" \
