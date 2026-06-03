@@ -35,7 +35,7 @@ ENV GOOS=${GOOS}
 RUN go build -installsuffix netgo -tags "${GOTAGS}" \
     -ldflags "-extldflags '-static' -X main.projectVersion=${VERSION} -X main.projectBuild=${COMMIT}" -o /${BINNAME}
 
-FROM alpine:3.18.11
+FROM alpine:latest
 ARG BINNAME
 COPY --from=builder /${BINNAME} /app/testAgent
 EXPOSE 4200
@@ -50,7 +50,8 @@ ENV ARANGODB_IMAGE=arangodb/arangodb-starter:latest
 #ENV ARANGO_IMAGE=arangodb/arangodb:3.1.19
 #ENV ARANGO_IMAGE=arangodb/arangodb-preview:3.4.0-rc.3
 #ENV ARANGO_IMAGE=neunhoef/arangodb-community:3.4.0-rc4
-ENV ARANGO_IMAGE=arangodb/enterprise:3.9.1
+#ENV ARANGO_IMAGE=arangodb/enterprise:3.9.1
+ENV ARANGO_IMAGE=arangodb/enterprise-preview:devel-nightly
 
 # network-blocker image
 ENV NETWORK_BLOCKER_IMAGE=arangodb/network-blocker:0.1.0

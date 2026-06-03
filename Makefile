@@ -52,7 +52,7 @@ docker: $(SOURCES) templates/templates.go
 		--build-arg COMMIT="$(COMMIT)" \
 		-f Dockerfile -t arangodb/testagent .
 
-docker-new: $(SOURCES) templates/templates.go
+docker-vm: $(SOURCES) templates/templates.go
 	docker build \
 		--network=host \
 		--build-arg GOVERSION=$(GOVERSION) \
@@ -62,7 +62,7 @@ docker-new: $(SOURCES) templates/templates.go
 		--build-arg GOTAGS="$(GOTAGS)" \
 		--build-arg VERSION="$(VERSION)" \
 		--build-arg COMMIT="$(COMMIT)" \
-		-f Dockerfile_new -t arangodb/testagent:local .
+		-f Dockerfile -t arangodb/testagent:local .
 
 docker-dbg: $(SOURCES) templates/templates.go
 	docker build \
